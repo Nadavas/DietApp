@@ -57,7 +57,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth()
         )
         Text(
-            text = "Hi Nadavos",
+            text = "Hi Nadav",
             fontSize = 20.sp,
             color = Color.Red,
             textAlign = TextAlign.Center,
