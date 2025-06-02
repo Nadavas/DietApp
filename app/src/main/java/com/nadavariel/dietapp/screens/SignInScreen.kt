@@ -11,6 +11,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.AuthResult
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
+import com.nadavariel.dietapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +57,20 @@ fun SignInScreen(
             AuthResult.Idle -> {
                 // Initial state, do nothing
             }
+        }
+    }
+
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            authViewModel.handleGoogleSignInResult(account, onSignInSuccess)
+        } catch (e: ApiException) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Google sign-in failed: ${e.message}")
+            }
+            authViewModel.resetAuthResult()
         }
     }
 
@@ -96,6 +120,30 @@ fun SignInScreen(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = {
+                    val signInClient = authViewModel.getGoogleSignInClient(context)
+                    val signInIntent = signInClient.signInIntent
+                    launcher.launch(signInIntent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = authResult != AuthResult.Loading
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.google_logo),
+                    contentDescription = "Google Logo",
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.Unspecified // keep original colors
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Sign in with Google",
+                    fontSize = 18.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
             TextButton(onClick = onBack) {
                 Text("Back to Landing")
             }

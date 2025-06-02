@@ -1,12 +1,19 @@
 package com.nadavariel.dietapp
 
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import android.util.Log
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 
 // To represent the result of an auth operation
 sealed class AuthResult {
@@ -85,5 +92,45 @@ class AuthViewModel : ViewModel() {
 
     fun resetAuthResult() {
         _authResult.value = AuthResult.Idle
+    }
+
+    fun getGoogleSignInClient(context: Context): GoogleSignInClient {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id)) // this must match the one in Firebase
+            .requestEmail()
+            .build()
+        return GoogleSignIn.getClient(context, gso)
+    }
+
+    // 🔥 Google Sign-In handler
+    fun firebaseAuthWithGoogle(idToken: String) {
+        _authResult.value = AuthResult.Loading
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _authResult.value = AuthResult.Success
+                } else {
+                    _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
+                }
+            }
+    }
+
+    fun handleGoogleSignInResult(account: GoogleSignInAccount?, onSuccess: () -> Unit) {
+        if (account == null) {
+            _authResult.value = AuthResult.Error("Google sign-in failed.")
+            return
+        }
+        _authResult.value = AuthResult.Loading
+        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _authResult.value = AuthResult.Success
+                    onSuccess()
+                } else {
+                    _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
+                }
+            }
     }
 }

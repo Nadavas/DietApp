@@ -12,7 +12,12 @@
           "package_name": "com.nadavariel.dietapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "383915498298-m31pp26vt0t1b6lhkns5j273dib05sl7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD9LAAyGLav8MUwIMo59no5oG3M1XaYNA4"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "383915498298-m31pp26vt0t1b6lhkns5j273dib05sl7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
