@@ -135,6 +135,23 @@ fun SignUpScreen(
                 singleLine = true
             )
 
+            // --- START: ADD THE "REMEMBER ME" CHECKBOX HERE ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp), // Adjust padding as needed
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = authViewModel.rememberMeState.value,
+                    onCheckedChange = { isChecked ->
+                        authViewModel.rememberMeState.value = isChecked
+                    }
+                )
+                Text("Remember Me", style = MaterialTheme.typography.bodyLarge)
+            }
+            // --- END: ADD THE "REMEMBER ME" CHECKBOX HERE ---
+
             Button(
                 onClick = { authViewModel.signUp(onSignUpSuccess) },
                 modifier = Modifier.fillMaxWidth(),

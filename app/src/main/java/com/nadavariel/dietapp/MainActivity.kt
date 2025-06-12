@@ -17,6 +17,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nadavariel.dietapp.screens.HomeScreen
 
+// NEW IMPORTS FOR VIEWMODEL FACTORY AND USER PREFERENCES REPOSITORY
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.compose.runtime.remember // Add this if not already there
+import com.nadavariel.dietapp.data.UserPreferencesRepository // Import your new repository
+import com.nadavariel.dietapp.data.dataStore // Import the extension property for DataStore
+// END NEW IMPORTS
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,7 +32,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             DietAppTheme {
                 val navController = rememberNavController()
-                val authViewModel: AuthViewModel = viewModel() // Get the ViewModel instance
+
+                // 1. Instantiate UserPreferencesRepository
+                // We use applicationContext because DataStore needs a Context that lives as long as the app
+                val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
+
+                // 2. Create a custom ViewModelProvider.Factory
+                val authViewModelFactory = remember {
+                    object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
+                                @Suppress("UNCHECKED_CAST")
+                                return AuthViewModel(preferencesRepository) as T
+                            }
+                            throw IllegalArgumentException("Unknown ViewModel class")
+                        }
+                    }
+                }
+
+                // 3. Get the AuthViewModel instance using the factory
+                val authViewModel: AuthViewModel = viewModel(factory = authViewModelFactory) // Get the ViewModel instance
 
                 // Determine start destination based on sign-in state
                 val startDestination = if (authViewModel.isUserSignedIn()) {

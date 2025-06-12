@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -150,6 +152,23 @@ fun SignInScreen(
                 )
                 // --- END CHANGES FOR ENTER KEY ---
             )
+
+            // --- START: ADD THE "REMEMBER ME" CHECKBOX HERE ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp), // Adjust padding as needed
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = authViewModel.rememberMeState.value,
+                    onCheckedChange = { isChecked ->
+                        authViewModel.rememberMeState.value = isChecked
+                    }
+                )
+                Text("Remember Me", style = MaterialTheme.typography.bodyLarge)
+            }
+            // --- END: ADD THE "REMEMBER ME" CHECKBOX HERE ---
 
             Button(
                 onClick = { performSignIn() },   // Use the common action here as well
