@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.nadavariel.dietapp.AuthViewModel
@@ -116,6 +117,7 @@ fun SignUpScreen(
                 value = password,
                 onValueChange = { authViewModel.passwordState.value = it },
                 label = { Text("Password") },
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
@@ -126,6 +128,7 @@ fun SignUpScreen(
                 value = confirmPassword,
                 onValueChange = { authViewModel.confirmPasswordState.value = it },
                 label = { Text("Confirm Password") },
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),

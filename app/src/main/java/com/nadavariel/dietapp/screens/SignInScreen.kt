@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts.StartActivityFo
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.R
@@ -101,7 +102,7 @@ fun SignInScreen(
                 value = password,
                 onValueChange = { authViewModel.passwordState.value = it },
                 label = { Text("Password") },
-                // visualTransformation = PasswordVisualTransformation(), // Uncomment for password hiding
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
