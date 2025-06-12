@@ -19,14 +19,10 @@ import kotlinx.coroutines.launch
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.AuthResult // Assuming AuthResult is in the same package as AuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.FirebaseAuth
 import com.nadavariel.dietapp.R
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),

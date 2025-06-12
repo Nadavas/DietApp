@@ -13,14 +13,14 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import android.util.Log
 import androidx.datastore.preferences.core.edit
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.nadavariel.dietapp.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import androidx.datastore.preferences.core.stringPreferencesKey // NEW: Import for profile keys
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nadavariel.dietapp.data.dataStore
+import android.util.Log // NEW: Added for logging in _loadProfileData
 
 // To represent the result of an auth operation
 sealed class AuthResult {
@@ -42,11 +42,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     val rememberMeState = mutableStateOf(false)
 
-    // --- NEW: Profile states ---
     val nameState = mutableStateOf("")
     val weightState = mutableStateOf("") // Stored as String, convert to Float/Int for calculations
 
-    // --- NEW: Keys for DataStore for profile data ---
     private object ProfileKeys {
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_WEIGHT = stringPreferencesKey("user_weight")
@@ -57,11 +55,17 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
 
-            // NEW: Load name and weight from DataStore on ViewModel creation
-            preferencesRepository.context.dataStore.data.first().let { preferences ->
-                nameState.value = preferences[ProfileKeys.USER_NAME] ?: ""
-                weightState.value = preferences[ProfileKeys.USER_WEIGHT] ?: ""
-            }
+            // Load name and weight from DataStore on ViewModel creation
+            _loadProfileData() // Calling the new helper function
+        }
+    }
+
+    // NEW: Private helper function to load profile data from DataStore
+    private suspend fun _loadProfileData() {
+        preferencesRepository.context.dataStore.data.first().let { preferences ->
+            nameState.value = preferences[ProfileKeys.USER_NAME] ?: ""
+            weightState.value = preferences[ProfileKeys.USER_WEIGHT] ?: ""
+            Log.d("AuthViewModel", "Loaded profile: Name='${nameState.value}', Weight='${weightState.value}'")
         }
     }
 
@@ -90,6 +94,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+                        _loadProfileData() // NEW: Load data after successful sign-up
                     }
                     onSuccess()
                     clearInputFields()
@@ -115,6 +120,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+                        _loadProfileData() // NEW: Load data after successful sign-in
                     }
                     onSuccess()
                     clearInputFields()
@@ -131,14 +137,21 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
-            // NEW: Clear profile data on sign out (optional, based on your app's logic)
+            // REMOVED: nameState.value = "" and weightState.value = "" from here.
+            // Data will be reloaded on next sign-in.
+            // If you intend to completely clear the user's profile data from storage on sign out,
+            // you should uncomment and use the DataStore removal code instead:
             // preferencesRepository.context.dataStore.edit { preferences ->
             //     preferences.remove(ProfileKeys.USER_NAME)
             //     preferences.remove(ProfileKeys.USER_WEIGHT)
             // }
-            nameState.value = "" // Clear in ViewModel too
-            weightState.value = "" // Clear in ViewModel too
         }
+        // You might still choose to visually clear the states in the ViewModel if you want
+        // the UI to immediately reflect an empty profile upon sign-out, even before a re-login.
+        // If so, add them back here:
+        nameState.value = ""
+        weightState.value = ""
+
         clearInputFields()
     }
 
@@ -169,6 +182,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
+                    // NEW: Load data after successful Google sign-in
+                    viewModelScope.launch {
+                        _loadProfileData()
+                    }
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
                 }
@@ -192,6 +209,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+                        _loadProfileData() // NEW: Load data after successful Google sign-in
                     }
                     onSuccess()
                 } else {
@@ -200,7 +218,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // --- NEW: Functions to update and save profile data ---
+    // Functions to update and save profile data
     fun updateProfile(name: String, weight: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             preferencesRepository.context.dataStore.edit { preferences ->

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions // <-- THIS IS THE MISSING IMPORT
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,10 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel // If you prefer to get viewModel here
 import androidx.compose.foundation.layout.Arrangement // Also ensure Arrangement is imported if used in Column
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateProfileScreen(
     authViewModel: AuthViewModel,

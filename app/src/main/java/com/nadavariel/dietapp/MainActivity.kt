@@ -4,32 +4,31 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.nadavariel.dietapp.screens.Greeting
-import com.nadavariel.dietapp.screens.SignInScreen
-import com.nadavariel.dietapp.screens.SignUpScreen
-import com.nadavariel.dietapp.ui.theme.DietAppTheme
 import androidx.compose.foundation.layout.padding
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.compose.runtime.remember
-import com.nadavariel.dietapp.data.UserPreferencesRepository
-import com.nadavariel.dietapp.data.dataStore
-import com.nadavariel.dietapp.screens.HomeScreen
-import com.nadavariel.dietapp.screens.MyProfileScreen
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import com.nadavariel.dietapp.screens.UpdateProfileScreen // <-- NEW: Import UpdateProfileScreen
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.nadavariel.dietapp.data.UserPreferencesRepository
+import com.nadavariel.dietapp.screens.Greeting
+import com.nadavariel.dietapp.screens.HomeScreen
+import com.nadavariel.dietapp.screens.MyProfileScreen
+import com.nadavariel.dietapp.screens.SignInScreen
+import com.nadavariel.dietapp.screens.SignUpScreen
+import com.nadavariel.dietapp.screens.UpdateProfileScreen
+import com.nadavariel.dietapp.ui.theme.DietAppTheme
 
 
 class MainActivity : ComponentActivity() {
