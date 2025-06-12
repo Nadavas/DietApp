@@ -16,7 +16,6 @@ import com.google.firebase.firestore.FirebaseFirestore // NEW: Import Firestore
 import com.google.firebase.firestore.ktx.firestore // NEW: Import Firestore KTX
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.data.UserPreferencesRepository
-import com.nadavariel.dietapp.data.dataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
