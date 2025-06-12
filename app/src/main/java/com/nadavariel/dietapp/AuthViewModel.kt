@@ -13,10 +13,14 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import android.util.Log
+import androidx.datastore.preferences.core.edit
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.nadavariel.dietapp.data.UserPreferencesRepository // Import your new repository
-import kotlinx.coroutines.flow.first // Import for .first()
+import com.nadavariel.dietapp.data.UserPreferencesRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.datastore.preferences.core.stringPreferencesKey // NEW: Import for profile keys
+import com.nadavariel.dietapp.data.dataStore
 
 // To represent the result of an auth operation
 sealed class AuthResult {
@@ -36,16 +40,28 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val _authResult = MutableStateFlow<AuthResult>(AuthResult.Idle)
     val authResult: StateFlow<AuthResult> = _authResult
 
-    // New state for "Remember Me" toggle
     val rememberMeState = mutableStateOf(false)
 
-    // Initialize email and rememberMe from DataStore when ViewModel is created
+    // --- NEW: Profile states ---
+    val nameState = mutableStateOf("")
+    val weightState = mutableStateOf("") // Stored as String, convert to Float/Int for calculations
+
+    // --- NEW: Keys for DataStore for profile data ---
+    private object ProfileKeys {
+        val USER_NAME = stringPreferencesKey("user_name")
+        val USER_WEIGHT = stringPreferencesKey("user_weight")
+    }
+
     init {
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
-            // If rememberMeState is true, you might want to automatically sign in if Firebase remembers,
-            // or just pre-fill fields. For now, we'll just pre-fill.
+
+            // NEW: Load name and weight from DataStore on ViewModel creation
+            preferencesRepository.context.dataStore.data.first().let { preferences ->
+                nameState.value = preferences[ProfileKeys.USER_NAME] ?: ""
+                weightState.value = preferences[ProfileKeys.USER_WEIGHT] ?: ""
+            }
         }
     }
 
@@ -68,16 +84,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
-                    // Save email if rememberMe is true after successful signup
                     viewModelScope.launch {
                         if (rememberMeState.value) {
                             preferencesRepository.saveUserPreferences(emailState.value, rememberMeState.value)
                         } else {
-                            // If rememberMe is false, clear any stored email
                             preferencesRepository.clearUserPreferences()
                         }
                     }
-                    onSuccess() // Navigate on success
+                    onSuccess()
                     clearInputFields()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign up failed.")
@@ -95,16 +109,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
-                    // Save email if rememberMe is true after successful signin
                     viewModelScope.launch {
                         if (rememberMeState.value) {
                             preferencesRepository.saveUserPreferences(emailState.value, rememberMeState.value)
                         } else {
-                            // If rememberMe is false, clear any stored email
                             preferencesRepository.clearUserPreferences()
                         }
                     }
-                    onSuccess() // Navigate on success
+                    onSuccess()
                     clearInputFields()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign in failed.")
@@ -114,21 +126,23 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     fun signOut() {
         auth.signOut()
-        _authResult.value = AuthResult.Idle // Reset state after sign out
-        // Clear preferences only if the user explicitly signs out AND rememberMe was false
-        // or if you want to force clear on any sign out.
+        _authResult.value = AuthResult.Idle
         viewModelScope.launch {
-            // preferencesRepository.clearUserPreferences() // Uncomment if you want to clear all on signOut
-            // Alternatively, just clear the email if rememberMe is false
             if (!rememberMeState.value) {
-                preferencesRepository.saveUserPreferences("", false) // Clear email, keep rememberMe false
+                preferencesRepository.saveUserPreferences("", false)
             }
+            // NEW: Clear profile data on sign out (optional, based on your app's logic)
+            // preferencesRepository.context.dataStore.edit { preferences ->
+            //     preferences.remove(ProfileKeys.USER_NAME)
+            //     preferences.remove(ProfileKeys.USER_WEIGHT)
+            // }
+            nameState.value = "" // Clear in ViewModel too
+            weightState.value = "" // Clear in ViewModel too
         }
         clearInputFields()
     }
 
     fun clearInputFields() {
-        // Only clear email if rememberMe is false, otherwise keep it for pre-filling
         if (!rememberMeState.value) {
             emailState.value = ""
         }
@@ -142,13 +156,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     fun getGoogleSignInClient(context: Context): GoogleSignInClient {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(context.getString(R.string.default_web_client_id)) // this must match the one in Firebase
+            .requestIdToken(context.getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
         return GoogleSignIn.getClient(context, gso)
     }
 
-    // 🔥 Google Sign-In handler
     fun firebaseAuthWithGoogle(idToken: String) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(idToken, null)
@@ -156,9 +169,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
-                    // For Google Sign-In, Firebase handles session.
-                    // If you want to remember Google user's email, you'd save it here too.
-                    // preferencesRepository.saveUserPreferences(auth.currentUser?.email ?: "", true) // You can uncomment this if needed
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
                 }
@@ -176,7 +186,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
-                    // Save Google account's email if rememberMe is true (or just for consistency)
                     viewModelScope.launch {
                         if (rememberMeState.value) {
                             preferencesRepository.saveUserPreferences(account.email ?: "", rememberMeState.value)
@@ -189,5 +198,19 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
                 }
             }
+    }
+
+    // --- NEW: Functions to update and save profile data ---
+    fun updateProfile(name: String, weight: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            preferencesRepository.context.dataStore.edit { preferences ->
+                preferences[ProfileKeys.USER_NAME] = name
+                preferences[ProfileKeys.USER_WEIGHT] = weight
+            }
+            // Update the states in the ViewModel immediately
+            nameState.value = name
+            weightState.value = weight
+            onSuccess() // Indicate success, e.g., for navigation
+        }
     }
 }

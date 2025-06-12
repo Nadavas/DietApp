@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.Scaffold // Keep this import
+import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,8 +22,6 @@ import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.data.dataStore
 import com.nadavariel.dietapp.screens.HomeScreen
 import com.nadavariel.dietapp.screens.MyProfileScreen
-
-// NEW IMPORTS FOR BOTTOM NAVIGATION BAR
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Icon
@@ -31,7 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.ui.res.painterResource
-// END NEW IMPORTS
+import com.nadavariel.dietapp.screens.UpdateProfileScreen // <-- NEW: Import UpdateProfileScreen
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,22 +62,18 @@ class MainActivity : ComponentActivity() {
                     NavRoutes.LANDING
                 }
 
-                // --- START MOVED SCAFFOLD AND BOTTOM NAV BAR ---
                 val currentRoute by navController.currentBackStackEntryAsState()
                 val selectedRoute = currentRoute?.destination?.route
 
                 Scaffold(
                     modifier = Modifier,
                     bottomBar = {
-                        // Only show the bottom navigation bar if the current route is HOME or MY_PROFILE
-                        // This prevents it from showing on login/signup/landing screens
                         if (selectedRoute == NavRoutes.HOME || selectedRoute == NavRoutes.MY_PROFILE) {
                             NavigationBar {
-                                // Home button
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.HOME,
                                     onClick = { navController.navigate(NavRoutes.HOME) {
-                                        popUpTo(NavRoutes.HOME) { // Pop up to Home, ensuring it's the single top in this stack
+                                        popUpTo(NavRoutes.HOME) {
                                             saveState = true
                                         }
                                         launchSingleTop = true
@@ -88,11 +83,10 @@ class MainActivity : ComponentActivity() {
                                     label = { Text("Home") }
                                 )
 
-                                // My Profile button
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.MY_PROFILE,
                                     onClick = { navController.navigate(NavRoutes.MY_PROFILE) {
-                                        popUpTo(NavRoutes.HOME) { // Pop up to Home, ensuring it's the single top in this stack
+                                        popUpTo(NavRoutes.HOME) { // Pop up to Home so profile screen is the single top in this stack
                                             saveState = true
                                         }
                                         launchSingleTop = true
@@ -108,7 +102,6 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = startDestination,
-                        // Apply the padding from Scaffold to the NavHost content
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable(NavRoutes.LANDING) {
@@ -155,10 +148,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(NavRoutes.HOME) {
-                            // HomeScreen no longer needs its own Scaffold or NavController passed directly
                             HomeScreen(
                                 authViewModel = authViewModel,
-                                // navController = navController, // REMOVE this parameter from HomeScreen
+                                // navController = navController, // HomeScreen no longer needs its own navController passed directly
                                 onSignOut = {
                                     navController.navigate(NavRoutes.LANDING) {
                                         popUpTo(NavRoutes.HOME) { inclusive = true }
@@ -169,12 +161,20 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(NavRoutes.MY_PROFILE) {
                             MyProfileScreen(
-                                // authViewModel = authViewModel // Optional, pass if needed
+                                authViewModel = authViewModel, // <-- NEW: Pass AuthViewModel
+                                navController = navController // <-- NEW: Pass NavController
+                            )
+                        }
+                        // <-- NEW: Add composable for UpdateProfileScreen
+                        composable(NavRoutes.UPDATE_PROFILE) {
+                            UpdateProfileScreen(
+                                authViewModel = authViewModel,
+                                navController = navController,
+                                onBack = { navController.popBackStack() }
                             )
                         }
                     }
                 }
-                // --- END MOVED SCAFFOLD AND BOTTOM NAV BAR ---
             }
         }
     }

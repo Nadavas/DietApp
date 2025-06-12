@@ -6,4 +6,5 @@ object NavRoutes {
     const val SIGN_UP = "sign_up"
     const val HOME = "home"
     const val MY_PROFILE = "my_profile"
+    const val UPDATE_PROFILE = "update_profile"
 }
