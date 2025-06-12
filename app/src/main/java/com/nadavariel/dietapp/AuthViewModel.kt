@@ -1,26 +1,29 @@
 package com.nadavariel.dietapp
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore // NEW: Import Firestore
+import com.google.firebase.firestore.ktx.firestore // NEW: Import Firestore KTX
 import com.google.firebase.ktx.Firebase
+import com.nadavariel.dietapp.data.UserPreferencesRepository
+import com.nadavariel.dietapp.data.dataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import androidx.datastore.preferences.core.edit
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.nadavariel.dietapp.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import androidx.datastore.preferences.core.stringPreferencesKey
-import com.nadavariel.dietapp.data.dataStore
-import android.util.Log // NEW: Added for logging in _loadProfileData
+import kotlinx.coroutines.tasks.await // NEW: For await() on Firestore tasks
 
 // To represent the result of an auth operation
 sealed class AuthResult {
@@ -32,6 +35,7 @@ sealed class AuthResult {
 
 class AuthViewModel(private val preferencesRepository: UserPreferencesRepository) : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
+    private val firestore: FirebaseFirestore = Firebase.firestore // NEW: Initialize Firestore
 
     val emailState = mutableStateOf("")
     val passwordState = mutableStateOf("")
@@ -45,27 +49,71 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     val nameState = mutableStateOf("")
     val weightState = mutableStateOf("") // Stored as String, convert to Float/Int for calculations
 
-    private object ProfileKeys {
-        val USER_NAME = stringPreferencesKey("user_name")
-        val USER_WEIGHT = stringPreferencesKey("user_weight")
-    }
+    // REMOVED: ProfileKeys as profile data will be in Firestore
+    // private object ProfileKeys {
+    //     val USER_NAME = stringPreferencesKey("user_name")
+    //     val USER_WEIGHT = stringPreferencesKey("user_weight")
+    // }
 
     init {
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
 
-            // Load name and weight from DataStore on ViewModel creation
-            _loadProfileData() // Calling the new helper function
+            // Only load profile data if a user is already signed in on app launch
+            if (isUserSignedIn()) { // NEW: Conditional load
+                loadUserProfile() // Call the new Firestore loading function
+            }
         }
     }
 
-    // NEW: Private helper function to load profile data from DataStore
-    private suspend fun _loadProfileData() {
-        preferencesRepository.context.dataStore.data.first().let { preferences ->
-            nameState.value = preferences[ProfileKeys.USER_NAME] ?: ""
-            weightState.value = preferences[ProfileKeys.USER_WEIGHT] ?: ""
-            Log.d("AuthViewModel", "Loaded profile: Name='${nameState.value}', Weight='${weightState.value}'")
+    // NEW: Function to load profile data from Firestore
+    private suspend fun loadUserProfile() {
+        val userId = auth.currentUser?.uid // Get the current user's UID
+        if (userId != null) {
+            try {
+                val userDoc = firestore.collection("users").document(userId).get().await()
+                if (userDoc.exists()) {
+                    nameState.value = userDoc.getString("name") ?: ""
+                    weightState.value = userDoc.getString("weight") ?: ""
+                    Log.d("AuthViewModel", "Loaded profile from Firestore: Name='${nameState.value}', Weight='${weightState.value}' for UID: $userId")
+                } else {
+                    // User exists in Auth but no profile in Firestore yet (e.g., new user)
+                    nameState.value = ""
+                    weightState.value = ""
+                    Log.d("AuthViewModel", "No profile found in Firestore for UID: $userId. Setting empty.")
+                }
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error loading user profile from Firestore: ${e.message}", e)
+                // Optionally, show an error to the user or set default values
+                nameState.value = ""
+                weightState.value = ""
+            }
+        } else {
+            // No user signed in, clear profile states
+            nameState.value = ""
+            weightState.value = ""
+            Log.d("AuthViewModel", "No user signed in. Clearing profile states.")
+        }
+    }
+
+    // NEW: Function to save profile data to Firestore
+    private suspend fun saveUserProfile(name: String, weight: String) {
+        val userId = auth.currentUser?.uid
+        if (userId != null) {
+            val userProfile = hashMapOf(
+                "name" to name,
+                "weight" to weight
+            )
+            try {
+                firestore.collection("users").document(userId).set(userProfile).await()
+                Log.d("AuthViewModel", "Profile saved to Firestore for UID: $userId")
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error saving user profile to Firestore: ${e.message}", e)
+                // Optionally, show an error to the user
+            }
+        } else {
+            Log.w("AuthViewModel", "Cannot save profile: No user signed in.")
         }
     }
 
@@ -94,7 +142,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        _loadProfileData() // NEW: Load data after successful sign-up
+                        // NEW: Load profile data for the newly signed up user
+                        loadUserProfile()
                     }
                     onSuccess()
                     clearInputFields()
@@ -120,7 +169,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        _loadProfileData() // NEW: Load data after successful sign-in
+                        // NEW: Load profile data for the newly signed in user
+                        loadUserProfile()
                     }
                     onSuccess()
                     clearInputFields()
@@ -134,24 +184,16 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         auth.signOut()
         _authResult.value = AuthResult.Idle
         viewModelScope.launch {
+            // Keep email and rememberMe if user chose, clear otherwise
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
-            // REMOVED: nameState.value = "" and weightState.value = "" from here.
-            // Data will be reloaded on next sign-in.
-            // If you intend to completely clear the user's profile data from storage on sign out,
-            // you should uncomment and use the DataStore removal code instead:
-            // preferencesRepository.context.dataStore.edit { preferences ->
-            //     preferences.remove(ProfileKeys.USER_NAME)
-            //     preferences.remove(ProfileKeys.USER_WEIGHT)
-            // }
+            // NEW: Clear profile states in ViewModel when signing out
+            // The data itself remains in Firestore, ready for the user to sign back in later.
+            nameState.value = ""
+            weightState.value = ""
+            // No need to clear from DataStore as it's no longer storing profile data.
         }
-        // You might still choose to visually clear the states in the ViewModel if you want
-        // the UI to immediately reflect an empty profile upon sign-out, even before a re-login.
-        // If so, add them back here:
-        nameState.value = ""
-        weightState.value = ""
-
         clearInputFields()
     }
 
@@ -184,7 +226,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     _authResult.value = AuthResult.Success
                     // NEW: Load data after successful Google sign-in
                     viewModelScope.launch {
-                        _loadProfileData()
+                        loadUserProfile()
                     }
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
@@ -209,7 +251,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        _loadProfileData() // NEW: Load data after successful Google sign-in
+                        // NEW: Load profile data after successful Google sign-in
+                        loadUserProfile()
                     }
                     onSuccess()
                 } else {
@@ -220,11 +263,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     // Functions to update and save profile data
     fun updateProfile(name: String, weight: String, onSuccess: () -> Unit) {
+        // NEW: Save to Firestore instead of DataStore
         viewModelScope.launch {
-            preferencesRepository.context.dataStore.edit { preferences ->
-                preferences[ProfileKeys.USER_NAME] = name
-                preferences[ProfileKeys.USER_WEIGHT] = weight
-            }
+            saveUserProfile(name, weight) // Call the new Firestore saving function
             // Update the states in the ViewModel immediately
             nameState.value = name
             weightState.value = weight

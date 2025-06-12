@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "383915498298-dliolci52iogttkbjhn8pknkocavmr0u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nadavariel.dietapp",
+            "certificate_hash": "40509334d994929704a962f921d85ef59bd74fae"
+          }
+        },
+        {
+          "client_id": "383915498298-g9sl6hjtelifekomt6k8k41teah4fqof.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nadavariel.dietapp",
+            "certificate_hash": "a324e526d8cadf090a56b3085ea11b6e36443025"
+          }
+        },
+        {
           "client_id": "383915498298-m31pp26vt0t1b6lhkns5j273dib05sl7.apps.googleusercontent.com",
           "client_type": 3
         }

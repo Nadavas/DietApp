@@ -42,6 +42,9 @@ android {
 
 dependencies {
 
+    // Firebase Firestore (for user-specific profile data)
+    implementation(libs.firebase.firestore.ktx) // Add this line
+
     // DataStore (for preferences)
     implementation("androidx.datastore:datastore-preferences:1.1.7")
 
