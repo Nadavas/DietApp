@@ -2,32 +2,44 @@ package com.nadavariel.dietapp.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.*
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
-import com.nadavariel.dietapp.AuthViewModel
-import com.nadavariel.dietapp.AuthResult // Assuming AuthResult is in the same package as AuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.nadavariel.dietapp.AuthResult
+import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.R
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class) // Needed for TopAppBar
 @Composable
 fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
-    onSignUpSuccess: () -> Unit
+    onSignUpSuccess: () -> Unit,
+    onNavigateToSignIn: () -> Unit // New callback for "Log In" link
 ) {
     val context = LocalContext.current
     val email by authViewModel.emailState
@@ -37,7 +49,6 @@ fun SignUpScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Google Sign-In launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -59,7 +70,7 @@ fun SignUpScreen(
         when (val result = authResult) {
             is AuthResult.Success -> {
                 authViewModel.resetAuthResult()
-                onSignUpSuccess()
+                onSignUpSuccess() // This callback should navigate to UpdateProfileScreen
             }
             is AuthResult.Error -> {
                 scope.launch {
@@ -74,7 +85,6 @@ fun SignUpScreen(
         }
     }
 
-    // Configure Google Sign-In options
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(context.getString(R.string.default_web_client_id))
@@ -87,13 +97,32 @@ fun SignUpScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        // Using ImageVector for the back arrow. No 'tint = Color.Unspecified' needed here.
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                            // tint will default to MaterialTheme.colorScheme.onSurface, which is usually fine
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -131,23 +160,6 @@ fun SignUpScreen(
                 singleLine = true
             )
 
-            // --- START: ADD THE "REMEMBER ME" CHECKBOX HERE ---
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp), // Adjust padding as needed
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = authViewModel.rememberMeState.value,
-                    onCheckedChange = { isChecked ->
-                        authViewModel.rememberMeState.value = isChecked
-                    }
-                )
-                Text("Remember Me", style = MaterialTheme.typography.bodyLarge)
-            }
-            // --- END: ADD THE "REMEMBER ME" CHECKBOX HERE ---
-
             Button(
                 onClick = { authViewModel.signUp(onSignUpSuccess) },
                 modifier = Modifier.fillMaxWidth(),
@@ -165,36 +177,53 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Google Sign-In Button
+            val annotatedTextLogin = buildAnnotatedString {
+                append("Already have an account? ")
+                pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
+                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                    append("Log in")
+                }
+                pop()
+            }
+            ClickableText(
+                text = annotatedTextLogin,
+                onClick = { offset ->
+                    annotatedTextLogin.getStringAnnotations(tag = "LOGIN", start = offset, end = offset)
+                        .firstOrNull()?.let {
+                            onNavigateToSignIn()
+                        }
+                },
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                "OR",
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+
             OutlinedButton(
                 onClick = {
                     googleSignInLauncher.launch(googleSignInClient.signInIntent)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.Black
-                )
+                enabled = authResult != AuthResult.Loading
             ) {
-                // Google logo icon
+                // For painterResource, tint should be explicitly null or Unspecified
+                // to retain original colors. The error was likely due to a subtle
+                // type mismatch or older Compose version's expectation.
                 Icon(
                     painter = painterResource(id = R.drawable.google_logo),
                     contentDescription = "Google Logo",
                     modifier = Modifier.size(24.dp),
-                    tint = Color.Unspecified // <-- this keeps original colors of the image
+                    tint = Color.Unspecified // Explicitly use Color.Unspecified here for the PNG
                 )
-
-                Spacer(modifier = Modifier.width(8.dp)) // space between icon and text
-
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Sign Up with Google",
+                    text = "Continue with Google",
                     fontSize = 18.sp
                 )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = onBack) {
-                Text("Back to Landing")
             }
         }
     }

@@ -124,9 +124,18 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onSignInSuccess = {
+                                    // Original: Navigates to HOME. Keep this if you want SIGN_IN to always go to HOME.
+                                    // If you want SIGN_IN to also go to UPDATE_PROFILE first, change this line too.
                                     navController.navigate(NavRoutes.HOME) {
                                         popUpTo(NavRoutes.LANDING) { inclusive = true }
                                         launchSingleTop = true
+                                    }
+                                },
+                                // NEW: Pass onNavigateToSignUp callback
+                                onNavigateToSignUp = {
+                                    navController.navigate(NavRoutes.SIGN_UP) {
+                                        // Clear SignIn from back stack when navigating to SignUp
+                                        popUpTo(NavRoutes.SIGN_IN) { inclusive = true }
                                     }
                                 }
                             )
@@ -138,10 +147,18 @@ class MainActivity : ComponentActivity() {
                                     authViewModel.clearInputFields()
                                     navController.popBackStack()
                                 },
+                                // NEW: Navigate to UPDATE_PROFILE after successful sign up
                                 onSignUpSuccess = {
-                                    navController.navigate(NavRoutes.HOME) {
-                                        popUpTo(NavRoutes.LANDING) { inclusive = true }
-                                        launchSingleTop = true
+                                    navController.navigate(NavRoutes.UPDATE_PROFILE) {
+                                        popUpTo(NavRoutes.LANDING) { inclusive = true } // Clear sign up screen and landing
+                                        launchSingleTop = true // Ensure single instance
+                                    }
+                                },
+                                // NEW: Pass onNavigateToSignIn callback
+                                onNavigateToSignIn = {
+                                    navController.navigate(NavRoutes.SIGN_IN) {
+                                        // Clear SignUp from back stack when navigating to SignIn
+                                        popUpTo(NavRoutes.SIGN_UP) { inclusive = true }
                                     }
                                 }
                             )
@@ -149,7 +166,6 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.HOME) {
                             HomeScreen(
                                 authViewModel = authViewModel,
-                                // navController = navController, // HomeScreen no longer needs its own navController passed directly
                                 onSignOut = {
                                     navController.navigate(NavRoutes.LANDING) {
                                         popUpTo(NavRoutes.HOME) { inclusive = true }
@@ -160,11 +176,10 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(NavRoutes.MY_PROFILE) {
                             MyProfileScreen(
-                                authViewModel = authViewModel, // <-- NEW: Pass AuthViewModel
-                                navController = navController // <-- NEW: Pass NavController
+                                authViewModel = authViewModel,
+                                navController = navController
                             )
                         }
-                        // <-- NEW: Add composable for UpdateProfileScreen
                         composable(NavRoutes.UPDATE_PROFILE) {
                             UpdateProfileScreen(
                                 authViewModel = authViewModel,

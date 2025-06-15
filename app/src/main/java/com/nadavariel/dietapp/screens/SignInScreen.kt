@@ -12,12 +12,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api // Needed for TopAppBar
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -26,7 +31,8 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,8 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -50,11 +59,13 @@ import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.R
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class) // Needed for TopAppBar
 @Composable
 fun SignInScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
-    onSignInSuccess: () -> Unit // Callback for successful sign-in
+    onSignInSuccess: () -> Unit,
+    onNavigateToSignUp: () -> Unit // New callback for "Sign Up" link
 ) {
     val email by authViewModel.emailState
     val password by authViewModel.passwordState
@@ -62,9 +73,7 @@ fun SignInScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Define the action to perform on "Done" or "Enter" key press
     val performSignIn = {
-        // Only trigger sign-in if not already loading
         if (authResult != AuthResult.Loading) {
             authViewModel.signIn(onSignInSuccess)
         }
@@ -85,12 +94,8 @@ fun SignInScreen(
                 }
                 authViewModel.resetAuthResult()
             }
-            AuthResult.Loading -> {
-                // Optionally show a loading indicator
-            }
-            AuthResult.Idle -> {
-                // Initial state, do nothing
-            }
+            AuthResult.Loading -> { /* Optionally show a loading indicator */ }
+            AuthResult.Idle -> { /* Initial state, do nothing */ }
         }
     }
 
@@ -109,13 +114,31 @@ fun SignInScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        // Using ImageVector for the back arrow. No 'tint = Color.Unspecified' needed here.
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -129,7 +152,7 @@ fun SignInScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next) // Set IME action to Next
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
 
             OutlinedTextField(
@@ -141,21 +164,16 @@ fun SignInScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 singleLine = true,
-                // --- START CHANGES FOR ENTER KEY ---
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), // Change IME action to Done
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        performSignIn() // Call the sign-in action when "Done" is pressed
-                    }
+                    onDone = { performSignIn() }
                 )
-                // --- END CHANGES FOR ENTER KEY ---
             )
 
-            // --- START: ADD THE "REMEMBER ME" CHECKBOX HERE ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp), // Adjust padding as needed
+                    .padding(bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
@@ -166,10 +184,9 @@ fun SignInScreen(
                 )
                 Text("Remember Me", style = MaterialTheme.typography.bodyLarge)
             }
-            // --- END: ADD THE "REMEMBER ME" CHECKBOX HERE ---
 
             Button(
-                onClick = { performSignIn() },   // Use the common action here as well
+                onClick = { performSignIn() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
             ) {
@@ -180,6 +197,32 @@ fun SignInScreen(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+
+            val annotatedTextSignUp = buildAnnotatedString {
+                append("Don't have an account? ")
+                pushStringAnnotation(tag = "SIGNUP", annotation = "Sign up")
+                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                    append("Sign up")
+                }
+                pop()
+            }
+            ClickableText(
+                text = annotatedTextSignUp,
+                onClick = { offset ->
+                    annotatedTextSignUp.getStringAnnotations(tag = "SIGNUP", start = offset, end = offset)
+                        .firstOrNull()?.let {
+                            onNavigateToSignUp()
+                        }
+                },
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                "OR",
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
 
             OutlinedButton(
                 onClick = {
@@ -194,18 +237,13 @@ fun SignInScreen(
                     painter = painterResource(id = R.drawable.google_logo),
                     contentDescription = "Google Logo",
                     modifier = Modifier.size(24.dp),
-                    tint = Color.Unspecified // keep original colors
+                    tint = Color.Unspecified // Explicitly use Color.Unspecified here for the PNG
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Sign in with Google",
+                    text = "Continue with Google",
                     fontSize = 18.sp
                 )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = onBack) {
-                Text("Back to Landing")
             }
         }
     }
