@@ -7,4 +7,5 @@ object NavRoutes {
     const val HOME = "home"
     const val MY_PROFILE = "my_profile"
     const val UPDATE_PROFILE = "update_profile"
+    const val ADD_EDIT_MEAL = "add_edit_meal" // NEW Route for adding/editing meals
 }

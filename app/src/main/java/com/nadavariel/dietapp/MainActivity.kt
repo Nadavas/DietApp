@@ -29,7 +29,15 @@ import com.nadavariel.dietapp.screens.SignInScreen
 import com.nadavariel.dietapp.screens.SignUpScreen
 import com.nadavariel.dietapp.screens.UpdateProfileScreen
 import com.nadavariel.dietapp.ui.theme.DietAppTheme
+import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.screens.AddEditMealScreen
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Add
+
+// NO LONGER DEFINED HERE. It should be in NavRoutes.kt file.
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,19 +49,24 @@ class MainActivity : ComponentActivity() {
 
                 val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
 
-                val authViewModelFactory = remember {
+                val appViewModelFactory = remember {
                     object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
                                 @Suppress("UNCHECKED_CAST")
                                 return AuthViewModel(preferencesRepository) as T
                             }
+                            if (modelClass.isAssignableFrom(FoodLogViewModel::class.java)) {
+                                @Suppress("UNCHECKED_CAST")
+                                return FoodLogViewModel() as T
+                            }
                             throw IllegalArgumentException("Unknown ViewModel class")
                         }
                     }
                 }
 
-                val authViewModel: AuthViewModel = viewModel(factory = authViewModelFactory)
+                val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
+                val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
 
                 val startDestination = if (authViewModel.isUserSignedIn()) {
                     NavRoutes.HOME
@@ -67,14 +80,15 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier,
                     bottomBar = {
-                        if (selectedRoute == NavRoutes.HOME || selectedRoute == NavRoutes.MY_PROFILE) {
+                        if (selectedRoute == NavRoutes.HOME ||
+                            selectedRoute == NavRoutes.MY_PROFILE ||
+                            selectedRoute == NavRoutes.ADD_EDIT_MEAL
+                        ) {
                             NavigationBar {
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.HOME,
                                     onClick = { navController.navigate(NavRoutes.HOME) {
-                                        popUpTo(NavRoutes.HOME) {
-                                            saveState = true
-                                        }
+                                        popUpTo(NavRoutes.HOME) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }},
@@ -83,11 +97,20 @@ class MainActivity : ComponentActivity() {
                                 )
 
                                 NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL,
+                                    onClick = { navController.navigate(NavRoutes.ADD_EDIT_MEAL) {
+                                        popUpTo(NavRoutes.HOME) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }},
+                                    icon = { Icon(Icons.Filled.Add, contentDescription = "Add Meal") },
+                                    label = { Text("Add Meal") }
+                                )
+
+                                NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.MY_PROFILE,
                                     onClick = { navController.navigate(NavRoutes.MY_PROFILE) {
-                                        popUpTo(NavRoutes.HOME) { // Pop up to Home so profile screen is the single top in this stack
-                                            saveState = true
-                                        }
+                                        popUpTo(NavRoutes.HOME) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }},
@@ -124,17 +147,13 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onSignInSuccess = {
-                                    // Original: Navigates to HOME. Keep this if you want SIGN_IN to always go to HOME.
-                                    // If you want SIGN_IN to also go to UPDATE_PROFILE first, change this line too.
                                     navController.navigate(NavRoutes.HOME) {
                                         popUpTo(NavRoutes.LANDING) { inclusive = true }
                                         launchSingleTop = true
                                     }
                                 },
-                                // NEW: Pass onNavigateToSignUp callback
                                 onNavigateToSignUp = {
                                     navController.navigate(NavRoutes.SIGN_UP) {
-                                        // Clear SignIn from back stack when navigating to SignUp
                                         popUpTo(NavRoutes.SIGN_IN) { inclusive = true }
                                     }
                                 }
@@ -147,17 +166,14 @@ class MainActivity : ComponentActivity() {
                                     authViewModel.clearInputFields()
                                     navController.popBackStack()
                                 },
-                                // NEW: Navigate to UPDATE_PROFILE after successful sign up
                                 onSignUpSuccess = {
                                     navController.navigate(NavRoutes.UPDATE_PROFILE) {
-                                        popUpTo(NavRoutes.LANDING) { inclusive = true } // Clear sign up screen and landing
-                                        launchSingleTop = true // Ensure single instance
+                                        popUpTo(NavRoutes.LANDING) { inclusive = true }
+                                        launchSingleTop = true
                                     }
                                 },
-                                // NEW: Pass onNavigateToSignIn callback
                                 onNavigateToSignIn = {
                                     navController.navigate(NavRoutes.SIGN_IN) {
-                                        // Clear SignUp from back stack when navigating to SignIn
                                         popUpTo(NavRoutes.SIGN_UP) { inclusive = true }
                                     }
                                 }
@@ -166,6 +182,8 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.HOME) {
                             HomeScreen(
                                 authViewModel = authViewModel,
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController,
                                 onSignOut = {
                                     navController.navigate(NavRoutes.LANDING) {
                                         popUpTo(NavRoutes.HOME) { inclusive = true }
@@ -185,6 +203,13 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel,
                                 navController = navController,
                                 onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(NavRoutes.ADD_EDIT_MEAL) {
+                            AddEditMealScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController,
+                                mealToEdit = null
                             )
                         }
                     }
