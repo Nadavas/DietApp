@@ -19,8 +19,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue // Keep this import for other mutableStateOf properties
+// import androidx.compose.runtime.collectAsState // ⭐ REMOVED: This is no longer needed
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.model.UserProfile // Import the UserProfile data class
+import com.nadavariel.dietapp.model.UserProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,8 +37,8 @@ fun MyProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
-    val currentUser = authViewModel.currentUser
-    val userProfile by authViewModel.userProfile.collectAsState() // Observe the UserProfile StateFlow
+    val currentUser = authViewModel.currentUser // Direct access
+    val userProfile = authViewModel.userProfile // ⭐ CHANGED: Direct access, no collectAsState() needed
 
     Scaffold(
         topBar = {

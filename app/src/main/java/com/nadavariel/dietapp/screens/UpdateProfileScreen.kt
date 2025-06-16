@@ -31,9 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
-import androidx.compose.foundation.layout.Arrangement // Also ensure Arrangement is imported if used in Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState // Import collectAsState for StateFlow
+// import androidx.compose.runtime.collectAsState // ⭐ REMOVED: No longer needed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,19 +42,20 @@ fun UpdateProfileScreen(
     navController: NavController,
     onBack: () -> Unit
 ) {
-    // Observe the current user profile from the AuthViewModel
-    val userProfile by authViewModel.userProfile.collectAsState()
+    // ⭐ CHANGED: Directly access userProfile from AuthViewModel, no collectAsState()
+    val userProfile = authViewModel.userProfile
 
     // Initialize input fields with current profile data
     var nameInput by remember { mutableStateOf(userProfile.name) }
     var weightInput by remember { mutableStateOf(userProfile.weight.toString()) }
-    var ageInput by remember { mutableStateOf(userProfile.age.toString()) } // New for age
-    var targetWeightInput by remember { mutableStateOf(userProfile.targetWeight.toString()) } // New for target weight
+    var ageInput by remember { mutableStateOf(userProfile.age.toString()) }
+    var targetWeightInput by remember { mutableStateOf(userProfile.targetWeight.toString()) }
 
     // Use LaunchedEffect to update input fields if userProfile changes externally
+    // This part is still good to keep, as the underlying AuthViewModel.userProfile can change
+    // even though it's no longer a Flow.
     LaunchedEffect(userProfile) {
         nameInput = userProfile.name
-        // Only update if the value is non-zero, to avoid "0.0" if not set
         weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
         ageInput = if (userProfile.age > 0) userProfile.age.toString() else ""
         targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""

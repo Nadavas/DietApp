@@ -2,7 +2,9 @@ package com.nadavariel.dietapp
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -10,13 +12,14 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser // Add this import
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.data.UserPreferencesRepository
-import com.nadavariel.dietapp.model.UserProfile // Import the UserProfile data class
+import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,24 +42,41 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     val passwordState = mutableStateOf("")
     val confirmPasswordState = mutableStateOf("")
 
+    // AuthResult will remain a StateFlow as it's typically observed once per event
     private val _authResult = MutableStateFlow<AuthResult>(AuthResult.Idle)
-    val authResult: StateFlow<AuthResult> = _authResult
+    val authResult: StateFlow<AuthResult> = _authResult.asStateFlow()
 
     val rememberMeState = mutableStateOf(false)
 
-    private val _userProfile = MutableStateFlow(UserProfile())
-    val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
+    // ⭐ CHANGE: UserProfile is now Compose's mutableStateOf directly
+    var userProfile: UserProfile by mutableStateOf(UserProfile())
+        private set
 
-    val currentUser get() = auth.currentUser
+    // ⭐ CHANGE: currentUser is now Compose's mutableStateOf directly
+    var currentUser: FirebaseUser? by mutableStateOf(null)
+        private set
 
     init {
+        // Observe Firebase Auth state changes and update the Compose State directly
+        auth.addAuthStateListener { firebaseAuth ->
+            currentUser = firebaseAuth.currentUser
+            Log.d("AuthViewModel", "Auth state changed. Current user: ${currentUser?.uid}")
+            // Trigger loading user profile whenever auth state changes (e.g., after login/logout)
+            viewModelScope.launch {
+                if (currentUser != null) {
+                    loadUserProfile()
+                } else {
+                    userProfile = UserProfile() // Clear profile if no user
+                }
+            }
+        }
+
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
 
-            if (isUserSignedIn()) {
-                loadUserProfile()
-            }
+            // Initial load of profile should now be handled by the authStateListener
+            // if (isUserSignedIn()) { loadUserProfile() } // Removed: Listener handles this
         }
     }
 
@@ -71,18 +91,18 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     val age = (userDoc.get("age") as? Number)?.toInt() ?: 0
                     val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
 
-                    _userProfile.value = UserProfile(name, weight, age, targetWeight)
-                    Log.d("AuthViewModel", "Loaded profile from Firestore: ${_userProfile.value} for UID: $userId")
+                    userProfile = UserProfile(name, weight, age, targetWeight) // Update Compose State directly
+                    Log.d("AuthViewModel", "Loaded profile from Firestore: ${userProfile} for UID: $userId")
                 } else {
-                    _userProfile.value = UserProfile() // Set to default empty profile
+                    userProfile = UserProfile() // Set to default empty profile
                     Log.d("AuthViewModel", "No profile found in Firestore for UID: $userId. Setting empty.")
                 }
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error loading user profile from Firestore: ${e.message}", e)
-                _userProfile.value = UserProfile() // Set to default empty profile on error
+                userProfile = UserProfile() // Set to default empty profile on error
             }
         } else {
-            _userProfile.value = UserProfile() // No user signed in, clear profile states
+            userProfile = UserProfile() // No user signed in, clear profile states
             Log.d("AuthViewModel", "No user signed in. Clearing profile states.")
         }
     }
@@ -111,7 +131,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return auth.currentUser != null
     }
 
-    fun signUp(onSuccess: () -> Unit) { // Correct signature: takes onSuccess
+    fun signUp(onSuccess: () -> Unit) {
         if (emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
             _authResult.value = AuthResult.Error("Email and passwords cannot be empty.")
             return
@@ -133,9 +153,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         }
                         val newProfile = UserProfile(name = emailState.value.substringBefore("@"))
                         saveUserProfile(newProfile)
-                        _userProfile.value = newProfile
+                        userProfile = newProfile // Update Compose State directly
                     }
-                    onSuccess() // Call the success callback
+                    onSuccess()
                     clearInputFields()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign up failed.")
@@ -143,7 +163,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun signIn(onSuccess: () -> Unit) { // Correct signature: takes onSuccess
+    fun signIn(onSuccess: () -> Unit) {
         if (emailState.value.isBlank() || passwordState.value.isBlank()) {
             _authResult.value = AuthResult.Error("Email and password cannot be empty.")
             return
@@ -159,9 +179,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        loadUserProfile()
+                        // loadUserProfile() is handled by authStateListener, no need to call explicitly here
                     }
-                    onSuccess() // Call the success callback
+                    onSuccess()
                     clearInputFields()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign in failed.")
@@ -176,7 +196,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
-            _userProfile.value = UserProfile()
+            // userProfile will be cleared by authStateListener setting currentUser to null
         }
         clearInputFields()
     }
@@ -201,7 +221,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return GoogleSignIn.getClient(context, gso)
     }
 
-    fun firebaseAuthWithGoogle(idToken: String, onSuccess: () -> Unit) { // Corrected: takes onSuccess
+    fun firebaseAuthWithGoogle(idToken: String, onSuccess: () -> Unit) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
@@ -217,8 +237,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                                 saveUserProfile(newProfile)
                             }
                         }
-                        loadUserProfile()
-                        onSuccess() // Call the success callback
+                        // loadUserProfile() is handled by authStateListener
+                        onSuccess()
                     }
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
@@ -226,7 +246,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: () -> Unit) { // Corrected: takes onSuccess
+    fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: () -> Unit) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
         auth.signInWithCredential(credential)
@@ -247,8 +267,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                                 saveUserProfile(newProfile)
                             }
                         }
-                        loadUserProfile()
-                        onSuccess() // Call the success callback
+                        // loadUserProfile() is handled by authStateListener
+                        onSuccess()
                     }
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
@@ -262,14 +282,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val parsedAge = age.toIntOrNull() ?: 0
             val parsedTargetWeight = targetWeight.toFloatOrNull() ?: 0f
 
-            val updatedProfile = _userProfile.value.copy(
+            val updatedProfile = userProfile.copy( // Access directly
                 name = name,
                 weight = parsedWeight,
                 age = parsedAge,
                 targetWeight = parsedTargetWeight
             )
             saveUserProfile(updatedProfile)
-            _userProfile.value = updatedProfile
+            userProfile = updatedProfile // Update Compose State directly
             onSuccess()
         }
     }
