@@ -42,7 +42,7 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = if (userName.isNotBlank()) "Hey $userName!" else "Welcome to the App!",
+            text = /*if (userName.isNotBlank())*/ "Welcome $userName!",// else "Welcome to the App!",
             fontSize = 24.sp
         )
         Spacer(modifier = Modifier.height(16.dp))
