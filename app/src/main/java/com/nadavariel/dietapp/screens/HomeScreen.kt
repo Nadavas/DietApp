@@ -1,4 +1,3 @@
-// In HomeScreen.kt
 package com.nadavariel.dietapp.screens
 
 import androidx.compose.foundation.layout.Column
@@ -17,19 +16,23 @@ import com.nadavariel.dietapp.AuthViewModel
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.collectAsState // Import for StateFlow
 import androidx.compose.runtime.getValue
-import androidx.navigation.NavController // NEW: Import NavController for passing to meal list items
-import com.nadavariel.dietapp.viewmodel.FoodLogViewModel // NEW: Import FoodLogViewModel
+import androidx.navigation.NavController
+import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.model.UserProfile // Import the UserProfile data class
 
 @Composable
 fun HomeScreen(
     authViewModel: AuthViewModel,
-    foodLogViewModel: FoodLogViewModel, // NEW: Pass FoodLogViewModel
-    navController: NavController, // NEW: Pass NavController
+    foodLogViewModel: FoodLogViewModel,
+    navController: NavController,
     onSignOut: () -> Unit
 ) {
     val currentUser = Firebase.auth.currentUser
-    val userName by authViewModel.nameState
+    // Observe the userProfile StateFlow to get the user's name
+    val userProfile by authViewModel.userProfile.collectAsState()
+    val userName = userProfile.name // Access the name property from the UserProfile object
 
     Column(
         modifier = Modifier
@@ -52,8 +55,8 @@ fun HomeScreen(
         // TODO: This is where we'll add the statistics display and daily meal list later
 
         Button(onClick = {
-            authViewModel.signOut()
-            onSignOut()
+            authViewModel.signOut() // Call signOut on AuthViewModel
+            onSignOut() // Trigger the navigation callback in MainActivity
         }) {
             Text("Sign Out")
         }

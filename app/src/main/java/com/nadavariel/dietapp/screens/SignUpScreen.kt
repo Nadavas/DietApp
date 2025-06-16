@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.screens
 
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -33,7 +34,7 @@ import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.R
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class) // Needed for TopAppBar
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),
@@ -52,16 +53,33 @@ fun SignUpScreen(
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            val idToken = account.idToken
-            if (idToken != null) {
-                authViewModel.firebaseAuthWithGoogle(idToken)
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account.idToken
+                if (idToken != null) {
+                    authViewModel.firebaseAuthWithGoogle(idToken) { // Pass onSignUpSuccess for Google Sign-In
+                        onSignUpSuccess()
+                    }
+                } else {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Google Sign-In failed: No ID Token found.")
+                    }
+                }
+            } catch (e: ApiException) {
+                scope.launch {
+                    snackbarHostState.showSnackbar("Google Sign-In failed: ${e.localizedMessage}")
+                }
+            } catch (e: Exception) { // Catch other potential exceptions during result processing
+                scope.launch {
+                    snackbarHostState.showSnackbar("An unexpected error occurred during Google Sign-In.")
+                }
             }
-        } catch (e: ApiException) {
+        } else {
             scope.launch {
-                snackbarHostState.showSnackbar("Google Sign-In failed: ${e.localizedMessage}")
+                // User cancelled or another error occurred (result.resultCode might be Activity.RESULT_CANCELED)
+                snackbarHostState.showSnackbar("Google Sign-In cancelled or failed.")
             }
         }
     }
@@ -69,8 +87,8 @@ fun SignUpScreen(
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
-                authViewModel.resetAuthResult()
-                onSignUpSuccess() // This callback should navigate to UpdateProfileScreen
+                // Handled by the onSuccess callbacks directly within signUp/firebaseAuthWithGoogle
+                authViewModel.resetAuthResult() // Reset only after the callback completes
             }
             is AuthResult.Error -> {
                 scope.launch {
@@ -103,11 +121,9 @@ fun SignUpScreen(
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        // Using ImageVector for the back arrow. No 'tint = Color.Unspecified' needed here.
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
-                            // tint will default to MaterialTheme.colorScheme.onSurface, which is usually fine
                         )
                     }
                 },
@@ -161,7 +177,7 @@ fun SignUpScreen(
             )
 
             Button(
-                onClick = { authViewModel.signUp(onSignUpSuccess) },
+                onClick = { authViewModel.signUp(onSignUpSuccess) }, // Correctly passes the onSuccess lambda
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
             ) {
@@ -210,14 +226,11 @@ fun SignUpScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
             ) {
-                // For painterResource, tint should be explicitly null or Unspecified
-                // to retain original colors. The error was likely due to a subtle
-                // type mismatch or older Compose version's expectation.
                 Icon(
                     painter = painterResource(id = R.drawable.google_logo),
                     contentDescription = "Google Logo",
                     modifier = Modifier.size(24.dp),
-                    tint = Color.Unspecified // Explicitly use Color.Unspecified here for the PNG
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

@@ -12,114 +12,106 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestore // NEW: Import Firestore
-import com.google.firebase.firestore.ktx.firestore // NEW: Import Firestore KTX
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.data.UserPreferencesRepository
+import com.nadavariel.dietapp.model.UserProfile // Import the UserProfile data class
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await // NEW: For await() on Firestore tasks
+import kotlinx.coroutines.tasks.await
 
-// To represent the result of an auth operation
 sealed class AuthResult {
     data object Success : AuthResult()
     data class Error(val message: String) : AuthResult()
     data object Loading : AuthResult()
-    data object Idle : AuthResult() // Initial state
+    data object Idle : AuthResult()
 }
 
 class AuthViewModel(private val preferencesRepository: UserPreferencesRepository) : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
-    private val firestore: FirebaseFirestore = Firebase.firestore // NEW: Initialize Firestore
+    private val firestore: FirebaseFirestore = Firebase.firestore
 
     val emailState = mutableStateOf("")
     val passwordState = mutableStateOf("")
-    val confirmPasswordState = mutableStateOf("") // For sign-up
+    val confirmPasswordState = mutableStateOf("")
 
     private val _authResult = MutableStateFlow<AuthResult>(AuthResult.Idle)
     val authResult: StateFlow<AuthResult> = _authResult
 
     val rememberMeState = mutableStateOf(false)
 
-    val nameState = mutableStateOf("")
-    val weightState = mutableStateOf("") // Stored as String, convert to Float/Int for calculations
+    private val _userProfile = MutableStateFlow(UserProfile())
+    val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
-    // REMOVED: ProfileKeys as profile data will be in Firestore
-    // private object ProfileKeys {
-    //     val USER_NAME = stringPreferencesKey("user_name")
-    //     val USER_WEIGHT = stringPreferencesKey("user_weight")
-    // }
+    val currentUser get() = auth.currentUser
 
     init {
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
 
-            // Only load profile data if a user is already signed in on app launch
-            if (isUserSignedIn()) { // NEW: Conditional load
-                loadUserProfile() // Call the new Firestore loading function
+            if (isUserSignedIn()) {
+                loadUserProfile()
             }
         }
     }
 
-    // NEW: Function to load profile data from Firestore
     private suspend fun loadUserProfile() {
-        val userId = auth.currentUser?.uid // Get the current user's UID
+        val userId = auth.currentUser?.uid
         if (userId != null) {
             try {
                 val userDoc = firestore.collection("users").document(userId).get().await()
                 if (userDoc.exists()) {
-                    nameState.value = userDoc.getString("name") ?: ""
-                    weightState.value = userDoc.getString("weight") ?: ""
-                    Log.d("AuthViewModel", "Loaded profile from Firestore: Name='${nameState.value}', Weight='${weightState.value}' for UID: $userId")
+                    val name = userDoc.getString("name") ?: ""
+                    val weight = (userDoc.get("weight") as? Number)?.toFloat() ?: 0f
+                    val age = (userDoc.get("age") as? Number)?.toInt() ?: 0
+                    val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
+
+                    _userProfile.value = UserProfile(name, weight, age, targetWeight)
+                    Log.d("AuthViewModel", "Loaded profile from Firestore: ${_userProfile.value} for UID: $userId")
                 } else {
-                    // User exists in Auth but no profile in Firestore yet (e.g., new user)
-                    nameState.value = ""
-                    weightState.value = ""
+                    _userProfile.value = UserProfile() // Set to default empty profile
                     Log.d("AuthViewModel", "No profile found in Firestore for UID: $userId. Setting empty.")
                 }
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error loading user profile from Firestore: ${e.message}", e)
-                // Optionally, show an error to the user or set default values
-                nameState.value = ""
-                weightState.value = ""
+                _userProfile.value = UserProfile() // Set to default empty profile on error
             }
         } else {
-            // No user signed in, clear profile states
-            nameState.value = ""
-            weightState.value = ""
+            _userProfile.value = UserProfile() // No user signed in, clear profile states
             Log.d("AuthViewModel", "No user signed in. Clearing profile states.")
         }
     }
 
-    // NEW: Function to save profile data to Firestore
-    private suspend fun saveUserProfile(name: String, weight: String) {
+    private suspend fun saveUserProfile(profile: UserProfile) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
-            val userProfile = hashMapOf(
-                "name" to name,
-                "weight" to weight
+            val userProfileMap = hashMapOf(
+                "name" to profile.name,
+                "weight" to profile.weight,
+                "age" to profile.age,
+                "targetWeight" to profile.targetWeight
             )
             try {
-                firestore.collection("users").document(userId).set(userProfile).await()
-                Log.d("AuthViewModel", "Profile saved to Firestore for UID: $userId")
+                firestore.collection("users").document(userId).set(userProfileMap).await()
+                Log.d("AuthViewModel", "Profile saved to Firestore for UID: $userId: $profile")
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error saving user profile to Firestore: ${e.message}", e)
-                // Optionally, show an error to the user
             }
         } else {
             Log.w("AuthViewModel", "Cannot save profile: No user signed in.")
         }
     }
 
-    // Function to check if a user is currently signed in
     fun isUserSignedIn(): Boolean {
         return auth.currentUser != null
     }
 
-    fun signUp(onSuccess: () -> Unit) {
+    fun signUp(onSuccess: () -> Unit) { // Correct signature: takes onSuccess
         if (emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
             _authResult.value = AuthResult.Error("Email and passwords cannot be empty.")
             return
@@ -139,10 +131,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        // NEW: Load profile data for the newly signed up user
-                        loadUserProfile()
+                        val newProfile = UserProfile(name = emailState.value.substringBefore("@"))
+                        saveUserProfile(newProfile)
+                        _userProfile.value = newProfile
                     }
-                    onSuccess()
+                    onSuccess() // Call the success callback
                     clearInputFields()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign up failed.")
@@ -150,7 +143,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun signIn(onSuccess: () -> Unit) {
+    fun signIn(onSuccess: () -> Unit) { // Correct signature: takes onSuccess
         if (emailState.value.isBlank() || passwordState.value.isBlank()) {
             _authResult.value = AuthResult.Error("Email and password cannot be empty.")
             return
@@ -166,10 +159,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        // NEW: Load profile data for the newly signed in user
                         loadUserProfile()
                     }
-                    onSuccess()
+                    onSuccess() // Call the success callback
                     clearInputFields()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign in failed.")
@@ -181,15 +173,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         auth.signOut()
         _authResult.value = AuthResult.Idle
         viewModelScope.launch {
-            // Keep email and rememberMe if user chose, clear otherwise
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
-            // NEW: Clear profile states in ViewModel when signing out
-            // The data itself remains in Firestore, ready for the user to sign back in later.
-            nameState.value = ""
-            weightState.value = ""
-            // No need to clear from DataStore as it's no longer storing profile data.
+            _userProfile.value = UserProfile()
         }
         clearInputFields()
     }
@@ -214,16 +201,24 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return GoogleSignIn.getClient(context, gso)
     }
 
-    fun firebaseAuthWithGoogle(idToken: String) {
+    fun firebaseAuthWithGoogle(idToken: String, onSuccess: () -> Unit) { // Corrected: takes onSuccess
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
-                    // NEW: Load data after successful Google sign-in
                     viewModelScope.launch {
+                        val userId = auth.currentUser?.uid
+                        if (userId != null) {
+                            val userDoc = firestore.collection("users").document(userId).get().await()
+                            if (!userDoc.exists()) {
+                                val newProfile = UserProfile(name = task.result.user?.displayName ?: "")
+                                saveUserProfile(newProfile)
+                            }
+                        }
                         loadUserProfile()
+                        onSuccess() // Call the success callback
                     }
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
@@ -231,11 +226,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun handleGoogleSignInResult(account: GoogleSignInAccount?, onSuccess: () -> Unit) {
-        if (account == null) {
-            _authResult.value = AuthResult.Error("Google sign-in failed.")
-            return
-        }
+    fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: () -> Unit) { // Corrected: takes onSuccess
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
         auth.signInWithCredential(credential)
@@ -248,25 +239,38 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        // NEW: Load profile data after successful Google sign-in
+                        val userId = auth.currentUser?.uid
+                        if (userId != null) {
+                            val userDoc = firestore.collection("users").document(userId).get().await()
+                            if (!userDoc.exists()) {
+                                val newProfile = UserProfile(name = account.displayName ?: "")
+                                saveUserProfile(newProfile)
+                            }
+                        }
                         loadUserProfile()
+                        onSuccess() // Call the success callback
                     }
-                    onSuccess()
                 } else {
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
                 }
             }
     }
 
-    // Functions to update and save profile data
-    fun updateProfile(name: String, weight: String, onSuccess: () -> Unit) {
-        // NEW: Save to Firestore instead of DataStore
+    fun updateProfile(name: String, weight: String, age: String, targetWeight: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            saveUserProfile(name, weight) // Call the new Firestore saving function
-            // Update the states in the ViewModel immediately
-            nameState.value = name
-            weightState.value = weight
-            onSuccess() // Indicate success, e.g., for navigation
+            val parsedWeight = weight.toFloatOrNull() ?: 0f
+            val parsedAge = age.toIntOrNull() ?: 0
+            val parsedTargetWeight = targetWeight.toFloatOrNull() ?: 0f
+
+            val updatedProfile = _userProfile.value.copy(
+                name = name,
+                weight = parsedWeight,
+                age = parsedAge,
+                targetWeight = parsedTargetWeight
+            )
+            saveUserProfile(updatedProfile)
+            _userProfile.value = updatedProfile
+            onSuccess()
         }
     }
 }
