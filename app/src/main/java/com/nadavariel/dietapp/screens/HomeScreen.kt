@@ -1,7 +1,8 @@
 package com.nadavariel.dietapp.screens
 
-// Essential AndroidX Compose imports
+import android.util.Log // Import for Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,9 +11,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.automirrored.filled.ExitToApp // Ensure this is imported for the sign-out icon
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.* // This import is needed for 'remember' and 'mutableStateOf'
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,14 +22,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.draw.clip
 
-// Corrected imports for your project structure
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.model.Meal
 
-// Standard Java/Kotlin Date/Time imports
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -43,46 +47,64 @@ fun HomeScreen(
     navController: NavController,
     onSignOut: () -> Unit
 ) {
-    // Directly access the mutableStateOf properties from ViewModels
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val userName = userProfile.name
 
+    // ⭐ Logging: Observing ViewModel states
     val selectedDate = foodLogViewModel.selectedDate
+    val currentWeekStartDate = foodLogViewModel.currentWeekStartDate
     val mealsForSelectedDate = foodLogViewModel.mealsForSelectedDate
+    Log.d("HomeScreen", "Composable Recomposition: selectedDate=$selectedDate, currentWeekStartDate=$currentWeekStartDate")
 
-    // Derived state: Total calories for the selected day
+
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
 
+    var showSignOutDialog by remember { mutableStateOf(false) }
+
+    // ⭐ START OF ONLY CHANGE FOR THIS REQUEST: New state for meal list visibility
+    var showMealsList by remember { mutableStateOf(false) } // Default to not shown
+    // ⭐ END OF ONLY CHANGE FOR THIS REQUEST
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            // ⭐ Logging: Lifecycle RESUMED event
+            Log.d("HomeScreen", "LaunchedEffect: App RESUMED. Current selectedDate in VM: ${foodLogViewModel.selectedDate}. Current system date: ${LocalDate.now()}")
+            if (foodLogViewModel.selectedDate != LocalDate.now()) {
+                foodLogViewModel.selectDate(LocalDate.now())
+                Log.d("HomeScreen", "LaunchedEffect: Called selectDate(LocalDate.now()) to reset.")
+            } else {
+                Log.d("HomeScreen", "LaunchedEffect: selectedDate already today. No reset needed.")
+            }
+        }
+    }
+
     Scaffold(
-        // We are removing the topBar here to gain full control of its content
-        // topBar = { ... }
+        // We are using a custom top bar content within the Column to allow for flexible positioning
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply Scaffold's padding
+                .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // --- Custom Top Bar Content (Mimics TopAppBar, but with more control) ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp), // Adjust padding as needed
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End // Pushes the icon to the end
+                horizontalArrangement = Arrangement.End
             ) {
-                // Spacer to push the icon to the right
                 Spacer(Modifier.weight(1f))
 
-                // Sign Out Icon (kept in top-right)
                 IconButton(onClick = {
-                    authViewModel.signOut()
-                    onSignOut()
+                    showSignOutDialog = true
                 }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ExitToApp,
@@ -92,125 +114,194 @@ fun HomeScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // ⭐ NEW: Welcome text (now inside the main Column, allowing vertical spacing)
             Text(
                 text = "Welcome, ${userName.ifBlank { "Guest" }}!",
                 modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center, // Center the text horizontally
-                style = MaterialTheme.typography.headlineMedium, // Make text larger
-                fontWeight = FontWeight.Bold // Make it bold for emphasis
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
             )
 
-            // ⭐ OLD CHANGE: Spacer that was used to push content below the original TopAppBar.
-            // This can now be combined or adjusted with the new Spacer above the Welcome text.
-            // Keeping it for now but you might want to remove or adjust it.
             Spacer(modifier = Modifier.height(16.dp))
 
-
-            // --- Date Navigation and Display ---
-            Card(
+            // --- Weekly Calendar Header (Month and Year with week navigation) ---
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = selectedDate.format(DateTimeFormatter.ofPattern("MMM")),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Normal
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { foodLogViewModel.selectDate(selectedDate.minusDays(1)) }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Previous Day", tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = selectedDate.format(DateTimeFormatter.ofPattern("EEE")), // Day of week (Mon, Tue)
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = selectedDate.format(DateTimeFormatter.ofPattern("d")), // Day of month (1, 10)
-                                style = MaterialTheme.typography.displayMedium, // Larger font for the day number
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        IconButton(onClick = { foodLogViewModel.selectDate(selectedDate.plusDays(1)) }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next Day", tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Total Calories: ${totalCaloriesForSelectedDate} kcal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
+                IconButton(onClick = { foodLogViewModel.previousWeek() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Previous Week", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                val startMonth = currentWeekStartDate.format(DateTimeFormatter.ofPattern("MMM", Locale.getDefault()))
+                val endMonth = currentWeekStartDate.plusDays(6).format(DateTimeFormatter.ofPattern("MMM", Locale.getDefault()))
+                val year = currentWeekStartDate.format(DateTimeFormatter.ofPattern("yyyy", Locale.getDefault()))
+
+                val monthDisplay = if (startMonth == endMonth) {
+                    "$startMonth $year"
+                } else {
+                    "$startMonth - $endMonth $year"
+                }
+
+                Text(
+                    text = monthDisplay,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = { foodLogViewModel.nextWeek() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next Week", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // --- Weekly Day Selection Row ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val weekDays = remember(currentWeekStartDate) {
+                    (0..6).map { currentWeekStartDate.plusDays(it.toLong()) }
+                }
+                weekDays.forEach { date ->
+                    val isSelected = date == selectedDate
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { foodLogViewModel.selectDate(date) }
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = date.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Daily Meal List (Chronological) ---
+            // --- Total Calories for Selected Date ---
             Text(
-                text = "Meals Logged",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                text = "Total Calories: ${totalCaloriesForSelectedDate} kcal",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            if (mealsForSelectedDate.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp) // Provide some height for the message
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "No meals logged for this day. Click 'Add Meal' to log one!",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f) // Makes the LazyColumn fill remaining height
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(mealsForSelectedDate) { meal ->
-                        MealItem(meal = meal)
+            // ⭐ START OF ONLY CHANGE FOR THIS REQUEST: Replace Text with Button and add conditional visibility
+            // --- Toggle Button for Meals Logged ---
+            Button(
+                onClick = { showMealsList = !showMealsList }, // Toggle visibility
+                modifier = Modifier
+                    // REMOVE THIS LINE: .fillMaxWidth()
+                    .padding(horizontal = 16.dp) // Keep this padding for horizontal alignment
+            ) {
+                Text(
+                    text = if (showMealsList) "Hide Meals" else "Show Meals (${mealsForSelectedDate.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp)) // Keep this spacer after the button
+
+            // --- Conditionally display Daily Meal List (Chronological) ---
+            if (showMealsList) { // Only show if showMealsList is true
+                if (mealsForSelectedDate.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No meals logged for this day. Click 'Add Meal' to log one!",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f) // Allows the LazyColumn to take available space
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        items(mealsForSelectedDate) { meal ->
+                            MealItem(meal = meal)
+                        }
                     }
                 }
             }
+            // ⭐ END OF ONLY CHANGE FOR THIS REQUEST
         }
+    }
+
+    // Sign-out confirmation dialog (NO CHANGES HERE)
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSignOutDialog = false
+            },
+            title = {
+                Text(text = "Confirm Sign Out")
+            },
+            text = {
+                Text(text = "Are you sure you want to sign out?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                        authViewModel.signOut()
+                        onSignOut() // This line remains unchanged as per your provided code
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                    }
+                ) {
+                    Text("No")
+                }
+            }
+        )
     }
 }
 
@@ -236,7 +327,6 @@ fun MealItem(meal: Meal) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    // Format timestamp to display only time, e.g., "14:30"
                     text = meal.timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

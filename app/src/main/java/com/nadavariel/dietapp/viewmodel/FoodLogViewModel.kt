@@ -17,6 +17,7 @@ import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Meal
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
@@ -28,34 +29,58 @@ class FoodLogViewModel : ViewModel() {
     var selectedDate: LocalDate by mutableStateOf(LocalDate.now())
         private set
 
+    // Initial value will be set in init block using the helper function
+    var currentWeekStartDate: LocalDate by mutableStateOf(LocalDate.now()) // Temporary value, will be set correctly below
+        private set
+
     var mealsForSelectedDate: List<Meal> by mutableStateOf(emptyList())
         private set
 
     private var mealsListenerRegistration: ListenerRegistration? = null
 
+    // ⭐ NEW HELPER FUNCTION: Correctly finds the Sunday that begins the current week
+    private fun getSundayOfCurrentWeek(date: LocalDate): LocalDate {
+        var result = date
+        // Keep subtracting days until we reach Sunday.
+        // If 'date' is already Sunday, this loop won't run.
+        while (result.dayOfWeek != DayOfWeek.SUNDAY) {
+            result = result.minusDays(1)
+        }
+        return result
+    }
+
     init {
-        // ⭐ CHANGED: Observe authentication state within FoodLogViewModel
+        val today = LocalDate.now()
+        // ⭐ Use the new helper function for currentWeekStartDate
+        val sundayOfThisWeekCorrect = getSundayOfCurrentWeek(today)
+
+        Log.d("FoodLogViewModel", "DEBUG_CALC: LocalDate.now() reports: $today")
+        // Keeping this for comparison, it should show the next Sunday
+        Log.d("FoodLogViewModel", "DEBUG_CALC: today.with(DayOfWeek.SUNDAY) (direct call) yields: ${today.with(DayOfWeek.SUNDAY)}")
+        Log.d("FoodLogViewModel", "DEBUG_CALC: getSundayOfCurrentWeek() calculated as: $sundayOfThisWeekCorrect")
+
+        selectedDate = today
+        currentWeekStartDate = sundayOfThisWeekCorrect // Assign the correctly calculated value
+
+        Log.d("FoodLogViewModel", "VM Init: Initial selectedDate=${selectedDate}, currentWeekStartDate=${currentWeekStartDate} (Sunday of its week).")
+
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 val currentUser = firebaseAuth.currentUser
                 if (currentUser != null) {
-                    // If a user is signed in, start listening for meals for the currently selected date
-                    Log.d("FoodLogViewModel", "Auth state changed: User ${currentUser.uid} signed in. Re-listening for meals for selected date: ${selectedDate}.")
+                    Log.d("FoodLogViewModel", "Auth state changed: User ${currentUser.uid} signed in. Fetching meals for selected date: ${selectedDate}.")
                     listenForMealsForDate(selectedDate)
                 } else {
-                    // If no user is signed in (e.g., signed out), clear meals and stop listening
                     Log.d("FoodLogViewModel", "Auth state changed: User signed out. Clearing meals and stopping listener.")
                     mealsListenerRegistration?.remove()
-                    mealsListenerRegistration = null // Ensure listener is truly gone
-                    mealsForSelectedDate = emptyList() // Clear the displayed meals
+                    mealsListenerRegistration = null
+                    mealsForSelectedDate = emptyList()
                 }
             }
         }
-        // Removed the direct call to listenForMealsForDate(selectedDate) from here,
-        // as the auth listener will now handle the initial load.
     }
 
-    // --- Meal Logging Operations (no changes needed here from your previous version) ---
+    // --- Meal Logging Operations --- (No changes here)
 
     fun logMeal(foodName: String, calories: Int, mealTime: Date = Date()) {
         val userId = auth.currentUser?.uid ?: run {
@@ -85,9 +110,6 @@ class FoodLogViewModel : ViewModel() {
                     .await()
 
                 Log.d("FoodLogViewModel", "Meal '${meal.foodName}' logged successfully with ID: ${docRef.id}")
-                // Refresh meals for the currently selected date after logging
-                // The real-time listener will automatically update mealsForSelectedDate.
-                // listenForMealsForDate(selectedDate) // Removed: Listener does this automatically
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
@@ -115,8 +137,6 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.update(updatedData as Map<String, Any>).await()
                 Log.d("FoodLogViewModel", "Meal '$mealId' updated successfully.")
-                // The real-time listener will automatically update mealsForSelectedDate.
-                // listenForMealsForDate(selectedDate) // Removed: Listener does this automatically
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -138,28 +158,27 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.delete().await()
                 Log.d("FoodLogViewModel", "Meal '$mealId' deleted successfully.")
-                // The real-time listener will automatically update mealsForSelectedDate.
-                // listenForMealsForDate(selectedDate) // Removed: Listener does this automatically
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }
         }
     }
 
-    // --- Meal Fetching & Listening (now specifically for the selected date) ---
+    // --- Meal Fetching & Listening --- (No changes here)
 
-    // This function updates the Compose mutableStateOf directly
     private fun listenForMealsForDate(date: LocalDate) {
-        mealsListenerRegistration?.remove() // Remove previous listener if any
+        mealsListenerRegistration?.remove()
 
         val userId = auth.currentUser?.uid ?: run {
-            Log.e("FoodLogViewModel", "Cannot listen for meals: User not signed in. This block should ideally not be reached if called by auth listener.")
-            mealsForSelectedDate = emptyList() // Update Compose State directly
+            Log.e("FoodLogViewModel", "Cannot listen for meals: User not signed in.")
+            mealsForSelectedDate = emptyList()
             return
         }
 
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        Log.d("FoodLogViewModel", "Listening for meals for date: $date ($startOfDay - $endOfDay)")
 
         mealsListenerRegistration = firestore.collection("users")
             .document(userId)
@@ -170,7 +189,7 @@ class FoodLogViewModel : ViewModel() {
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.w("FoodLogViewModel", "Listen failed.", e)
-                    mealsForSelectedDate = emptyList() // Update Compose State directly
+                    mealsForSelectedDate = emptyList()
                     return@addSnapshotListener
                 }
 
@@ -178,11 +197,11 @@ class FoodLogViewModel : ViewModel() {
                     val mealList = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Meal::class.java)?.copy(id = doc.id)
                     }
-                    mealsForSelectedDate = mealList // Update Compose State directly
-                    Log.d("FoodLogViewModel", "Meals for ${date} updated: ${mealList.size} meals.")
+                    mealsForSelectedDate = mealList
+                    Log.d("FoodLogViewModel", "Meals for $date updated: ${mealList.size} meals.")
                 } else {
                     Log.d("FoodLogViewModel", "Current data: null")
-                    mealsForSelectedDate = emptyList() // Update Compose State directly
+                    mealsForSelectedDate = emptyList()
                 }
             }
     }
@@ -195,10 +214,34 @@ class FoodLogViewModel : ViewModel() {
 
     // Function to change the selected date from UI, updates Compose State directly
     fun selectDate(date: LocalDate) {
-        if (selectedDate != date) { // Only update and re-listen if the date actually changes
+        if (selectedDate != date) {
+            val oldSelectedDate = selectedDate
             selectedDate = date
-            Log.d("FoodLogViewModel", "Date selected: $date. Re-listening for meals.")
+            // Ensure currentWeekStartDate encompasses the newly selected date
+            if (date.isBefore(currentWeekStartDate) || date.isAfter(currentWeekStartDate.plusDays(6))) {
+                val oldWeekStart = currentWeekStartDate
+                currentWeekStartDate = getSundayOfCurrentWeek(date) // ⭐ Use the new helper here
+                Log.d("FoodLogViewModel", "selectDate: Week changed from $oldWeekStart to $currentWeekStartDate for new selectedDate $selectedDate.")
+            }
+            Log.d("FoodLogViewModel", "selectDate: Selected date changed from $oldSelectedDate to $selectedDate. Re-listening for meals.")
             listenForMealsForDate(date)
+        } else {
+            Log.d("FoodLogViewModel", "selectDate: Date $date already selected. No change needed.")
         }
+    }
+
+    // Navigate between weeks
+    fun previousWeek() {
+        val oldWeekStart = currentWeekStartDate
+        currentWeekStartDate = currentWeekStartDate.minusWeeks(1)
+        Log.d("FoodLogViewModel", "Navigating to previous week from $oldWeekStart to $currentWeekStartDate.")
+        selectDate(currentWeekStartDate) // This will call selectDate and trigger getSundayOfCurrentWeek if week changes
+    }
+
+    fun nextWeek() {
+        val oldWeekStart = currentWeekStartDate
+        currentWeekStartDate = currentWeekStartDate.plusWeeks(1)
+        Log.d("FoodLogViewModel", "Navigating to next week from $oldWeekStart to $currentWeekStartDate.")
+        selectDate(currentWeekStartDate) // This will call selectDate and trigger getSundayOfCurrentWeek if week changes
     }
 }
