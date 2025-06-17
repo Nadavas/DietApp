@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp.screens
 
 import android.app.Activity

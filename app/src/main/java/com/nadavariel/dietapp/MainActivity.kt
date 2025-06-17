@@ -1,9 +1,11 @@
 package com.nadavariel.dietapp
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -31,15 +33,13 @@ import com.nadavariel.dietapp.screens.UpdateProfileScreen
 import com.nadavariel.dietapp.ui.theme.DietAppTheme
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.screens.AddEditMealScreen
-
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Add
 
 // NO LONGER DEFINED HERE. It should be in NavRoutes.kt file.
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
                 val appViewModelFactory = remember {
                     object : ViewModelProvider.Factory {
+                        @RequiresApi(Build.VERSION_CODES.O)
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
                                 @Suppress("UNCHECKED_CAST")

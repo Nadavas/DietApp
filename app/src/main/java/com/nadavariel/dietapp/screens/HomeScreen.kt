@@ -1,6 +1,8 @@
 package com.nadavariel.dietapp.screens
 
+import android.os.Build
 import android.util.Log // Import for Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.* // This import is needed for 'remember' and 'mutableStateOf'
@@ -20,26 +21,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.compose.ui.draw.clip
-
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
-
-import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.model.Meal
-
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.navigation.NavController
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(
     authViewModel: AuthViewModel,
@@ -47,7 +42,6 @@ fun HomeScreen(
     navController: NavController,
     onSignOut: () -> Unit
 ) {
-    val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
     val userName = userProfile.name
 
@@ -68,7 +62,7 @@ fun HomeScreen(
     var showMealsList by remember { mutableStateOf(false) } // Default to not shown
     // ⭐ END OF ONLY CHANGE FOR THIS REQUEST
 
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -83,9 +77,7 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        // We are using a custom top bar content within the Column to allow for flexible positioning
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -204,7 +196,7 @@ fun HomeScreen(
 
             // --- Total Calories for Selected Date ---
             Text(
-                text = "Total Calories: ${totalCaloriesForSelectedDate} kcal",
+                text = "Total Calories: $totalCaloriesForSelectedDate kcal",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -305,6 +297,7 @@ fun HomeScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MealItem(meal: Meal) {
     Card(

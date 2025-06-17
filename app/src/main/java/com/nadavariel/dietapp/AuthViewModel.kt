@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp
 
 import android.content.Context
@@ -48,11 +50,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     val rememberMeState = mutableStateOf(false)
 
-    // ⭐ CHANGE: UserProfile is now Compose's mutableStateOf directly
+    // ⭐ CHANGE: UserProfile is now Compose mutableStateOf directly
     var userProfile: UserProfile by mutableStateOf(UserProfile())
         private set
 
-    // ⭐ CHANGE: currentUser is now Compose's mutableStateOf directly
+    // ⭐ CHANGE: currentUser is now Compose mutableStateOf directly
     var currentUser: FirebaseUser? by mutableStateOf(null)
         private set
 
@@ -92,13 +94,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
 
                     userProfile = UserProfile(name, weight, age, targetWeight) // Update Compose State directly
-                    Log.d("AuthViewModel", "Loaded profile from Firestore: ${userProfile} for UID: $userId")
+                    Log.d("AuthViewModel", "Loaded profile from firestore: $userProfile for UID: $userId")
                 } else {
                     userProfile = UserProfile() // Set to default empty profile
-                    Log.d("AuthViewModel", "No profile found in Firestore for UID: $userId. Setting empty.")
+                    Log.d("AuthViewModel", "No profile found in firestore for UID: $userId. Setting empty.")
                 }
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error loading user profile from Firestore: ${e.message}", e)
+                Log.e("AuthViewModel", "Error loading user profile from firestore: ${e.message}", e)
                 userProfile = UserProfile() // Set to default empty profile on error
             }
         } else {
@@ -118,9 +120,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             )
             try {
                 firestore.collection("users").document(userId).set(userProfileMap).await()
-                Log.d("AuthViewModel", "Profile saved to Firestore for UID: $userId: $profile")
+                Log.d("AuthViewModel", "Profile saved to firestore for UID: $userId: $profile")
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error saving user profile to Firestore: ${e.message}", e)
+                Log.e("AuthViewModel", "Error saving user profile to firestore: ${e.message}", e)
             }
         } else {
             Log.w("AuthViewModel", "Cannot save profile: No user signed in.")

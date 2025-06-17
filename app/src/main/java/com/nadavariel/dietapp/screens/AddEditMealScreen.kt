@@ -3,8 +3,10 @@ package com.nadavariel.dietapp.screens
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.os.Build
 import android.widget.DatePicker
 import android.widget.TimePicker
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -24,9 +26,9 @@ import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditMealScreen(
@@ -150,7 +152,7 @@ fun AddEditMealScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = foodName.isNotBlank() && calories.toIntOrNull() ?: 0 > 0
+                enabled = foodName.isNotBlank() && (calories.toIntOrNull() ?: 0) > 0
             ) {
                 Text(if (mealToEdit == null) "Add Meal" else "Save Changes", fontSize = 18.sp)
             }

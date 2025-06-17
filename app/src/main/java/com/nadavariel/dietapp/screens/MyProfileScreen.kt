@@ -19,8 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue // Keep this import for other mutableStateOf properties
-// import androidx.compose.runtime.collectAsState // ⭐ REMOVED: This is no longer needed
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.model.UserProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

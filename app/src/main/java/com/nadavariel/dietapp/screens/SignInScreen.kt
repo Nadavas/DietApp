@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult

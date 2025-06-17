@@ -1,6 +1,8 @@
 package com.nadavariel.dietapp.viewmodel
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -22,6 +24,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
 
+@RequiresApi(Build.VERSION_CODES.O)
 class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
@@ -209,7 +212,7 @@ class FoodLogViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         mealsListenerRegistration?.remove()
-        Log.d("FoodLogViewModel", "ViewModel cleared, Firestore listener removed.")
+        Log.d("FoodLogViewModel", "ViewModel cleared, firestore listener removed.")
     }
 
     // Function to change the selected date from UI, updates Compose State directly

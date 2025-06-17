@@ -13,11 +13,11 @@ import kotlinx.coroutines.flow.map
 // At the top level of your file (outside any class)
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
-class UserPreferencesRepository(val context: Context) {
+class UserPreferencesRepository(private val context: Context) {
     private object PreferencesKeys {
         val USER_EMAIL = stringPreferencesKey("user_email")
         val REMEMBER_ME = booleanPreferencesKey("remember_me")
-        // REMOVED: USER_NAME and USER_WEIGHT as they are now in Firestore
+        // REMOVED: USER_NAME and USER_WEIGHT as they are now in firestore
         // val USER_NAME = stringPreferencesKey("user_name")
         // val USER_WEIGHT = stringPreferencesKey("user_weight")
     }
@@ -46,6 +46,6 @@ class UserPreferencesRepository(val context: Context) {
         }
     }
 
-    // REMOVED: saveProfileData and loadProfileData methods as they are now in AuthViewModel via Firestore
+    // REMOVED: saveProfileData and loadProfileData methods as they are now in AuthViewModel via firestore
     // No longer needed for DataStore in this repo.
 }
