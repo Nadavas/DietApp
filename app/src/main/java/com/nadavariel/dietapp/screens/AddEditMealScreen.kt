@@ -1,4 +1,6 @@
 // screens/AddEditMealScreen.kt
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp.screens
 
 import android.app.DatePickerDialog
