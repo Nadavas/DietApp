@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "383915498298-2tmft7bo5j5n71n6h3n2cq26mr1iakll.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nadavariel.dietapp",
+            "certificate_hash": "63325489f48c982f954dc4c38fcb5c351068f734"
+          }
+        },
+        {
           "client_id": "383915498298-dliolci52iogttkbjhn8pknkocavmr0u.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
