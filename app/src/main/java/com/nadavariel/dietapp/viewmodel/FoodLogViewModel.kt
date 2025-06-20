@@ -247,4 +247,9 @@ class FoodLogViewModel : ViewModel() {
         Log.d("FoodLogViewModel", "Navigating to next week from $oldWeekStart to $currentWeekStartDate.")
         selectDate(currentWeekStartDate) // This will call selectDate and trigger getSundayOfCurrentWeek if week changes
     }
+
+    fun getMealById(mealId: String): Meal? {
+        // This is a simple in-memory lookup. For robust apps, you might fetch from firestore.
+        return mealsForSelectedDate.firstOrNull { it.id == mealId }
+    }
 }

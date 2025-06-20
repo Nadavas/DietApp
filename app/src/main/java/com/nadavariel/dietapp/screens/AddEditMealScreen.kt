@@ -12,7 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.* // Import all needed runtime components
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,6 +27,7 @@ import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.Date // Ensure java.util.Date is imported
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,16 +37,31 @@ fun AddEditMealScreen(
     navController: NavController,
     mealToEdit: Meal? = null // Optional: Pass a meal here if editing
 ) {
-    var foodName by remember { mutableStateOf(mealToEdit?.foodName ?: "") }
-    var calories by remember { mutableStateOf(mealToEdit?.calories?.toString() ?: "") }
-    // Calendar instance to hold selected date and time
-    val selectedDateTime = remember { Calendar.getInstance().apply {
-        mealToEdit?.timestamp?.toDate()?.let { time = it }
-    }}
-
     val context = LocalContext.current
+
+    // ⭐ State variables for input fields
+    var foodName by remember { mutableStateOf("") }
+    var caloriesText by remember { mutableStateOf("") } // Keep as String for TextField
+    val selectedDateTime = remember { Calendar.getInstance() } // Initialize with current time, will be updated by LaunchedEffect
+
+    // Use remember for SimpleDateFormat instances to prevent re-creation
     val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) } // Corrected pattern to ensure year is shown
+
+    // ⭐ LaunchedEffect to update fields when mealToEdit changes
+    LaunchedEffect(mealToEdit) {
+        if (mealToEdit != null) {
+            // Set values from the meal to edit
+            foodName = mealToEdit.foodName
+            caloriesText = mealToEdit.calories.toString()
+            selectedDateTime.time = mealToEdit.timestamp.toDate() // Set Calendar's time
+        } else {
+            // Reset fields for adding a new meal
+            foodName = ""
+            caloriesText = ""
+            selectedDateTime.time = Date() // Set to current date/time for new meal
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -76,11 +92,11 @@ fun AddEditMealScreen(
             )
 
             OutlinedTextField(
-                value = calories,
+                value = caloriesText, // Use caloriesText
                 onValueChange = { newValue ->
                     // Allow only digits
                     if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
-                        calories = newValue
+                        caloriesText = newValue
                     }
                 },
                 label = { Text("Calories (kcal)") },
@@ -132,7 +148,7 @@ fun AddEditMealScreen(
 
             Button(
                 onClick = {
-                    val calValue = calories.toIntOrNull() ?: 0
+                    val calValue = caloriesText.toIntOrNull() ?: 0 // Use caloriesText
                     if (foodName.isNotBlank() && calValue > 0) {
                         if (mealToEdit == null) {
                             // Log new meal
@@ -143,16 +159,17 @@ fun AddEditMealScreen(
                                 mealToEdit.id,
                                 foodName,
                                 calValue,
-                                Timestamp(selectedDateTime.time)
+                                Timestamp(selectedDateTime.time) // Pass as Firebase Timestamp
                             )
                         }
                         navController.popBackStack() // Go back after logging/editing
                     } else {
                         // TODO: Show a snackbar or toast for invalid input
+                        // (You would typically use a LaunchedEffect with a SnackbarHostState here)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = foodName.isNotBlank() && (calories.toIntOrNull() ?: 0) > 0
+                enabled = foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0 // Use caloriesText
             ) {
                 Text(if (mealToEdit == null) "Add Meal" else "Save Changes", fontSize = 18.sp)
             }

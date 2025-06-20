@@ -1,7 +1,7 @@
 package com.nadavariel.dietapp.screens
 
 import android.os.Build
-import android.util.Log // Import for Log
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,8 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.* // This import is needed for 'remember' and 'mutableStateOf'
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,15 +26,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.model.Meal
+import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.NavRoutes // ⭐ Make sure you have this import
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-import androidx.navigation.NavController
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -45,28 +47,25 @@ fun HomeScreen(
     val userProfile = authViewModel.userProfile
     val userName = userProfile.name
 
-    // ⭐ Logging: Observing ViewModel states
     val selectedDate = foodLogViewModel.selectedDate
     val currentWeekStartDate = foodLogViewModel.currentWeekStartDate
     val mealsForSelectedDate = foodLogViewModel.mealsForSelectedDate
     Log.d("HomeScreen", "Composable Recomposition: selectedDate=$selectedDate, currentWeekStartDate=$currentWeekStartDate")
-
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
 
     var showSignOutDialog by remember { mutableStateOf(false) }
+    var showMealsList by remember { mutableStateOf(false) }
 
-    // ⭐ START OF ONLY CHANGE FOR THIS REQUEST: New state for meal list visibility
-    var showMealsList by remember { mutableStateOf(false) } // Default to not shown
-    // ⭐ END OF ONLY CHANGE FOR THIS REQUEST
+    var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
+    var mealToDelete by remember { mutableStateOf<Meal?>(null) }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            // ⭐ Logging: Lifecycle RESUMED event
             Log.d("HomeScreen", "LaunchedEffect: App RESUMED. Current selectedDate in VM: ${foodLogViewModel.selectedDate}. Current system date: ${LocalDate.now()}")
             if (foodLogViewModel.selectedDate != LocalDate.now()) {
                 foodLogViewModel.selectDate(LocalDate.now())
@@ -207,13 +206,11 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ⭐ START OF ONLY CHANGE FOR THIS REQUEST: Replace Text with Button and add conditional visibility
             // --- Toggle Button for Meals Logged ---
             Button(
-                onClick = { showMealsList = !showMealsList }, // Toggle visibility
+                onClick = { showMealsList = !showMealsList },
                 modifier = Modifier
-                    // REMOVE THIS LINE: .fillMaxWidth()
-                    .padding(horizontal = 16.dp) // Keep this padding for horizontal alignment
+                    .padding(horizontal = 16.dp)
             ) {
                 Text(
                     text = if (showMealsList) "Hide Meals" else "Show Meals (${mealsForSelectedDate.size})",
@@ -222,10 +219,10 @@ fun HomeScreen(
                     textAlign = TextAlign.Center
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp)) // Keep this spacer after the button
+            Spacer(modifier = Modifier.height(8.dp))
 
             // --- Conditionally display Daily Meal List (Chronological) ---
-            if (showMealsList) { // Only show if showMealsList is true
+            if (showMealsList) {
                 if (mealsForSelectedDate.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -246,22 +243,33 @@ fun HomeScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f) // Allows the LazyColumn to take available space
+                            .weight(1f)
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(mealsForSelectedDate) { meal ->
-                            MealItem(meal = meal)
+                            MealItem(
+                                meal = meal,
+                                onDelete = {
+                                    mealToDelete = it
+                                    showDeleteConfirmationDialog = true
+                                },
+                                onEdit = {
+                                    // ⭐ CRITICAL: Ensure this navigation string matches your NavRoutes setup
+                                    // Example: "add_edit_meal_screen/{mealId}"
+                                    // It's best to use your defined constants for robustness.
+                                    navController.navigate("${NavRoutes.ADD_EDIT_MEAL}/${it.id}")
+                                }
+                            )
                         }
                     }
                 }
             }
-            // ⭐ END OF ONLY CHANGE FOR THIS REQUEST
         }
     }
 
-    // Sign-out confirmation dialog (NO CHANGES HERE)
+    // Sign-out confirmation dialog
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -278,7 +286,7 @@ fun HomeScreen(
                     onClick = {
                         showSignOutDialog = false
                         authViewModel.signOut()
-                        onSignOut() // This line remains unchanged as per your provided code
+                        onSignOut()
                     }
                 ) {
                     Text("Yes")
@@ -295,13 +303,43 @@ fun HomeScreen(
             }
         )
     }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmationDialog && mealToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmationDialog = false },
+            title = { Text("Confirm Deletion") },
+            text = { Text("Are you sure you want to delete this meal: ${mealToDelete?.foodName}?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    mealToDelete?.let { foodLogViewModel.deleteMeal(it.id) }
+                    showDeleteConfirmationDialog = false
+                    mealToDelete = null
+                }) { Text("Yes") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmationDialog = false
+                    mealToDelete = null
+                }) { Text("No") }
+            }
+        )
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MealItem(meal: Meal) {
+fun MealItem(
+    meal: Meal,
+    onDelete: (Meal) -> Unit,
+    onEdit: (Meal) -> Unit
+) {
+    var showActions by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showActions = !showActions },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -313,7 +351,9 @@ fun MealItem(meal: Meal) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = meal.foodName,
                     style = MaterialTheme.typography.titleMedium,
@@ -325,11 +365,39 @@ fun MealItem(meal: Meal) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                text = "${meal.calories} kcal",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+
+            if (showActions) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    IconButton(
+                        onClick = {
+                            onEdit(meal)
+                            showActions = false
+                        }
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Meal", tint = MaterialTheme.colorScheme.primary)
+                    }
+
+                    IconButton(
+                        onClick = {
+                            onDelete(meal)
+                            showActions = false
+                        }
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Meal", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            } else {
+                Text(
+                    text = "${meal.calories} kcal",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
         }
     }
 }

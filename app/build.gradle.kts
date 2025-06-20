@@ -45,31 +45,36 @@ android {
 
 dependencies {
 
-    // Firebase Firestore (for user-specific profile data)
-    implementation(libs.firebase.firestore.ktx) // Add this line
-
-    // DataStore (for preferences)
-    implementation("androidx.datastore:datastore-preferences:1.1.7")
-
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    // Core Android KTX and Compose dependencies
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
+    implementation(platform(libs.androidx.compose.bom)) // BOM should generally be near the top or specifically grouped
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.datastore.preferences) // DataStore
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.material3) // Material 3
+    //implementation(libs.androidx.material) // Material 2 (consider if you truly need both)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
+
+    // Firebase dependencies
+    implementation(platform(libs.firebase.bom)) // Firebase BOM should generally be near the top or specifically grouped
+    implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.google.firebase.auth.ktx) // Duplication? firebase.auth.ktx and google.firebase.auth.ktx
+    implementation(libs.play.services.auth) // Google Play Services Auth
+
+    // Testing dependencies
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.ui.test.junit4)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
-    implementation(libs.firebase.analytics)
-    implementation(libs.google.firebase.auth.ktx)
-    implementation("com.google.android.gms:play-services-auth:21.3.0")
 }

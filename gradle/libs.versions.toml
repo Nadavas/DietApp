@@ -1,5 +1,7 @@
 [versions]
 agp = "8.10.0"
+datastorePreferences = "1.1.7"
+firebaseBom = "33.15.0"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -7,14 +9,21 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
-composeBom = "2025.06.00"
+composeBom = "2025.06.01"
 firebaseAuthKtx = "23.2.1"
+material = "1.8.3"
 navigationCompose = "2.9.0"
 # Add this new version entry
 firebase-firestore = "25.1.4" # This is a common and recent version. Use the one you prefer if different.
+playServicesAuth = "21.3.0"
 
 [libraries]
 # Add this new library entry
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
+androidx-material = { module = "androidx.compose.material:material", version.ref = "material" }
+androidx-runtime-ktx = { module = "androidx.compose.runtime:runtime-ktx" }
+androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebase-firestore" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 google-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
@@ -34,6 +43,7 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx", version.ref = "firebaseAuthKtx" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
