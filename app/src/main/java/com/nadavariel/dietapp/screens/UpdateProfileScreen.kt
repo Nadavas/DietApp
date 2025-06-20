@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,7 +40,7 @@ fun UpdateProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController,
     onBack: () -> Unit,
-    isNewUser: Boolean = false // ⭐ NEW: Parameter to indicate if it's a new user creating profile
+    isNewUser: Boolean = false
 ) {
     val userProfile = authViewModel.userProfile
 
@@ -50,8 +49,7 @@ fun UpdateProfileScreen(
     var ageInput by remember { mutableStateOf(userProfile.age.toString()) }
     var targetWeightInput by remember { mutableStateOf(userProfile.targetWeight.toString()) }
 
-    LaunchedEffect(userProfile, isNewUser) { // Re-evaluate if userProfile or isNewUser changes
-        // If it's a new user, pre-fill name with email's local part if available and fields are empty
+    LaunchedEffect(userProfile, isNewUser) {
         nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
             authViewModel.currentUser?.email?.substringBefore("@") ?: ""
         } else {
@@ -62,37 +60,21 @@ fun UpdateProfileScreen(
         targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""
     }
 
-    val saveProfileAction: () -> Unit = {
-        authViewModel.updateProfile(nameInput, weightInput, ageInput, targetWeightInput) {
-            // ⭐ MODIFIED: After saving, navigate based on whether it's a new user
-            if (isNewUser) {
-                // If it's a new user, navigate directly to HOME after creating profile
-                navController.navigate(NavRoutes.HOME) {
-                    popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true } // Clear the update_profile stack
-                    launchSingleTop = true
-                }
-            } else {
-                // If updating existing profile, just pop back
-                navController.popBackStack()
-            }
-        }
-    }
+    // Removed saveProfileAction lambda if it was solely for keyboard actions.
+    // The Button's onClick will now be the primary way to save.
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isNewUser) "Create Profile" else "Update Profile") }, // ⭐ Conditional Title
+                title = { Text(if (isNewUser) "Create Profile" else "Update Profile") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // ⭐ Conditional Back Button behavior
                         if (isNewUser) {
-                            // If user is forced to create profile after signup, back button goes to home
                             navController.navigate(NavRoutes.HOME) {
                                 popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
                                 launchSingleTop = true
                             }
                         } else {
-                            // Otherwise, normal back behavior
                             onBack()
                         }
                     }) {
@@ -111,7 +93,7 @@ fun UpdateProfileScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (isNewUser) "Tell us about yourself!" else "Update Your Profile", // ⭐ Conditional Main Text
+                text = if (isNewUser) "Tell us about yourself!" else "Update Your Profile",
                 fontSize = 28.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -159,25 +141,33 @@ fun UpdateProfileScreen(
                     }
                 },
                 label = { Text("Target Weight (kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), // Kept ImeAction.Done for visual cue
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                singleLine = true,
-                keyboardActions = KeyboardActions(
-                    onDone = { saveProfileAction() }
-                )
+                singleLine = true
+                // Removed: keyboardActions = KeyboardActions(onDone = { saveProfileAction() })
             )
 
             Button(
-                onClick = { saveProfileAction() },
+                onClick = {
+                    authViewModel.updateProfile(nameInput, weightInput, ageInput, targetWeightInput) {
+                        if (isNewUser) {
+                            navController.navigate(NavRoutes.HOME) {
+                                popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        } else {
+                            navController.popBackStack()
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isNewUser) "Create Profile" else "Save Changes") // ⭐ Conditional Button Text
+                Text(if (isNewUser) "Create Profile" else "Save Changes")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ⭐ Conditional Back Button Visibility for new user flow
-            if (!isNewUser) { // Hide the 'Back' button if it's the mandatory create profile screen
+            if (!isNewUser) {
                 Button(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth()

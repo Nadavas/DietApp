@@ -75,11 +75,8 @@ fun SignInScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val performSignIn = {
-        if (authResult != AuthResult.Loading) {
-            authViewModel.signIn(onSignInSuccess)
-        }
-    }
+    // Removed performSignIn lambda as it was only called by keyboardActions
+    // The Button's onClick will now be the primary way to sign in.
 
     LaunchedEffect(authResult) {
         when (val result = authResult) {
@@ -122,7 +119,6 @@ fun SignInScreen(
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        // Using ImageVector for the back arrow. No 'tint = Color.Unspecified' needed here.
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -166,10 +162,8 @@ fun SignInScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = { performSignIn() }
-                )
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done) // Kept ImeAction.Done for visual cue, but removed action
+                // Removed: keyboardActions = KeyboardActions(onDone = { performSignIn() })
             )
 
             Row(
@@ -188,7 +182,11 @@ fun SignInScreen(
             }
 
             Button(
-                onClick = { performSignIn() },
+                onClick = {
+                    if (authResult != AuthResult.Loading) {
+                        authViewModel.signIn(onSignInSuccess)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
             ) {
@@ -239,7 +237,7 @@ fun SignInScreen(
                     painter = painterResource(id = R.drawable.google_logo),
                     contentDescription = "Google Logo",
                     modifier = Modifier.size(24.dp),
-                    tint = Color.Unspecified // Explicitly use Color.Unspecified here for the PNG
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
