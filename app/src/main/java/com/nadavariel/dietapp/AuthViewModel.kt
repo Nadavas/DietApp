@@ -165,23 +165,23 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun signIn(onSuccess: () -> Unit) {
-        if (emailState.value.isBlank() || passwordState.value.isBlank()) {
+    // ⭐ MODIFIED: signIn now accepts email and password explicitly for re-authentication use case
+    fun signIn(email: String, password: String, onSuccess: () -> Unit) {
+        if (email.isBlank() || password.isBlank()) {
             _authResult.value = AuthResult.Error("Email and password cannot be empty.")
             return
         }
         _authResult.value = AuthResult.Loading
-        auth.signInWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim())
+        auth.signInWithEmailAndPassword(email.trim(), password.trim())
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
                     viewModelScope.launch {
                         if (rememberMeState.value) {
-                            preferencesRepository.saveUserPreferences(emailState.value, rememberMeState.value)
+                            preferencesRepository.saveUserPreferences(email, rememberMeState.value)
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        // loadUserProfile() is handled by authStateListener, no need to call explicitly here
                     }
                     onSuccess()
                     clearInputFields()
@@ -189,6 +189,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign in failed.")
                 }
             }
+    }
+
+    // Overload for signIn that uses existing email/passwordState (for standard login screen)
+    fun signIn(onSuccess: () -> Unit) {
+        signIn(emailState.value, passwordState.value, onSuccess)
     }
 
     fun signOut() {
@@ -293,6 +298,54 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             saveUserProfile(updatedProfile)
             userProfile = updatedProfile // Update Compose State directly
             onSuccess()
+        }
+    }
+
+    // ⭐ NEW: Function to delete current user and their Firestore data
+    fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = auth.currentUser
+        if (user != null) {
+            _authResult.value = AuthResult.Loading // Set loading state
+            user.delete()
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d("AuthViewModel", "User account deleted from Firebase Auth for UID: ${user.uid}")
+                        // Now delete their Firestore profile data
+                        viewModelScope.launch {
+                            try {
+                                firestore.collection("users").document(user.uid).delete().await()
+                                Log.d("AuthViewModel", "User data deleted from Firestore for UID: ${user.uid}")
+                                // Reset auth result to success after both operations
+                                _authResult.value = AuthResult.Success
+                                // Clear local states, as user is now gone
+                                userProfile = UserProfile()
+                                preferencesRepository.clearUserPreferences()
+                                onSuccess()
+                            } catch (e: Exception) {
+                                val firestoreError = "Account deleted, but failed to delete associated data: ${e.message}"
+                                Log.e("AuthViewModel", firestoreError, e)
+                                _authResult.value = AuthResult.Error(firestoreError) // Report Firestore deletion error
+                                onError(firestoreError) // Callback with error
+                            }
+                        }
+                    } else {
+                        val errorMessage = task.exception?.message ?: "Failed to delete account."
+                        Log.e("AuthViewModel", "Failed to delete user account: $errorMessage", task.exception)
+                        _authResult.value = AuthResult.Error(errorMessage) // Report Auth deletion error
+
+                        // Handle re-authentication requirement
+                        if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                            onError("re-authenticate-required") // Use a specific code for UI to interpret
+                        } else {
+                            onError(errorMessage)
+                        }
+                    }
+                }
+        } else {
+            val noUserError = "No user is currently signed in to delete."
+            Log.w("AuthViewModel", noUserError)
+            _authResult.value = AuthResult.Error(noUserError)
+            onError(noUserError)
         }
     }
 }

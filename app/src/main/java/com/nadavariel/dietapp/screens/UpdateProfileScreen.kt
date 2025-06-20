@@ -33,47 +33,69 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.LaunchedEffect
-// import androidx.compose.runtime.collectAsState // ⭐ REMOVED: No longer needed
+import com.nadavariel.dietapp.NavRoutes // Import NavRoutes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    isNewUser: Boolean = false // ⭐ NEW: Parameter to indicate if it's a new user creating profile
 ) {
-    // ⭐ CHANGED: Directly access userProfile from AuthViewModel, no collectAsState()
     val userProfile = authViewModel.userProfile
 
-    // Initialize input fields with current profile data
     var nameInput by remember { mutableStateOf(userProfile.name) }
     var weightInput by remember { mutableStateOf(userProfile.weight.toString()) }
     var ageInput by remember { mutableStateOf(userProfile.age.toString()) }
     var targetWeightInput by remember { mutableStateOf(userProfile.targetWeight.toString()) }
 
-    // Use LaunchedEffect to update input fields if userProfile changes externally
-    // This part is still good to keep, as the underlying AuthViewModel.userProfile can change
-    // even though it's no longer a Flow.
-    LaunchedEffect(userProfile) {
-        nameInput = userProfile.name
+    LaunchedEffect(userProfile, isNewUser) { // Re-evaluate if userProfile or isNewUser changes
+        // If it's a new user, pre-fill name with email's local part if available and fields are empty
+        if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
+            nameInput = authViewModel.currentUser?.email?.substringBefore("@") ?: ""
+        } else {
+            nameInput = userProfile.name
+        }
         weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
         ageInput = if (userProfile.age > 0) userProfile.age.toString() else ""
         targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""
     }
 
     val saveProfileAction: () -> Unit = {
-        // Pass all fields to AuthViewModel's updateProfile
         authViewModel.updateProfile(nameInput, weightInput, ageInput, targetWeightInput) {
-            navController.popBackStack()
+            // ⭐ MODIFIED: After saving, navigate based on whether it's a new user
+            if (isNewUser) {
+                // If it's a new user, navigate directly to HOME after creating profile
+                navController.navigate(NavRoutes.HOME) {
+                    popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true } // Clear the update_profile stack
+                    launchSingleTop = true
+                }
+            } else {
+                // If updating existing profile, just pop back
+                navController.popBackStack()
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Update Profile") },
+                title = { Text(if (isNewUser) "Create Profile" else "Update Profile") }, // ⭐ Conditional Title
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        // ⭐ Conditional Back Button behavior
+                        if (isNewUser) {
+                            // If user is forced to create profile after signup, back button goes to home
+                            navController.navigate(NavRoutes.HOME) {
+                                popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        } else {
+                            // Otherwise, normal back behavior
+                            onBack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
@@ -89,7 +111,7 @@ fun UpdateProfileScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Update Your Profile",
+                text = if (isNewUser) "Tell us about yourself!" else "Update Your Profile", // ⭐ Conditional Main Text
                 fontSize = 28.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -106,7 +128,6 @@ fun UpdateProfileScreen(
             OutlinedTextField(
                 value = weightInput,
                 onValueChange = { newValue ->
-                    // Allow only digits and one decimal point
                     if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
                         weightInput = newValue
                     }
@@ -120,7 +141,6 @@ fun UpdateProfileScreen(
             OutlinedTextField(
                 value = ageInput,
                 onValueChange = { newValue ->
-                    // Allow only digits
                     if (newValue.all { it.isDigit() }) {
                         ageInput = newValue
                     }
@@ -134,7 +154,6 @@ fun UpdateProfileScreen(
             OutlinedTextField(
                 value = targetWeightInput,
                 onValueChange = { newValue ->
-                    // Allow only digits and one decimal point
                     if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
                         targetWeightInput = newValue
                     }
@@ -152,16 +171,19 @@ fun UpdateProfileScreen(
                 onClick = { saveProfileAction() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save Profile")
+                Text(if (isNewUser) "Create Profile" else "Save Changes") // ⭐ Conditional Button Text
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Back")
+            // ⭐ Conditional Back Button Visibility for new user flow
+            if (!isNewUser) { // Hide the 'Back' button if it's the mandatory create profile screen
+                Button(
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Back")
+                }
             }
         }
     }

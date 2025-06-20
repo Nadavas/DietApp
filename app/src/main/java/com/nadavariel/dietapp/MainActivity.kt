@@ -14,7 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.produceState // Needed for getMealById in FoodLogViewModel
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.ViewModel
@@ -38,7 +38,7 @@ import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.screens.AddEditMealScreen
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import com.nadavariel.dietapp.model.Meal // Make sure Meal data class is imported
+import com.nadavariel.dietapp.model.Meal
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -71,22 +71,19 @@ class MainActivity : ComponentActivity() {
                 val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
                 val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
 
-                // ⭐ REVERTED THIS PART BACK TO YOUR ORIGINAL LOGIC
                 val startDestination = if (authViewModel.isUserSignedIn()) {
-                    NavRoutes.HOME // Assuming isProfileSetup check is handled within HomeScreen or not strictly needed here for initial nav
+                    NavRoutes.HOME
                 } else {
                     NavRoutes.LANDING
                 }
 
                 val currentRouteEntry by navController.currentBackStackEntryAsState()
-                // Get the base route (without arguments) for bottom bar selection
                 val selectedRoute = currentRouteEntry?.destination?.route?.split("/")?.firstOrNull()
 
 
                 Scaffold(
                     modifier = Modifier,
                     bottomBar = {
-                        // Display bottom bar only on specific routes
                         if (selectedRoute == NavRoutes.HOME ||
                             selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
                             selectedRoute == NavRoutes.MY_PROFILE
@@ -104,10 +101,8 @@ class MainActivity : ComponentActivity() {
                                 )
 
                                 NavigationBarItem(
-                                    // Highlight if either "add_edit_meal_screen" or "add_edit_meal_screen/{mealId}" is active
                                     selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL,
                                     onClick = {
-                                        // When clicking 'Add Meal' from bottom bar, always navigate to add new meal route
                                         navController.navigate(NavRoutes.ADD_EDIT_MEAL) {
                                             popUpTo(NavRoutes.HOME) { saveState = true }
                                             launchSingleTop = true
@@ -178,7 +173,8 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onSignUpSuccess = {
-                                    navController.navigate(NavRoutes.UPDATE_PROFILE) {
+                                    // ⭐ MODIFIED: Navigate to UPDATE_PROFILE with isNewUser="true" (as a string)
+                                    navController.navigate("${NavRoutes.UPDATE_PROFILE_BASE}?${NavRoutes.IS_NEW_USER_ARG}=true") {
                                         popUpTo(NavRoutes.LANDING) { inclusive = true }
                                         launchSingleTop = true
                                     }
@@ -209,46 +205,57 @@ class MainActivity : ComponentActivity() {
                                 navController = navController
                             )
                         }
-                        composable(NavRoutes.UPDATE_PROFILE) {
+
+                        // ⭐ MODIFIED: Define the composable for UPDATE_PROFILE to accept string argument
+                        composable(
+                            route = NavRoutes.UPDATE_PROFILE,
+                            arguments = listOf(navArgument(NavRoutes.IS_NEW_USER_ARG) {
+                                type = NavType.StringType // ⭐ Changed to StringType
+                                defaultValue = "false" // ⭐ Default to "false" as a string
+                                nullable = true // It's still optional, so can be null before default kicks in
+                            })
+                        ) { backStackEntry ->
+                            // ⭐ MODIFIED: Retrieve as String and convert to Boolean
+                            val isNewUserString = backStackEntry.arguments?.getString(NavRoutes.IS_NEW_USER_ARG)
+                            val isNewUser = isNewUserString?.toBooleanStrictOrNull() ?: false // Convert string to boolean, default to false
+
                             UpdateProfileScreen(
                                 authViewModel = authViewModel,
                                 navController = navController,
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                isNewUser = isNewUser
                             )
                         }
 
-                        // Composable for adding a new meal (no ID in route)
                         composable(NavRoutes.ADD_EDIT_MEAL) {
                             AddEditMealScreen(
                                 foodLogViewModel = foodLogViewModel,
                                 navController = navController,
-                                mealToEdit = null // Explicitly pass null for adding new
+                                mealToEdit = null
                             )
                         }
 
-                        // COMPOSABLE BLOCK FOR EDITING MEALS WITH ID (Uses produceState for suspend function)
                         composable(
-                            route = NavRoutes.ADD_EDIT_MEAL_WITH_ID, // e.g., "add_edit_meal_screen/{mealId}"
+                            route = NavRoutes.ADD_EDIT_MEAL_WITH_ID,
                             arguments = listOf(navArgument(NavRoutes.MEAL_ID_ARG) {
                                 type = NavType.StringType
-                                nullable = true // Still nullable, as it's the same composable, but here it expects an ID for editing
+                                nullable = true
                             })
                         ) { backStackEntry ->
                             val mealId = backStackEntry.arguments?.getString(NavRoutes.MEAL_ID_ARG)
 
-                            // Use produceState to safely call the suspend function
                             val mealToEdit: Meal? by produceState<Meal?>(initialValue = null, mealId) {
                                 if (mealId != null) {
-                                    value = foodLogViewModel.getMealById(mealId) // Call the suspend function
+                                    value = foodLogViewModel.getMealById(mealId)
                                 } else {
-                                    value = null // Should ideally not be hit with null mealId for this route
+                                    value = null
                                 }
                             }
 
                             AddEditMealScreen(
                                 foodLogViewModel = foodLogViewModel,
                                 navController = navController,
-                                mealToEdit = mealToEdit // Pass the meal object (will be null while fetching, then updated)
+                                mealToEdit = mealToEdit
                             )
                         }
                     }

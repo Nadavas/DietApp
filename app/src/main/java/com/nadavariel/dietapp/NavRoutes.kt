@@ -6,11 +6,15 @@ object NavRoutes {
     const val SIGN_UP = "sign_up"
     const val HOME = "home"
     const val MY_PROFILE = "my_profile"
-    const val UPDATE_PROFILE = "update_profile"
-    const val ADD_EDIT_MEAL = "add_edit_meal" // NEW Route for adding/editing meals
 
-    const val MEAL_ID_ARG = "mealId" // Key for the argument
+    // ⭐ MODIFIED: UpdateProfile route now includes an optional argument
+    // This allows passing 'isNewUser=true' or 'isNewUser=false'
+    const val UPDATE_PROFILE_BASE = "update_profile" // Base route without arguments
+    const val IS_NEW_USER_ARG = "isNewUser" // New argument key
+    const val UPDATE_PROFILE = "$UPDATE_PROFILE_BASE?${IS_NEW_USER_ARG}={${IS_NEW_USER_ARG}}"
 
-    // ⭐ FIX: Use string concatenation (+) instead of interpolation for const val
+
+    const val ADD_EDIT_MEAL = "add_edit_meal"
+    const val MEAL_ID_ARG = "mealId"
     const val ADD_EDIT_MEAL_WITH_ID = "$ADD_EDIT_MEAL/{$MEAL_ID_ARG}"
 }
