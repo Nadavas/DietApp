@@ -52,10 +52,10 @@ fun UpdateProfileScreen(
 
     LaunchedEffect(userProfile, isNewUser) { // Re-evaluate if userProfile or isNewUser changes
         // If it's a new user, pre-fill name with email's local part if available and fields are empty
-        if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
-            nameInput = authViewModel.currentUser?.email?.substringBefore("@") ?: ""
+        nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
+            authViewModel.currentUser?.email?.substringBefore("@") ?: ""
         } else {
-            nameInput = userProfile.name
+            userProfile.name
         }
         weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
         ageInput = if (userProfile.age > 0) userProfile.age.toString() else ""

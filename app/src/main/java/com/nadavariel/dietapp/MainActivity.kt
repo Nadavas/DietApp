@@ -245,10 +245,10 @@ class MainActivity : ComponentActivity() {
                             val mealId = backStackEntry.arguments?.getString(NavRoutes.MEAL_ID_ARG)
 
                             val mealToEdit: Meal? by produceState<Meal?>(initialValue = null, mealId) {
-                                if (mealId != null) {
-                                    value = foodLogViewModel.getMealById(mealId)
+                                value = if (mealId != null) {
+                                    foodLogViewModel.getMealById(mealId)
                                 } else {
-                                    value = null
+                                    null
                                 }
                             }
 

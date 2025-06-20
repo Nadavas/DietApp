@@ -301,7 +301,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    // ⭐ NEW: Function to delete current user and their Firestore data
+    // ⭐ NEW: Function to delete current user and their firestore data
     fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
         if (user != null) {
@@ -310,11 +310,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         Log.d("AuthViewModel", "User account deleted from Firebase Auth for UID: ${user.uid}")
-                        // Now delete their Firestore profile data
+                        // Now delete their firestore profile data
                         viewModelScope.launch {
                             try {
                                 firestore.collection("users").document(user.uid).delete().await()
-                                Log.d("AuthViewModel", "User data deleted from Firestore for UID: ${user.uid}")
+                                Log.d("AuthViewModel", "User data deleted from firestore for UID: ${user.uid}")
                                 // Reset auth result to success after both operations
                                 _authResult.value = AuthResult.Success
                                 // Clear local states, as user is now gone
@@ -324,7 +324,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             } catch (e: Exception) {
                                 val firestoreError = "Account deleted, but failed to delete associated data: ${e.message}"
                                 Log.e("AuthViewModel", firestoreError, e)
-                                _authResult.value = AuthResult.Error(firestoreError) // Report Firestore deletion error
+                                _authResult.value = AuthResult.Error(firestoreError) // Report firestore deletion error
                                 onError(firestoreError) // Callback with error
                             }
                         }
