@@ -48,7 +48,7 @@ fun AddEditMealScreen(
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) } // ⭐ Use this for observation
 
     // Use remember for SimpleDateFormat instances to prevent re-creation
-    val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) } // Corrected pattern to ensure year is shown
 
     // ⭐ LaunchedEffect to update fields when mealToEdit changes
@@ -153,7 +153,7 @@ fun AddEditMealScreen(
                         },
                         currentHour,
                         currentMinute,
-                        false // Set to true for 24-hour format, false for AM/PM
+                        true // Set to true for 24-hour format, false for AM/PM
                     ).show()
                 },
                 modifier = Modifier.fillMaxWidth()
