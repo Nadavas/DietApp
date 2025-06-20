@@ -30,7 +30,8 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.NavRoutes // ⭐ Make sure you have this import
+import com.nadavariel.dietapp.NavRoutes
+import com.nadavariel.dietapp.model.MealSection
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -67,13 +68,15 @@ fun HomeScreen(
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             Log.d("HomeScreen", "LaunchedEffect: App RESUMED. Current selectedDate in VM: ${foodLogViewModel.selectedDate}. Current system date: ${LocalDate.now()}")
-            if (foodLogViewModel.selectedDate != LocalDate.now()) {
-                foodLogViewModel.selectDate(LocalDate.now())
-                Log.d("HomeScreen", "LaunchedEffect: Called selectDate(LocalDate.now()) to reset.")
-            } else {
-                Log.d("HomeScreen", "LaunchedEffect: selectedDate already today. No reset needed.")
-            }
+            foodLogViewModel.selectDate(LocalDate.now())
+            Log.d("HomeScreen", "LaunchedEffect: Called selectDate(LocalDate.now()) to ensure refresh.")
         }
+    }
+
+    val groupedMeals = remember(mealsForSelectedDate) {
+        mealsForSelectedDate
+            .groupBy { meal -> MealSection.getMealSection(meal.timestamp.toDate()) }
+            .toSortedMap(compareBy { it.ordinal }) // Ensure sections are sorted (Morning, Noon, Evening, Night)
     }
 
     Scaffold { paddingValues ->
@@ -105,7 +108,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(0.dp))
 
             Text(
                 text = "Welcome, ${userName.ifBlank { "Guest" }}!",
@@ -204,7 +207,8 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            // ⭐ Adjusted Spacer height here
+            Spacer(modifier = Modifier.height(16.dp))
 
             // --- Toggle Button for Meals Logged ---
             Button(
@@ -219,9 +223,10 @@ fun HomeScreen(
                     textAlign = TextAlign.Center
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            // Removed the old 8.dp spacer after the button, as the new spacing is handled by LazyColumn contentPadding and inside item.
 
-            // --- Conditionally display Daily Meal List (Chronological) ---
+
+            // --- Conditionally display Daily Meal List (Chronological by Section) ---
             if (showMealsList) {
                 if (mealsForSelectedDate.isEmpty()) {
                     Box(
@@ -248,20 +253,49 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        items(mealsForSelectedDate) { meal ->
-                            MealItem(
-                                meal = meal,
-                                onDelete = {
-                                    mealToDelete = it
-                                    showDeleteConfirmationDialog = true
-                                },
-                                onEdit = {
-                                    // ⭐ CRITICAL: Ensure this navigation string matches your NavRoutes setup
-                                    // Example: "add_edit_meal_screen/{mealId}"
-                                    // It's best to use your defined constants for robustness.
-                                    navController.navigate("${NavRoutes.ADD_EDIT_MEAL}/${it.id}")
+                        // Keep track of whether it's the first section being drawn
+                        var isFirstSection = true
+
+                        // Iterate through all MealSections in defined order
+                        MealSection.entries.forEach { section ->
+                            val mealsInSection = groupedMeals[section] ?: emptyList()
+                            if (mealsInSection.isNotEmpty()) {
+                                item { // Section Header
+                                    // ⭐ Add spacer ONLY if it's not the first section
+                                    if (!isFirstSection) {
+                                        Spacer(modifier = Modifier.height(8.dp)) // Small spacer between sections
+                                    }
+                                    Text(
+                                        text = section.sectionName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = section.color,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp)
+                                    )
+                                    // Removed the old 8.dp spacer between section header and first meal item
+                                    // This spacing is now implicitly handled by verticalArrangement.spacedBy(8.dp) in LazyColumn itself
+                                    // combined with the padding of the MealItem and the lack of a Spacer.
+
+                                    // After drawing the first section, set this to false
+                                    isFirstSection = false
                                 }
-                            )
+                                items(mealsInSection) { meal ->
+                                    MealItem(
+                                        meal = meal,
+                                        sectionColor = section.color,
+                                        onDelete = {
+                                            mealToDelete = it
+                                            showDeleteConfirmationDialog = true
+                                        },
+                                        onEdit = {
+                                            navController.navigate("${NavRoutes.ADD_EDIT_MEAL}/${it.id}")
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -331,6 +365,7 @@ fun HomeScreen(
 @Composable
 fun MealItem(
     meal: Meal,
+    sectionColor: Color,
     onDelete: (Meal) -> Unit,
     onEdit: (Meal) -> Unit
 ) {
@@ -357,12 +392,13 @@ fun MealItem(
                 Text(
                     text = meal.foodName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = sectionColor
                 )
                 Text(
                     text = meal.timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = sectionColor.copy(alpha = 0.7f)
                 )
             }
 
@@ -395,6 +431,7 @@ fun MealItem(
                     text = "${meal.calories} kcal",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = sectionColor,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
