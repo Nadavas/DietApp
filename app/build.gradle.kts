@@ -67,6 +67,9 @@ dependencies {
     implementation(libs.google.firebase.auth.ktx) // Duplication? firebase.auth.ktx and google.firebase.auth.ktx
     implementation(libs.play.services.auth) // Google Play Services Auth
 
+    // For graphics
+    implementation(libs.mpandroidchart)
+
     // Testing dependencies
     testImplementation(libs.junit)
 
