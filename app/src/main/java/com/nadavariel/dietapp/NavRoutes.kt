@@ -12,6 +12,7 @@ object NavRoutes {
     const val UPDATE_PROFILE_BASE = "update_profile" // Base route without arguments
     const val IS_NEW_USER_ARG = "isNewUser" // New argument key
     const val UPDATE_PROFILE = "$UPDATE_PROFILE_BASE?${IS_NEW_USER_ARG}={${IS_NEW_USER_ARG}}"
+    const val STATISTICS = "statistics"
 
 
     const val ADD_EDIT_MEAL = "add_edit_meal"

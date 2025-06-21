@@ -39,6 +39,7 @@ import com.nadavariel.dietapp.screens.AddEditMealScreen
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import com.nadavariel.dietapp.model.Meal
+import com.nadavariel.dietapp.screens.StatisticsScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -86,7 +87,8 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (selectedRoute == NavRoutes.HOME ||
                             selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
-                            selectedRoute == NavRoutes.MY_PROFILE
+                            selectedRoute == NavRoutes.MY_PROFILE ||
+                            selectedRoute == NavRoutes.STATISTICS
                         ) {
                             NavigationBar {
                                 NavigationBarItem(
@@ -111,6 +113,17 @@ class MainActivity : ComponentActivity() {
                                     },
                                     icon = { Icon(Icons.Filled.Add, contentDescription = "Add Meal") },
                                     label = { Text("Add Meal") }
+                                )
+
+                                NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.STATISTICS,
+                                    onClick = { navController.navigate(NavRoutes.STATISTICS) {
+                                        popUpTo(NavRoutes.HOME) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }},
+                                    icon = { Icon(painterResource(id = R.drawable.ic_bar_filled), contentDescription = "Stats") },
+                                    label = { Text("Stats") }
                                 )
 
                                 NavigationBarItem(
@@ -197,6 +210,11 @@ class MainActivity : ComponentActivity() {
                                         launchSingleTop = true
                                     }
                                 }
+                            )
+                        }
+                        composable(NavRoutes.STATISTICS) {
+                            StatisticsScreen(
+                                navController = navController
                             )
                         }
                         composable(NavRoutes.MY_PROFILE) {
