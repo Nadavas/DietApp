@@ -17,6 +17,8 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Meal
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.DayOfWeek
@@ -29,23 +31,23 @@ class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
 
+    // State for daily meal view
     var selectedDate: LocalDate by mutableStateOf(LocalDate.now())
         private set
-
-    // Initial value will be set in init block using the helper function
-    var currentWeekStartDate: LocalDate by mutableStateOf(LocalDate.now()) // Temporary value, will be set correctly below
+    var currentWeekStartDate: LocalDate by mutableStateOf(LocalDate.now())
         private set
-
     var mealsForSelectedDate: List<Meal> by mutableStateOf(emptyList())
         private set
-
     private var mealsListenerRegistration: ListenerRegistration? = null
 
-    // ⭐ NEW HELPER FUNCTION: Correctly finds the Sunday that begins the current week
+    // --- NEW: State for Statistics Screen ---
+    private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyCalories = _weeklyCalories.asStateFlow()
+    // --- End of New State ---
+
+
     private fun getSundayOfCurrentWeek(date: LocalDate): LocalDate {
         var result = date
-        // Keep subtracting days until we reach Sunday.
-        // If 'date' is already Sunday, this loop won't run.
         while (result.dayOfWeek != DayOfWeek.SUNDAY) {
             result = result.minusDays(1)
         }
@@ -54,65 +56,105 @@ class FoodLogViewModel : ViewModel() {
 
     init {
         val today = LocalDate.now()
-        // ⭐ Use the new helper function for currentWeekStartDate
-        val sundayOfThisWeekCorrect = getSundayOfCurrentWeek(today)
-
-        Log.d("FoodLogViewModel", "DEBUG_CALC: LocalDate.now() reports: $today")
-        // Keeping this for comparison, it should show the next Sunday
-        Log.d("FoodLogViewModel", "DEBUG_CALC: today.with(DayOfWeek.SUNDAY) (direct call) yields: ${today.with(DayOfWeek.SUNDAY)}")
-        Log.d("FoodLogViewModel", "DEBUG_CALC: getSundayOfCurrentWeek() calculated as: $sundayOfThisWeekCorrect")
-
+        currentWeekStartDate = getSundayOfCurrentWeek(today)
         selectedDate = today
-        currentWeekStartDate = sundayOfThisWeekCorrect // Assign the correctly calculated value
 
-        Log.d("FoodLogViewModel", "VM Init: Initial selectedDate=${selectedDate}, currentWeekStartDate=${currentWeekStartDate} (Sunday of its week).")
+        Log.d("FoodLogViewModel", "VM Init: Initial selectedDate=$selectedDate, currentWeekStartDate=$currentWeekStartDate.")
 
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 val currentUser = firebaseAuth.currentUser
                 if (currentUser != null) {
-                    Log.d("FoodLogViewModel", "Auth state changed: User ${currentUser.uid} signed in. Fetching meals for selected date: ${selectedDate}.")
+                    Log.d("FoodLogViewModel", "Auth state changed: User ${currentUser.uid} signed in.")
+                    // Listen for daily meals
                     listenForMealsForDate(selectedDate)
+                    // Fetch data for statistics
+                    fetchMealsForLastSevenDays()
                 } else {
-                    Log.d("FoodLogViewModel", "Auth state changed: User signed out. Clearing meals and stopping listener.")
+                    Log.d("FoodLogViewModel", "Auth state changed: User signed out.")
                     mealsListenerRegistration?.remove()
                     mealsListenerRegistration = null
                     mealsForSelectedDate = emptyList()
+                    // Clear weekly data as well
+                    _weeklyCalories.value = emptyMap()
                 }
             }
         }
     }
 
-    // --- Meal Logging Operations --- (No changes here)
+
+    // --- NEW: Functions for Statistics Screen ---
+
+    /**
+     * Fetches meals from the last 7 days and processes them to calculate daily calorie totals.
+     * This is designed to be called once or when a refresh is needed for the stats screen.
+     */
+    private fun fetchMealsForLastSevenDays() {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            try {
+                // Get the date 6 days ago to form a 7-day period including today
+                val sevenDaysAgo = LocalDate.now().minusDays(6)
+                val startOfPeriod = Date.from(sevenDaysAgo.atStartOfDay(ZoneId.systemDefault()).toInstant())
+
+                Log.d("FoodLogViewModel", "Fetching meals for stats from: $startOfPeriod")
+
+                val querySnapshot = firestore.collection("users").document(userId).collection("meals")
+                    .whereGreaterThanOrEqualTo("timestamp", startOfPeriod)
+                    .get()
+                    .await()
+
+                val meals = querySnapshot.toObjects(Meal::class.java)
+                Log.d("FoodLogViewModel", "Fetched ${meals.size} meals for the last 7 days.")
+                processWeeklyCalories(meals)
+
+            } catch (e: Exception) {
+                Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Processes a list of meals into a map of daily total calories for the last 7 days.
+     */
+    private fun processWeeklyCalories(meals: List<Meal>) {
+        val today = LocalDate.now()
+        // Create a mutable map initialized with the last 7 days, each with 0 calories.
+        // This ensures all 7 days are present in the map, even if no meals were logged.
+        val caloriesByDay = (0..6).associate {
+            today.minusDays(it.toLong()) to 0
+        }.toMutableMap()
+
+        // Sum up calories for each meal on its respective day
+        for (meal in meals) {
+            val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            if (caloriesByDay.containsKey(mealDate)) {
+                caloriesByDay[mealDate] = (caloriesByDay[mealDate] ?: 0) + meal.calories
+            }
+        }
+
+        Log.d("FoodLogViewModel", "Processed weekly calories: $caloriesByDay")
+        _weeklyCalories.value = caloriesByDay // Update the StateFlow to notify the UI
+    }
+
+    // --- End of New Functions ---
+
+
+    // --- Meal Logging Operations ---
 
     fun logMeal(foodName: String, calories: Int, mealTime: Date = Date()) {
         val userId = auth.currentUser?.uid ?: run {
             Log.e("FoodLogViewModel", "Cannot log meal: User not signed in.")
             return
         }
-
-        val meal = Meal(
-            foodName = foodName,
-            calories = calories,
-            timestamp = Timestamp(mealTime)
-        )
-
+        val meal = Meal(foodName = foodName, calories = calories, timestamp = Timestamp(mealTime))
         viewModelScope.launch {
             try {
-                val docRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("meals")
-                    .add(meal)
-                    .await()
-
-                firestore.collection("users")
-                    .document(userId)
-                    .collection("meals")
-                    .document(docRef.id)
-                    .update("id", docRef.id)
-                    .await()
-
-                Log.d("FoodLogViewModel", "Meal '${meal.foodName}' logged successfully with ID: ${docRef.id}")
+                val docRef = firestore.collection("users").document(userId).collection("meals").add(meal).await()
+                firestore.collection("users").document(userId).collection("meals").document(docRef.id).update("id", docRef.id).await()
+                Log.d("FoodLogViewModel", "Meal '${meal.foodName}' logged successfully.")
+                // Refresh weekly data after logging a new meal
+                fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
@@ -124,22 +166,18 @@ class FoodLogViewModel : ViewModel() {
             Log.e("FoodLogViewModel", "Cannot update meal: User not signed in.")
             return
         }
-
-        val mealRef = firestore.collection("users")
-            .document(userId)
-            .collection("meals")
-            .document(mealId)
-
+        val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         val updatedData = hashMapOf(
             "foodName" to newFoodName,
             "calories" to newCalories,
             "timestamp" to newTimestamp
         )
-
         viewModelScope.launch {
             try {
                 mealRef.update(updatedData as Map<String, Any>).await()
                 Log.d("FoodLogViewModel", "Meal '$mealId' updated successfully.")
+                // Refresh weekly data after updating a meal
+                fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -151,41 +189,32 @@ class FoodLogViewModel : ViewModel() {
             Log.e("FoodLogViewModel", "Cannot delete meal: User not signed in.")
             return
         }
-
-        val mealRef = firestore.collection("users")
-            .document(userId)
-            .collection("meals")
-            .document(mealId)
-
+        val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         viewModelScope.launch {
             try {
                 mealRef.delete().await()
                 Log.d("FoodLogViewModel", "Meal '$mealId' deleted successfully.")
+                // Refresh weekly data after deleting a meal
+                fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }
         }
     }
 
-    // --- Meal Fetching & Listening --- (No changes here)
+    // --- Meal Fetching & Listening ---
 
     private fun listenForMealsForDate(date: LocalDate) {
         mealsListenerRegistration?.remove()
-
         val userId = auth.currentUser?.uid ?: run {
             Log.e("FoodLogViewModel", "Cannot listen for meals: User not signed in.")
             mealsForSelectedDate = emptyList()
             return
         }
-
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-
         Log.d("FoodLogViewModel", "Listening for meals for date: $date ($startOfDay - $endOfDay)")
-
-        mealsListenerRegistration = firestore.collection("users")
-            .document(userId)
-            .collection("meals")
+        mealsListenerRegistration = firestore.collection("users").document(userId).collection("meals")
             .whereGreaterThanOrEqualTo("timestamp", Timestamp(Date(startOfDay)))
             .whereLessThan("timestamp", Timestamp(Date(endOfDay)))
             .orderBy("timestamp", Query.Direction.ASCENDING)
@@ -195,7 +224,6 @@ class FoodLogViewModel : ViewModel() {
                     mealsForSelectedDate = emptyList()
                     return@addSnapshotListener
                 }
-
                 if (snapshot != null) {
                     val mealList = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Meal::class.java)?.copy(id = doc.id)
@@ -215,41 +243,32 @@ class FoodLogViewModel : ViewModel() {
         Log.d("FoodLogViewModel", "ViewModel cleared, firestore listener removed.")
     }
 
-    // Function to change the selected date from UI, updates Compose State directly
+    // --- Date Navigation ---
+
     fun selectDate(date: LocalDate) {
         if (selectedDate != date) {
-            val oldSelectedDate = selectedDate
             selectedDate = date
-            // Ensure currentWeekStartDate encompasses the newly selected date
             if (date.isBefore(currentWeekStartDate) || date.isAfter(currentWeekStartDate.plusDays(6))) {
-                val oldWeekStart = currentWeekStartDate
-                currentWeekStartDate = getSundayOfCurrentWeek(date) // ⭐ Use the new helper here
-                Log.d("FoodLogViewModel", "selectDate: Week changed from $oldWeekStart to $currentWeekStartDate for new selectedDate $selectedDate.")
+                currentWeekStartDate = getSundayOfCurrentWeek(date)
             }
-            Log.d("FoodLogViewModel", "selectDate: Selected date changed from $oldSelectedDate to $selectedDate. Re-listening for meals.")
+            Log.d("FoodLogViewModel", "selectDate: Selected date changed to $selectedDate. Re-listening for meals.")
             listenForMealsForDate(date)
-        } else {
-            Log.d("FoodLogViewModel", "selectDate: Date $date already selected. No change needed.")
         }
     }
 
-    // Navigate between weeks
     fun previousWeek() {
-        val oldWeekStart = currentWeekStartDate
         currentWeekStartDate = currentWeekStartDate.minusWeeks(1)
-        Log.d("FoodLogViewModel", "Navigating to previous week from $oldWeekStart to $currentWeekStartDate.")
-        selectDate(currentWeekStartDate) // This will call selectDate and trigger getSundayOfCurrentWeek if week changes
+        Log.d("FoodLogViewModel", "Navigating to previous week. New week starts: $currentWeekStartDate.")
+        selectDate(currentWeekStartDate)
     }
 
     fun nextWeek() {
-        val oldWeekStart = currentWeekStartDate
         currentWeekStartDate = currentWeekStartDate.plusWeeks(1)
-        Log.d("FoodLogViewModel", "Navigating to next week from $oldWeekStart to $currentWeekStartDate.")
-        selectDate(currentWeekStartDate) // This will call selectDate and trigger getSundayOfCurrentWeek if week changes
+        Log.d("FoodLogViewModel", "Navigating to next week. New week starts: $currentWeekStartDate.")
+        selectDate(currentWeekStartDate)
     }
 
     fun getMealById(mealId: String): Meal? {
-        // This is a simple in-memory lookup. For robust apps, you might fetch from firestore.
         return mealsForSelectedDate.firstOrNull { it.id == mealId }
     }
 }

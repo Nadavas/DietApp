@@ -69,6 +69,7 @@ dependencies {
 
     // For graphics
     implementation(libs.mpandroidchart)
+    implementation(libs.androidx.room.runtime.android)
 
     // Testing dependencies
     testImplementation(libs.junit)
