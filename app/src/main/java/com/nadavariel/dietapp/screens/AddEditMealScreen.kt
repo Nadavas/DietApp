@@ -1,4 +1,3 @@
-// screens/AddEditMealScreen.kt
 @file:Suppress("DEPRECATION")
 
 package com.nadavariel.dietapp.screens
@@ -14,7 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.* // Import all needed runtime components
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -29,8 +28,8 @@ import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import java.util.Date // Ensure java.util.Date is imported
-import android.R.style as AndroidRStyle // Alias to avoid conflict with your own R
+import java.util.Date
+import android.R.style as AndroidRStyle
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,31 +41,25 @@ fun AddEditMealScreen(
 ) {
     val context = LocalContext.current
 
-    // ⭐ FIX: Wrap Calendar in mutableStateOf to make it observable
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
-    var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) } // ⭐ Use this for observation
+    var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
-    // Use remember for SimpleDateFormat instances to prevent re-creation
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) } // Corrected pattern to ensure year is shown
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
-    // ⭐ LaunchedEffect to update fields when mealToEdit changes
     LaunchedEffect(mealToEdit) {
         if (mealToEdit != null) {
-            // Set values from the meal to edit
             foodName = mealToEdit.foodName
             caloriesText = mealToEdit.calories.toString()
-            // Create a new Calendar instance and set its time
             val newCalendar = Calendar.getInstance().apply { time = mealToEdit.timestamp.toDate() }
-            selectedDateTimeState = newCalendar // ⭐ Update the state variable
+            selectedDateTimeState = newCalendar
         } else {
-            // Reset fields for adding a new meal
             foodName = ""
             caloriesText = ""
-            // Create a new Calendar instance and set it to current time
-            val newCalendar = Calendar.getInstance().apply { time = Date() }
-            selectedDateTimeState = newCalendar // ⭐ Update the state variable
+            // Ensure new meals default to current date/time, and not in the future.
+            val now = Calendar.getInstance()
+            selectedDateTimeState = now
         }
     }
 
@@ -114,51 +107,86 @@ fun AddEditMealScreen(
             // Date Picker Button
             OutlinedButton(
                 onClick = {
-                    DatePickerDialog(
+                    val datePickerDialog = DatePickerDialog(
                         context,
                         { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-                            // ⭐ FIX: Create a copy and update the state variable
                             val newCalendar = selectedDateTimeState.clone() as Calendar
                             newCalendar.set(Calendar.YEAR, year)
                             newCalendar.set(Calendar.MONTH, month)
                             newCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                            selectedDateTimeState = newCalendar // ⭐ Update the state
+
+                            // ⭐ NEW LOGIC FOR DATE: If selected date is today, clamp time to now
+                            val now = Calendar.getInstance()
+                            if (newCalendar.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                                newCalendar.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
+                                newCalendar.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
+                            ) {
+                                // If the newly set date is today, ensure the time is not in the future
+                                if (newCalendar.after(now)) {
+                                    newCalendar.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY))
+                                    newCalendar.set(Calendar.MINUTE, now.get(Calendar.MINUTE))
+                                    newCalendar.set(Calendar.SECOND, now.get(Calendar.SECOND))
+                                    newCalendar.set(Calendar.MILLISECOND, now.get(Calendar.MILLISECOND))
+                                }
+                            }
+                            selectedDateTimeState = newCalendar
                         },
                         selectedDateTimeState.get(Calendar.YEAR),
                         selectedDateTimeState.get(Calendar.MONTH),
                         selectedDateTimeState.get(Calendar.DAY_OF_MONTH)
-                    ).show()
+                    )
+                    // ⭐ NEW: Set maximum date to today
+                    datePickerDialog.datePicker.maxDate = System.currentTimeMillis()
+                    datePickerDialog.show()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // ⭐ FIX: Use selectedDateTimeState.time
                 Text("Date: ${dateFormat.format(selectedDateTimeState.time)}")
             }
 
             // Time Picker Button
             OutlinedButton(
                 onClick = {
-                    val currentHour = selectedDateTimeState.get(Calendar.HOUR_OF_DAY)
-                    val currentMinute = selectedDateTimeState.get(Calendar.MINUTE)
+                    val now = Calendar.getInstance()
+                    val isSelectedDateToday = selectedDateTimeState.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                            selectedDateTimeState.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
+                            selectedDateTimeState.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
+
+                    // ⭐ NEW LOGIC FOR TIME: If the selected date is today, initial time is now
+                    val initialHour = if (isSelectedDateToday) now.get(Calendar.HOUR_OF_DAY) else selectedDateTimeState.get(Calendar.HOUR_OF_DAY)
+                    val initialMinute = if (isSelectedDateToday) now.get(Calendar.MINUTE) else selectedDateTimeState.get(Calendar.MINUTE)
 
                     TimePickerDialog(
                         context,
                         AndroidRStyle.Theme_Holo_Light_Dialog_NoActionBar,
                         { _: TimePicker, hourOfDay: Int, minute: Int ->
-                            // ⭐ FIX: Create a copy and update the state variable
                             val newCalendar = selectedDateTimeState.clone() as Calendar
                             newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
                             newCalendar.set(Calendar.MINUTE, minute)
-                            selectedDateTimeState = newCalendar // ⭐ Update the state
+                            newCalendar.set(Calendar.SECOND, 0) // Clear seconds/milliseconds for clean comparison
+                            newCalendar.set(Calendar.MILLISECOND, 0)
+
+                            // ⭐ NEW LOGIC FOR TIME: If selected date is today and chosen time is in future, clamp
+                            if (isSelectedDateToday) {
+                                val currentSystemTimeCalendar = Calendar.getInstance().apply {
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }
+                                if (newCalendar.after(currentSystemTimeCalendar)) {
+                                    // If the chosen time is in the future for today's date, clamp to current time
+                                    newCalendar.set(Calendar.HOUR_OF_DAY, currentSystemTimeCalendar.get(Calendar.HOUR_OF_DAY))
+                                    newCalendar.set(Calendar.MINUTE, currentSystemTimeCalendar.get(Calendar.MINUTE))
+                                }
+                            }
+                            selectedDateTimeState = newCalendar
                         },
-                        currentHour,
-                        currentMinute,
+                        initialHour,
+                        initialMinute,
                         true // Set to true for 24-hour format, false for AM/PM
                     ).show()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // ⭐ FIX: Use selectedDateTimeState.time
                 Text("Time: ${timeFormat.format(selectedDateTimeState.time)}")
             }
 
@@ -168,16 +196,27 @@ fun AddEditMealScreen(
                 onClick = {
                     val calValue = caloriesText.toIntOrNull() ?: 0
                     if (foodName.isNotBlank() && calValue > 0) {
+                        // Pass the Date object from selectedDateTimeState
+                        val mealTimestamp = selectedDateTimeState.time
+
+                        // ⭐ NEW VALIDATION: Perform a final check before saving
+                        val now = Date()
+                        if (mealTimestamp.after(now)) {
+                            // This case should ideally not be reached if UI pickers work correctly,
+                            // but it's a good final defense.
+                            // You might want to show a Toast/Snackbar here for the user.
+                            // Toast.makeText(context, "Meal time cannot be in the future.", Toast.LENGTH_SHORT).show()
+                            return@Button // Prevent saving if time is in the future
+                        }
+
                         if (mealToEdit == null) {
-                            // ⭐ FIX: Use selectedDateTimeState.time when logging
-                            foodLogViewModel.logMeal(foodName, calValue, selectedDateTimeState.time)
+                            foodLogViewModel.logMeal(foodName, calValue, mealTimestamp)
                         } else {
-                            // ⭐ FIX: Use selectedDateTimeState.time when updating
                             foodLogViewModel.updateMeal(
                                 mealToEdit.id,
                                 foodName,
                                 calValue,
-                                Timestamp(selectedDateTimeState.time)
+                                Timestamp(mealTimestamp)
                             )
                         }
                         navController.popBackStack()
