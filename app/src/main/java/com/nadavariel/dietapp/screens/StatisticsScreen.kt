@@ -21,16 +21,16 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.BarData
-import com.github.mikephil.charting.data.BarDataSet
-import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.nadavariel.dietapp.util.RoundedBarChartRenderer
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -40,10 +40,9 @@ fun StatisticsScreen(
     foodLogViewModel: FoodLogViewModel = viewModel()
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
+    val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
 
-    // Define modern colors from the Material theme
     val primaryColor = MaterialTheme.colorScheme.primary
-    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Scaffold(
@@ -67,17 +66,16 @@ fun StatisticsScreen(
         ) {
             Text(
                 text = "Your weekly calorie intake",
-                style = MaterialTheme.typography.headlineSmall, // Or another style like titleLarge
+                style = MaterialTheme.typography.headlineSmall,
                 fontSize = 16.sp,
-                modifier = Modifier.fillMaxWidth(), // Optional: if you want it to span width
-                textAlign = TextAlign.Center // Optional: to center the text
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
             )
 
-            // Place the chart inside a Card for a modern, elevated look
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp), // Reduced height from 450.dp to 300.dp
+                    .height(300.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
@@ -96,12 +94,44 @@ fun StatisticsScreen(
                         )
                     }
                 } else {
-                    // ⚠️ Pass a new parameter for bottom padding
                     BeautifulBarChart(
                         weeklyCalories = weeklyCalories,
-                        primaryColor = primaryColor.toArgb(),
-                        surfaceColor = surfaceColor.toArgb()
+                        primaryColor = primaryColor.toArgb()
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Calorie distribution by time of day",
+                style = MaterialTheme.typography.headlineSmall,
+                fontSize = 16.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                if (caloriesByTimeOfDay.isEmpty() || caloriesByTimeOfDay.values.all { it == 0f }) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Log meals throughout the day to see your habits here!",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                            color = onSurfaceColor
+                        )
+                    }
+                } else {
+                    BeautifulPieChart(caloriesByTimeOfDay)
                 }
             }
         }
@@ -112,8 +142,7 @@ fun StatisticsScreen(
 @Composable
 fun BeautifulBarChart(
     weeklyCalories: Map<LocalDate, Int>,
-    primaryColor: Int,
-    surfaceColor: Int
+    primaryColor: Int
 ) {
     val sortedDates = weeklyCalories.keys.sorted()
     val dayLabels = sortedDates.map { it.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
@@ -150,7 +179,7 @@ fun BeautifulBarChart(
                     granularity = 1f
                     textColor = Color.GRAY
                     textSize = 11f
-                    yOffset = 12f // ⬅️ Add padding between X-axis labels and bars
+                    yOffset = 12f
                     valueFormatter = object : ValueFormatter() {
                         override fun getFormattedValue(value: Float): String {
                             val index = value.toInt()
@@ -186,7 +215,7 @@ fun BeautifulBarChart(
                 )
 
                 colors = List(barEntries.size) { i ->
-                    if (i == todayIndex) Color.argb(255, 255, 127, 80) // Highlight today in coral
+                    if (i == todayIndex) Color.argb(255, 255, 127, 80)
                     else primaryColor
                 }
 
@@ -213,3 +242,55 @@ fun BeautifulBarChart(
         }
     )
 }
+
+@Composable
+fun BeautifulPieChart(data: Map<String, Float>) {
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { context ->
+            PieChart(context).apply {
+                setUsePercentValues(true)
+                setDrawEntryLabels(true)
+                description.isEnabled = false
+                isRotationEnabled = true
+                setDrawCenterText(true)
+                centerText = "Meals by Time"
+                setEntryLabelColor(Color.DKGRAY)
+                setEntryLabelTextSize(12f)
+                setHoleColor(Color.TRANSPARENT)
+                legend.isEnabled = true
+            }
+        },
+        update = { chart ->
+            val entries = data.entries
+                .filter { it.value > 0 }
+                .map { PieEntry(it.value, it.key) }
+
+            val colors = listOf(
+                "#FFA726".toColorInt(), // Morning
+                "#66BB6A".toColorInt(), // Afternoon
+                "#42A5F5".toColorInt(), // Evening
+                "#AB47BC".toColorInt()  // Night (if you ever add it)
+            )
+
+            val dataSet = PieDataSet(entries, "Time of Day").apply {
+                this.colors = colors
+                valueTextSize = 14f
+                valueTextColor = Color.DKGRAY
+            }
+
+            val pieData = PieData(dataSet).apply {
+                setValueFormatter(object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return "${value.toInt()}%"
+                    }
+                })
+            }
+
+            chart.data = pieData
+            chart.invalidate()
+            chart.animateY(800, com.github.mikephil.charting.animation.Easing.EaseOutBack)
+        }
+    )
+}
+

@@ -45,6 +45,11 @@ class FoodLogViewModel : ViewModel() {
     private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyCalories = _weeklyCalories.asStateFlow()
 
+    private val _caloriesByTimeOfDay = MutableStateFlow(
+        mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
+    )
+    val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
+
     // Helper function to get the start date of a 7-day period ending on 'date'
     private fun calculateWeekStartEndingOnDate(date: LocalDate): LocalDate {
         return date.minusDays(6)
@@ -93,6 +98,7 @@ class FoodLogViewModel : ViewModel() {
                 val meals = querySnapshot.toObjects(Meal::class.java)
                 Log.d("FoodLogViewModel", "Fetched ${meals.size} meals for the last 7 days.")
                 processWeeklyCalories(meals)
+                processCaloriesByTimeOfDay(meals)
 
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
@@ -115,6 +121,28 @@ class FoodLogViewModel : ViewModel() {
 
         Log.d("FoodLogViewModel", "Processed weekly calories: $caloriesByDay")
         _weeklyCalories.value = caloriesByDay
+    }
+
+    private fun processCaloriesByTimeOfDay(meals: List<Meal>) {
+        val timeBuckets = mutableMapOf(
+            "Morning" to 0f,    // 5–10
+            "Afternoon" to 0f,  // 11–15
+            "Evening" to 0f,    // 16–20
+            "Night" to 0f       // 21–4
+        )
+
+        for (meal in meals) {
+            val hour = meal.timestamp.toDate().hours // Deprecated but fine for local logic
+            when (hour) {
+                in 5..10 -> timeBuckets["Morning"] = timeBuckets["Morning"]!! + meal.calories
+                in 10..15 -> timeBuckets["Afternoon"] = timeBuckets["Afternoon"]!! + meal.calories
+                in 15..20 -> timeBuckets["Evening"] = timeBuckets["Evening"]!! + meal.calories
+                else -> timeBuckets["Night"] = timeBuckets["Night"]!! + meal.calories
+            }
+        }
+
+        _caloriesByTimeOfDay.value = timeBuckets
+        Log.d("FoodLogViewModel", "Processed time-of-day calories: $timeBuckets")
     }
 
     fun logMeal(foodName: String, calories: Int, mealTime: Date = Date()) {

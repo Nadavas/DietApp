@@ -7,6 +7,7 @@ import com.github.mikephil.charting.interfaces.dataprovider.BarDataProvider
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet
 import com.github.mikephil.charting.renderer.BarChartRenderer
 import com.github.mikephil.charting.utils.ViewPortHandler
+import kotlin.math.ceil
 
 class RoundedBarChartRenderer(
     chart: BarDataProvider,
@@ -36,10 +37,8 @@ class RoundedBarChartRenderer(
             val barWidth = barData.barWidth
             val barWidthHalf = barWidth / 2.0f
             var i = 0
-            val count = Math.min(
-                Math.ceil((dataSet.entryCount.toFloat() * phaseX).toDouble()).toInt(),
-                dataSet.entryCount
-            )
+            val count = ceil((dataSet.entryCount.toFloat() * phaseX).toDouble()).toInt()
+                .coerceAtMost(dataSet.entryCount)
             while (i < count) {
                 val e = dataSet.getEntryForIndex(i)
                 val x = e.x
