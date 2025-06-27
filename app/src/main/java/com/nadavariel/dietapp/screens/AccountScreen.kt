@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.ExitToApp // ⭐ NEW: Import for ExitToApp icon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -24,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton // ⭐ NEW: Import for TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,12 +44,13 @@ import com.nadavariel.dietapp.NavRoutes
 @Composable
 fun AccountScreen(
     navController: NavController,
-    authViewModel: AuthViewModel // ⭐ MODIFIED: Removed = viewModel()
+    authViewModel: AuthViewModel
 ) {
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSignOutDialog by remember { mutableStateOf(false) } // ⭐ NEW: State for sign out dialog
 
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
@@ -55,12 +59,17 @@ fun AccountScreen(
         when (authResult) {
             AuthResult.Success -> {
                 errorMessage = null
-                authViewModel.signOut()
-                navController.navigate(NavRoutes.LANDING) {
-                    popUpTo(NavRoutes.HOME) { inclusive = true }
-                    launchSingleTop = true
+                // ⭐ MODIFIED: Sign out logic for delete account.
+                // The main sign out logic below will handle navigation after direct sign out.
+                // For delete, we want to ensure everything is cleared before navigating.
+                if (showDeleteConfirmationDialog) { // If success was due to delete, navigate to LANDING
+                    authViewModel.signOut() // This will clear preferences and set currentUser to null
+                    navController.navigate(NavRoutes.LANDING) {
+                        popUpTo(NavRoutes.HOME) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
-                authViewModel.resetAuthResult()
+                authViewModel.resetAuthResult() // Always reset after handling
             }
             is AuthResult.Error -> {
                 val error = (authResult as AuthResult.Error).message
@@ -137,6 +146,23 @@ fun AccountScreen(
             HorizontalDivider()
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // ⭐ NEW: Sign Out Button
+            Button(
+                onClick = { showSignOutDialog = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = "Sign Out",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Sign Out")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp)) // Spacer between buttons
 
             Button(
                 onClick = { showDeleteConfirmationDialog = true },
@@ -238,6 +264,44 @@ fun AccountScreen(
                     authViewModel.resetAuthResult()
                 }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ⭐ NEW: Sign-out confirmation dialog
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSignOutDialog = false
+            },
+            title = {
+                Text(text = "Confirm Sign Out")
+            },
+            text = {
+                Text(text = "Are you sure you want to sign out?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                        authViewModel.signOut()
+                        navController.navigate(NavRoutes.LANDING) {
+                            popUpTo(NavRoutes.HOME) { inclusive = true } // Pop up to home and clear backstack
+                            launchSingleTop = true
+                        }
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                    }
+                ) {
+                    Text("No")
                 }
             }
         )

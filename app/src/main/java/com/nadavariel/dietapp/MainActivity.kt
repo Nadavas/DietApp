@@ -212,12 +212,13 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel,
                                 foodLogViewModel = foodLogViewModel,
                                 navController = navController,
-                                onSignOut = {
-                                    navController.navigate(NavRoutes.LANDING) {
-                                        popUpTo(NavRoutes.HOME) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
-                                }
+                                // ⭐ REMOVED: onSignOut parameter is no longer needed in HomeScreen
+                                // onSignOut = {
+                                //     navController.navigate(NavRoutes.LANDING) {
+                                //         popUpTo(NavRoutes.HOME) { inclusive = true }
+                                //         launchSingleTop = true
+                                //     }
+                                // }
                             )
                         }
                         composable(NavRoutes.STATISTICS) {
@@ -230,7 +231,7 @@ class MainActivity : ComponentActivity() {
                         composable(NavRoutes.ACCOUNT) {
                             AccountScreen(
                                 navController = navController,
-                                authViewModel = authViewModel // <-- **THIS WAS ADDED**
+                                authViewModel = authViewModel
                             )
                         }
 

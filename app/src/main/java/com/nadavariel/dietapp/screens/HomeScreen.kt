@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -44,7 +43,8 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     foodLogViewModel: FoodLogViewModel,
     navController: NavController,
-    onSignOut: () -> Unit
+    // ⭐ REMOVED: onSignOut parameter is no longer needed here
+    // onSignOut: () -> Unit
 ) {
     val userProfile = authViewModel.userProfile
     val userName = userProfile.name
@@ -58,7 +58,8 @@ fun HomeScreen(
         mealsForSelectedDate.sumOf { it.calories }
     }
 
-    var showSignOutDialog by remember { mutableStateOf(false) }
+    // ⭐ REMOVED: showSignOutDialog state is no longer needed here
+    // var showSignOutDialog by remember { mutableStateOf(false) }
     var showMealsList by remember { mutableStateOf(false) }
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
@@ -100,6 +101,8 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
+                // ⭐ REMOVED: Sign Out Button Row
+                /*
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -119,8 +122,9 @@ fun HomeScreen(
                         )
                     }
                 }
+                */
 
-                Spacer(modifier = Modifier.height(0.dp))
+                Spacer(modifier = Modifier.height(0.dp)) // Kept Spacer for top padding consistency
 
                 Text(
                     text = "Welcome, ${userName.ifBlank { "Guest" }}!",
@@ -308,11 +312,12 @@ fun HomeScreen(
                         }
                     }
                 }
-            } // ⭐ THIS IS THE FIX: The closing brace for the Column was misplaced after this.
-        } // Closing brace for the Box
-    } // Closing brace for the Scaffold's content lambda
+            }
+        }
+    }
 
-    // Sign-out confirmation dialog
+    // ⭐ REMOVED: Sign-out confirmation dialog is moved to AccountScreen
+    /*
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -346,8 +351,9 @@ fun HomeScreen(
             }
         )
     }
+    */
 
-    // Delete Confirmation Dialog
+    // Delete Confirmation Dialog (remains in HomeScreen)
     if (showDeleteConfirmationDialog && mealToDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmationDialog = false },
