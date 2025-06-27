@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.isSystemInDarkTheme // ⭐ NEW: Import isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -43,6 +44,8 @@ import com.nadavariel.dietapp.screens.StatisticsScreen
 import com.nadavariel.dietapp.screens.AccountScreen
 import com.nadavariel.dietapp.screens.SettingsScreen
 import com.nadavariel.dietapp.screens.ChangePasswordScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle // ⭐ NEW: Import collectAsStateWithLifecycle
+
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -50,31 +53,39 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            DietAppTheme {
-                val navController = rememberNavController()
+            val navController = rememberNavController()
 
-                val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
+            val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
 
-                val appViewModelFactory = remember {
-                    object : ViewModelProvider.Factory {
-                        @RequiresApi(Build.VERSION_CODES.O)
-                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
-                                @Suppress("UNCHECKED_CAST")
-                                return AuthViewModel(preferencesRepository) as T
-                            }
-                            if (modelClass.isAssignableFrom(FoodLogViewModel::class.java)) {
-                                @Suppress("UNCHECKED_CAST")
-                                return FoodLogViewModel() as T
-                            }
-                            throw IllegalArgumentException("Unknown ViewModel class")
+            val appViewModelFactory = remember {
+                object : ViewModelProvider.Factory {
+                    @RequiresApi(Build.VERSION_CODES.O)
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
+                            @Suppress("UNCHECKED_CAST")
+                            return AuthViewModel(preferencesRepository) as T
                         }
+                        if (modelClass.isAssignableFrom(FoodLogViewModel::class.java)) {
+                            @Suppress("UNCHECKED_CAST")
+                            return FoodLogViewModel() as T
+                        }
+                        throw IllegalArgumentException("Unknown ViewModel class")
                     }
                 }
+            }
 
-                val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
-                val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
+            val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
+            val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
 
+            // ⭐ NEW: Observe the dark mode preference from AuthViewModel
+            val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
+
+            // ⭐ MODIFIED: Pass the observed dark mode preference to DietAppTheme.
+            // If `isDarkModeEnabled` is true, the app will be in dark mode.
+            // If `isDarkModeEnabled` is false, it will defer to `isSystemInDarkTheme()`.
+            val useDarkTheme = isDarkModeEnabled || isSystemInDarkTheme()
+
+            DietAppTheme(darkTheme = useDarkTheme) { // ⭐ MODIFIED: Apply the determined theme
                 val startDestination = if (authViewModel.isUserSignedIn()) {
                     NavRoutes.HOME
                 } else {
@@ -93,7 +104,7 @@ class MainActivity : ComponentActivity() {
                         if (selectedRoute == NavRoutes.HOME ||
                             selectedRoute == NavRoutes.ADD_EDIT_MEAL || // Matches base route for Add/Edit Meal
                             selectedRoute == NavRoutes.STATISTICS ||
-                            selectedRoute == NavRoutes.ACCOUNT // ⭐ MODIFIED: Include ACCOUNT route for visibility
+                            selectedRoute == NavRoutes.ACCOUNT
                         ) {
                             NavigationBar {
                                 NavigationBarItem(
@@ -131,16 +142,15 @@ class MainActivity : ComponentActivity() {
                                     label = { Text("Stats") }
                                 )
 
-                                // ⭐ MODIFIED: Account NavigationBarItem
                                 NavigationBarItem(
-                                    selected = selectedRoute == NavRoutes.ACCOUNT, // Select when on Account screen
-                                    onClick = { navController.navigate(NavRoutes.ACCOUNT) { // Navigate to Account screen
-                                        popUpTo(NavRoutes.HOME) { saveState = true } // Pop up to HOME (or another suitable root)
+                                    selected = selectedRoute == NavRoutes.ACCOUNT,
+                                    onClick = { navController.navigate(NavRoutes.ACCOUNT) {
+                                        popUpTo(NavRoutes.HOME) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }},
                                     icon = { Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account") },
-                                    label = { Text("Account") } // ⭐ MODIFIED: Label is "Account"
+                                    label = { Text("Account") }
                                 )
                             }
                         }
@@ -184,7 +194,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        // ⭐ As per your instruction, this SIGN_UP composable remains UNCHANGED
                         composable(NavRoutes.SIGN_UP) {
                             SignUpScreen(
                                 authViewModel = authViewModel,
@@ -193,7 +202,6 @@ class MainActivity : ComponentActivity() {
                                     navController.popBackStack()
                                 },
                                 onSignUpSuccess = {
-                                    // ⭐ MODIFIED: Navigate to UPDATE_PROFILE with isNewUser="true" (as a string)
                                     navController.navigate("${NavRoutes.UPDATE_PROFILE_BASE}?${NavRoutes.IS_NEW_USER_ARG}=true") {
                                         popUpTo(NavRoutes.LANDING) { inclusive = true }
                                         launchSingleTop = true
@@ -219,7 +227,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ⭐ THE ONLY CHANGE HERE: Pass the existing authViewModel instance
                         composable(NavRoutes.ACCOUNT) {
                             AccountScreen(
                                 navController = navController,
@@ -227,7 +234,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // MyProfileScreen is now navigated to from AccountScreen
                         composable(NavRoutes.MY_PROFILE) {
                             MyProfileScreen(
                                 authViewModel = authViewModel,
@@ -235,15 +241,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ⭐ NEW: Composable for the Settings Screen
                         composable(NavRoutes.SETTINGS) {
                             SettingsScreen(
                                 navController = navController,
-                                authViewModel = authViewModel // ⭐ Pass authViewModel to SettingsScreen
+                                authViewModel = authViewModel
                             )
                         }
 
-                        // ⭐ NEW: Composable for Change Password Screen
                         composable(NavRoutes.CHANGE_PASSWORD) {
                             ChangePasswordScreen(
                                 navController = navController,

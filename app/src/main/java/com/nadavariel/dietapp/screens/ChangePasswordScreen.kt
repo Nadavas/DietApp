@@ -15,7 +15,6 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthResult
 import com.nadavariel.dietapp.AuthViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

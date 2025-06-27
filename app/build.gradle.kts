@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences) // DataStore
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.material3) // Material 3
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.ui)

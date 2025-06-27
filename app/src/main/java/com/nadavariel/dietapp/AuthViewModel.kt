@@ -13,7 +13,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.auth.EmailAuthProvider // ⭐ NEW: Import for EmailAuthProvider
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect // ⭐ Added for collecting flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
@@ -57,9 +58,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     var currentUser: FirebaseUser? by mutableStateOf(null)
         private set
 
-    // ⭐ NEW: Property to check if the user signed in with email/password
     val isEmailPasswordUser: Boolean
         get() = currentUser?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } ?: false
+
+    // ⭐ NEW: MutableStateFlow for dark mode preference
+    private val _isDarkModeEnabled = MutableStateFlow(false)
+    val isDarkModeEnabled: StateFlow<Boolean> = _isDarkModeEnabled.asStateFlow()
 
     init {
         auth.addAuthStateListener { firebaseAuth ->
@@ -77,6 +81,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
+
+            // ⭐ NEW: Collect dark mode preference from repository
+            preferencesRepository.darkModeEnabledFlow.collect { isEnabled ->
+                _isDarkModeEnabled.value = isEnabled
+            }
         }
     }
 
@@ -293,7 +302,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    // ⭐ NEW: Function to change user password
     fun changePassword(newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
         if (user != null) {
@@ -312,7 +320,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         val errorMessage = task.exception?.message ?: "Failed to change password."
                         Log.e("AuthViewModel", "Failed to change password: $errorMessage", task.exception)
                         _authResult.value = AuthResult.Error(errorMessage)
-                        // Handle re-authentication if required for password change
                         if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
                             onError("re-authenticate-required")
                         } else {
@@ -368,6 +375,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             Log.w("AuthViewModel", noUserError)
             _authResult.value = AuthResult.Error(noUserError)
             onError(noUserError)
+        }
+    }
+
+    // ⭐ NEW: Function to toggle dark mode preference
+    fun toggleDarkMode(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.saveDarkModePreference(enabled)
         }
     }
 }
