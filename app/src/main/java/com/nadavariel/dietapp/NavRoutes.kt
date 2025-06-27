@@ -5,15 +5,18 @@ object NavRoutes {
     const val SIGN_IN = "sign_in"
     const val SIGN_UP = "sign_up"
     const val HOME = "home"
-    const val MY_PROFILE = "my_profile"
 
-    // ⭐ MODIFIED: UpdateProfile route now includes an optional argument
-    // This allows passing 'isNewUser=true' or 'isNewUser=false'
-    const val UPDATE_PROFILE_BASE = "update_profile" // Base route without arguments
-    const val IS_NEW_USER_ARG = "isNewUser" // New argument key
+    // ⭐ NEW: Route for the Account screen (which will be in the bottom nav)
+    const val ACCOUNT = "account"
+    // MY_PROFILE remains for navigation from Account screen
+    const val MY_PROFILE = "my_profile"
+    // ⭐ NEW: Route for the Settings screen
+    const val SETTINGS = "settings"
+
+    const val UPDATE_PROFILE_BASE = "update_profile"
+    const val IS_NEW_USER_ARG = "isNewUser"
     const val UPDATE_PROFILE = "$UPDATE_PROFILE_BASE?${IS_NEW_USER_ARG}={${IS_NEW_USER_ARG}}"
     const val STATISTICS = "statistics"
-
 
     const val ADD_EDIT_MEAL = "add_edit_meal"
     const val MEAL_ID_ARG = "mealId"

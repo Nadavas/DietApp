@@ -40,6 +40,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.StatisticsScreen
+// ⭐ NEW: Import for AccountScreen and SettingsScreen
+import com.nadavariel.dietapp.screens.AccountScreen
+import com.nadavariel.dietapp.screens.SettingsScreen
+
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -79,16 +83,18 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val currentRouteEntry by navController.currentBackStackEntryAsState()
+                // Split by "/" to handle routes with arguments like ADD_EDIT_MEAL/{mealId}
                 val selectedRoute = currentRouteEntry?.destination?.route?.split("/")?.firstOrNull()
 
 
                 Scaffold(
                     modifier = Modifier,
                     bottomBar = {
+                        // Show bottom bar only on main navigation routes
                         if (selectedRoute == NavRoutes.HOME ||
-                            selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
-                            selectedRoute == NavRoutes.MY_PROFILE ||
-                            selectedRoute == NavRoutes.STATISTICS
+                            selectedRoute == NavRoutes.ADD_EDIT_MEAL || // Matches base route for Add/Edit Meal
+                            selectedRoute == NavRoutes.STATISTICS ||
+                            selectedRoute == NavRoutes.ACCOUNT // ⭐ MODIFIED: Include ACCOUNT route for visibility
                         ) {
                             NavigationBar {
                                 NavigationBarItem(
@@ -126,15 +132,16 @@ class MainActivity : ComponentActivity() {
                                     label = { Text("Stats") }
                                 )
 
+                                // ⭐ MODIFIED: Account NavigationBarItem
                                 NavigationBarItem(
-                                    selected = selectedRoute == NavRoutes.MY_PROFILE,
-                                    onClick = { navController.navigate(NavRoutes.MY_PROFILE) {
-                                        popUpTo(NavRoutes.HOME) { saveState = true }
+                                    selected = selectedRoute == NavRoutes.ACCOUNT, // Select when on Account screen
+                                    onClick = { navController.navigate(NavRoutes.ACCOUNT) { // Navigate to Account screen
+                                        popUpTo(NavRoutes.HOME) { saveState = true } // Pop up to HOME (or another suitable root)
                                         launchSingleTop = true
                                         restoreState = true
                                     }},
-                                    icon = { Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "My Profile") },
-                                    label = { Text("Profile") }
+                                    icon = { Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account") },
+                                    label = { Text("Account") } // ⭐ MODIFIED: Label is "Account"
                                 )
                             }
                         }
@@ -178,6 +185,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                        // ⭐ As per your instruction, this SIGN_UP composable remains UNCHANGED
                         composable(NavRoutes.SIGN_UP) {
                             SignUpScreen(
                                 authViewModel = authViewModel,
@@ -217,6 +225,13 @@ class MainActivity : ComponentActivity() {
                                 navController = navController
                             )
                         }
+
+                        // ⭐ NEW: Composable for the Account Screen (accessed from bottom nav)
+                        composable(NavRoutes.ACCOUNT) {
+                            AccountScreen(navController = navController)
+                        }
+
+                        // MyProfileScreen is now navigated to from AccountScreen
                         composable(NavRoutes.MY_PROFILE) {
                             MyProfileScreen(
                                 authViewModel = authViewModel,
@@ -224,18 +239,21 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ⭐ MODIFIED: Define the composable for UPDATE_PROFILE to accept string argument
+                        // ⭐ NEW: Composable for the Settings Screen
+                        composable(NavRoutes.SETTINGS) {
+                            SettingsScreen(navController = navController)
+                        }
+
                         composable(
                             route = NavRoutes.UPDATE_PROFILE,
                             arguments = listOf(navArgument(NavRoutes.IS_NEW_USER_ARG) {
-                                type = NavType.StringType // ⭐ Changed to StringType
-                                defaultValue = "false" // ⭐ Default to "false" as a string
-                                nullable = true // It's still optional, so can be null before default kicks in
+                                type = NavType.StringType
+                                defaultValue = "false"
+                                nullable = true
                             })
                         ) { backStackEntry ->
-                            // ⭐ MODIFIED: Retrieve as String and convert to Boolean
                             val isNewUserString = backStackEntry.arguments?.getString(NavRoutes.IS_NEW_USER_ARG)
-                            val isNewUser = isNewUserString?.toBooleanStrictOrNull() ?: false // Convert string to boolean, default to false
+                            val isNewUser = isNewUserString?.toBooleanStrictOrNull() ?: false
 
                             UpdateProfileScreen(
                                 authViewModel = authViewModel,

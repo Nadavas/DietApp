@@ -117,7 +117,12 @@ fun MyProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Profile") },
+                title = {
+                    Text(
+                        text = "My Profile",
+                        fontSize = 24.sp // Adjust this value as desired, e.g., 20.sp, 22.sp
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -136,7 +141,7 @@ fun MyProfileScreen(
         ) {
             Text(
                 text = "Profile Details",
-                fontSize = 28.sp,
+                fontSize = 20.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
