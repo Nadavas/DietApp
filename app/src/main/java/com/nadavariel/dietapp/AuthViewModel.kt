@@ -13,6 +13,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.EmailAuthProvider // ⭐ NEW: Import for EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -28,7 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.util.Date // ⭐ NEW: Import Date for dateOfBirth
+import java.util.Date
 
 sealed class AuthResult {
     data object Success : AuthResult()
@@ -56,10 +57,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     var currentUser: FirebaseUser? by mutableStateOf(null)
         private set
 
+    // ⭐ NEW: Property to check if the user signed in with email/password
+    val isEmailPasswordUser: Boolean
+        get() = currentUser?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } ?: false
+
     init {
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
-            Log.d("AuthViewModel", "Auth state changed. Current user: ${currentUser?.uid}")
+            Log.d("AuthViewModel", "Auth state changed. Current user: ${currentUser?.uid}, isEmailPasswordUser: $isEmailPasswordUser")
             viewModelScope.launch {
                 if (currentUser != null) {
                     loadUserProfile()
@@ -83,11 +88,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 if (userDoc.exists()) {
                     val name = userDoc.getString("name") ?: ""
                     val weight = (userDoc.get("weight") as? Number)?.toFloat() ?: 0f
-                    // ⭐ MODIFIED: Read 'dateOfBirth' as a Date
-                    val dateOfBirth = userDoc.getDate("dateOfBirth") // Use getDate() for Date type
+                    val dateOfBirth = userDoc.getDate("dateOfBirth")
                     val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
 
-                    // ⭐ MODIFIED: Pass dateOfBirth to UserProfile
                     userProfile = UserProfile(name, weight, dateOfBirth, targetWeight)
                     Log.d("AuthViewModel", "Loaded profile from firestore: $userProfile for UID: $userId")
                 } else {
@@ -110,10 +113,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val userProfileMap = hashMapOf(
                 "name" to profile.name,
                 "weight" to profile.weight,
-                // ⭐ MODIFIED: Save 'dateOfBirth' instead of 'age'
                 "dateOfBirth" to profile.dateOfBirth,
                 "targetWeight" to profile.targetWeight
-                // Note: createdAt/updatedAt handled by @ServerTimestamp if you added them
             )
             try {
                 firestore.collection("users").document(userId).set(userProfileMap).await()
@@ -150,7 +151,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        // ⭐ MODIFIED: Pass default dateOfBirth as null for new user
                         val newProfile = UserProfile(name = emailState.value.substringBefore("@"), dateOfBirth = null)
                         saveUserProfile(newProfile)
                         userProfile = newProfile
@@ -235,7 +235,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                // ⭐ MODIFIED: Pass default dateOfBirth as null for new user
                                 val newProfile = UserProfile(name = task.result.user?.displayName ?: "", dateOfBirth = null)
                                 saveUserProfile(newProfile)
                             }
@@ -265,7 +264,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                // ⭐ MODIFIED: Pass default dateOfBirth as null for new user
                                 val newProfile = UserProfile(name = account.displayName ?: "", dateOfBirth = null)
                                 saveUserProfile(newProfile)
                             }
@@ -278,7 +276,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // ⭐ MODIFIED: updateProfile now accepts 'dateOfBirth: Date?' instead of 'age: String'
     fun updateProfile(name: String, weight: String, dateOfBirth: Date?, targetWeight: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             val parsedWeight = weight.toFloatOrNull() ?: 0f
@@ -287,12 +284,47 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val updatedProfile = userProfile.copy(
                 name = name,
                 weight = parsedWeight,
-                dateOfBirth = dateOfBirth, // ⭐ Directly use the Date object
+                dateOfBirth = dateOfBirth,
                 targetWeight = parsedTargetWeight
             )
             saveUserProfile(updatedProfile)
             userProfile = updatedProfile
             onSuccess()
+        }
+    }
+
+    // ⭐ NEW: Function to change user password
+    fun changePassword(newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = auth.currentUser
+        if (user != null) {
+            if (newPassword.isBlank() || newPassword.length < 6) {
+                onError("Password must be at least 6 characters long.")
+                return
+            }
+            _authResult.value = AuthResult.Loading
+            user.updatePassword(newPassword)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d("AuthViewModel", "User password updated successfully for UID: ${user.uid}")
+                        _authResult.value = AuthResult.Success
+                        onSuccess()
+                    } else {
+                        val errorMessage = task.exception?.message ?: "Failed to change password."
+                        Log.e("AuthViewModel", "Failed to change password: $errorMessage", task.exception)
+                        _authResult.value = AuthResult.Error(errorMessage)
+                        // Handle re-authentication if required for password change
+                        if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                            onError("re-authenticate-required")
+                        } else {
+                            onError(errorMessage)
+                        }
+                    }
+                }
+        } else {
+            val noUserError = "No user is currently signed in to change password."
+            Log.w("AuthViewModel", noUserError)
+            _authResult.value = AuthResult.Error(noUserError)
+            onError(noUserError)
         }
     }
 

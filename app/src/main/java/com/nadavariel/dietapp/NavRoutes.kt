@@ -12,6 +12,8 @@ object NavRoutes {
     const val MY_PROFILE = "my_profile"
     // ⭐ NEW: Route for the Settings screen
     const val SETTINGS = "settings"
+    // ⭐ NEW: Route for Change Password screen
+    const val CHANGE_PASSWORD = "change_password"
 
     const val UPDATE_PROFILE_BASE = "update_profile"
     const val IS_NEW_USER_ARG = "isNewUser"

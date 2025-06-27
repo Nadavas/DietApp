@@ -40,10 +40,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.StatisticsScreen
-// ⭐ NEW: Import for AccountScreen and SettingsScreen
 import com.nadavariel.dietapp.screens.AccountScreen
 import com.nadavariel.dietapp.screens.SettingsScreen
-
+import com.nadavariel.dietapp.screens.ChangePasswordScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -212,13 +211,6 @@ class MainActivity : ComponentActivity() {
                                 authViewModel = authViewModel,
                                 foodLogViewModel = foodLogViewModel,
                                 navController = navController,
-                                // ⭐ REMOVED: onSignOut parameter is no longer needed in HomeScreen
-                                // onSignOut = {
-                                //     navController.navigate(NavRoutes.LANDING) {
-                                //         popUpTo(NavRoutes.HOME) { inclusive = true }
-                                //         launchSingleTop = true
-                                //     }
-                                // }
                             )
                         }
                         composable(NavRoutes.STATISTICS) {
@@ -245,7 +237,18 @@ class MainActivity : ComponentActivity() {
 
                         // ⭐ NEW: Composable for the Settings Screen
                         composable(NavRoutes.SETTINGS) {
-                            SettingsScreen(navController = navController)
+                            SettingsScreen(
+                                navController = navController,
+                                authViewModel = authViewModel // ⭐ Pass authViewModel to SettingsScreen
+                            )
+                        }
+
+                        // ⭐ NEW: Composable for Change Password Screen
+                        composable(NavRoutes.CHANGE_PASSWORD) {
+                            ChangePasswordScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
                         }
 
                         composable(
