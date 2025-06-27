@@ -44,7 +44,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.mpandroidchart.vv310)
     // Core Android KTX and Compose dependencies
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom)) // BOM should generally be near the top or specifically grouped
@@ -52,7 +51,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences) // DataStore
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.material3) // Material 3
-    //implementation(libs.androidx.material) // Material 2 (consider if you truly need both)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.ui)

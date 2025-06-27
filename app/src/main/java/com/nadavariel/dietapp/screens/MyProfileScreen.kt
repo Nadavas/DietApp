@@ -1,7 +1,5 @@
 package com.nadavariel.dietapp.screens
 
-import android.app.DatePickerDialog
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -31,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,7 +36,6 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -49,8 +45,6 @@ fun MyProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
-    val context = LocalContext.current // Get context for DatePickerDialog
-
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
 
@@ -162,30 +156,4 @@ fun ProfileDetailRow(label: String, value: String) {
             modifier = Modifier.weight(0.6f)
         )
     }
-}
-
-// ⭐ NEW: Helper function to show Android's DatePickerDialog
-fun showDatePicker(
-    context: Context,
-    initialDate: Date,
-    onDateSelected: (Date) -> Unit
-) {
-    val calendar = Calendar.getInstance().apply { time = initialDate }
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
-    val day = calendar.get(Calendar.DAY_OF_MONTH)
-
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, selectedYear, selectedMonth, selectedDayOfMonth ->
-            val newCalendar = Calendar.getInstance().apply {
-                set(selectedYear, selectedMonth, selectedDayOfMonth)
-            }
-            onDateSelected(newCalendar.time)
-        },
-        year,
-        month,
-        day
-    )
-    datePickerDialog.show()
 }

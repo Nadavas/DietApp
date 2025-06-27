@@ -5,8 +5,6 @@ import android.os.Build
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,8 +34,9 @@ import androidx.core.graphics.toColorInt
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun StatisticsScreen(
-    navController: NavController,
-    foodLogViewModel: FoodLogViewModel = viewModel()
+    foodLogViewModel: FoodLogViewModel = viewModel(),
+    @Suppress("UNUSED_PARAMETER")
+    navController: NavController
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
