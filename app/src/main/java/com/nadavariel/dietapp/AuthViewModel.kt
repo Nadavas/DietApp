@@ -14,7 +14,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser // Add this import
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.Date // ⭐ NEW: Import Date for dateOfBirth
 
 sealed class AuthResult {
     data object Success : AuthResult()
@@ -44,31 +45,26 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     val passwordState = mutableStateOf("")
     val confirmPasswordState = mutableStateOf("")
 
-    // AuthResult will remain a StateFlow as it's typically observed once per event
     private val _authResult = MutableStateFlow<AuthResult>(AuthResult.Idle)
     val authResult: StateFlow<AuthResult> = _authResult.asStateFlow()
 
     val rememberMeState = mutableStateOf(false)
 
-    // ⭐ CHANGE: UserProfile is now Compose mutableStateOf directly
     var userProfile: UserProfile by mutableStateOf(UserProfile())
         private set
 
-    // ⭐ CHANGE: currentUser is now Compose mutableStateOf directly
     var currentUser: FirebaseUser? by mutableStateOf(null)
         private set
 
     init {
-        // Observe Firebase Auth state changes and update the Compose State directly
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
             Log.d("AuthViewModel", "Auth state changed. Current user: ${currentUser?.uid}")
-            // Trigger loading user profile whenever auth state changes (e.g., after login/logout)
             viewModelScope.launch {
                 if (currentUser != null) {
                     loadUserProfile()
                 } else {
-                    userProfile = UserProfile() // Clear profile if no user
+                    userProfile = UserProfile()
                 }
             }
         }
@@ -76,9 +72,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
-
-            // Initial load of profile should now be handled by the authStateListener
-            // if (isUserSignedIn()) { loadUserProfile() } // Removed: Listener handles this
         }
     }
 
@@ -90,21 +83,23 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 if (userDoc.exists()) {
                     val name = userDoc.getString("name") ?: ""
                     val weight = (userDoc.get("weight") as? Number)?.toFloat() ?: 0f
-                    val age = (userDoc.get("age") as? Number)?.toInt() ?: 0
+                    // ⭐ MODIFIED: Read 'dateOfBirth' as a Date
+                    val dateOfBirth = userDoc.getDate("dateOfBirth") // Use getDate() for Date type
                     val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
 
-                    userProfile = UserProfile(name, weight, age, targetWeight) // Update Compose State directly
+                    // ⭐ MODIFIED: Pass dateOfBirth to UserProfile
+                    userProfile = UserProfile(name, weight, dateOfBirth, targetWeight)
                     Log.d("AuthViewModel", "Loaded profile from firestore: $userProfile for UID: $userId")
                 } else {
-                    userProfile = UserProfile() // Set to default empty profile
+                    userProfile = UserProfile()
                     Log.d("AuthViewModel", "No profile found in firestore for UID: $userId. Setting empty.")
                 }
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error loading user profile from firestore: ${e.message}", e)
-                userProfile = UserProfile() // Set to default empty profile on error
+                userProfile = UserProfile()
             }
         } else {
-            userProfile = UserProfile() // No user signed in, clear profile states
+            userProfile = UserProfile()
             Log.d("AuthViewModel", "No user signed in. Clearing profile states.")
         }
     }
@@ -115,8 +110,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val userProfileMap = hashMapOf(
                 "name" to profile.name,
                 "weight" to profile.weight,
-                "age" to profile.age,
+                // ⭐ MODIFIED: Save 'dateOfBirth' instead of 'age'
+                "dateOfBirth" to profile.dateOfBirth,
                 "targetWeight" to profile.targetWeight
+                // Note: createdAt/updatedAt handled by @ServerTimestamp if you added them
             )
             try {
                 firestore.collection("users").document(userId).set(userProfileMap).await()
@@ -153,9 +150,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        val newProfile = UserProfile(name = emailState.value.substringBefore("@"))
+                        // ⭐ MODIFIED: Pass default dateOfBirth as null for new user
+                        val newProfile = UserProfile(name = emailState.value.substringBefore("@"), dateOfBirth = null)
                         saveUserProfile(newProfile)
-                        userProfile = newProfile // Update Compose State directly
+                        userProfile = newProfile
                     }
                     onSuccess()
                     clearInputFields()
@@ -165,7 +163,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // ⭐ MODIFIED: signIn now accepts email and password explicitly for re-authentication use case
     fun signIn(email: String, password: String, onSuccess: () -> Unit) {
         if (email.isBlank() || password.isBlank()) {
             _authResult.value = AuthResult.Error("Email and password cannot be empty.")
@@ -191,7 +188,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // Overload for signIn that uses existing email/passwordState (for standard login screen)
     fun signIn(onSuccess: () -> Unit) {
         signIn(emailState.value, passwordState.value, onSuccess)
     }
@@ -203,7 +199,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
-            // userProfile will be cleared by authStateListener setting currentUser to null
         }
         clearInputFields()
     }
@@ -240,11 +235,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                val newProfile = UserProfile(name = task.result.user?.displayName ?: "")
+                                // ⭐ MODIFIED: Pass default dateOfBirth as null for new user
+                                val newProfile = UserProfile(name = task.result.user?.displayName ?: "", dateOfBirth = null)
                                 saveUserProfile(newProfile)
                             }
                         }
-                        // loadUserProfile() is handled by authStateListener
                         onSuccess()
                     }
                 } else {
@@ -270,11 +265,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                val newProfile = UserProfile(name = account.displayName ?: "")
+                                // ⭐ MODIFIED: Pass default dateOfBirth as null for new user
+                                val newProfile = UserProfile(name = account.displayName ?: "", dateOfBirth = null)
                                 saveUserProfile(newProfile)
                             }
                         }
-                        // loadUserProfile() is handled by authStateListener
                         onSuccess()
                     }
                 } else {
@@ -283,59 +278,54 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun updateProfile(name: String, weight: String, age: String, targetWeight: String, onSuccess: () -> Unit) {
+    // ⭐ MODIFIED: updateProfile now accepts 'dateOfBirth: Date?' instead of 'age: String'
+    fun updateProfile(name: String, weight: String, dateOfBirth: Date?, targetWeight: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             val parsedWeight = weight.toFloatOrNull() ?: 0f
-            val parsedAge = age.toIntOrNull() ?: 0
             val parsedTargetWeight = targetWeight.toFloatOrNull() ?: 0f
 
-            val updatedProfile = userProfile.copy( // Access directly
+            val updatedProfile = userProfile.copy(
                 name = name,
                 weight = parsedWeight,
-                age = parsedAge,
+                dateOfBirth = dateOfBirth, // ⭐ Directly use the Date object
                 targetWeight = parsedTargetWeight
             )
             saveUserProfile(updatedProfile)
-            userProfile = updatedProfile // Update Compose State directly
+            userProfile = updatedProfile
             onSuccess()
         }
     }
 
-    // ⭐ NEW: Function to delete current user and their firestore data
     fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
         if (user != null) {
-            _authResult.value = AuthResult.Loading // Set loading state
+            _authResult.value = AuthResult.Loading
             user.delete()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         Log.d("AuthViewModel", "User account deleted from Firebase Auth for UID: ${user.uid}")
-                        // Now delete their firestore profile data
                         viewModelScope.launch {
                             try {
                                 firestore.collection("users").document(user.uid).delete().await()
                                 Log.d("AuthViewModel", "User data deleted from firestore for UID: ${user.uid}")
-                                // Reset auth result to success after both operations
                                 _authResult.value = AuthResult.Success
-                                // Clear local states, as user is now gone
                                 userProfile = UserProfile()
                                 preferencesRepository.clearUserPreferences()
                                 onSuccess()
                             } catch (e: Exception) {
                                 val firestoreError = "Account deleted, but failed to delete associated data: ${e.message}"
                                 Log.e("AuthViewModel", firestoreError, e)
-                                _authResult.value = AuthResult.Error(firestoreError) // Report firestore deletion error
-                                onError(firestoreError) // Callback with error
+                                _authResult.value = AuthResult.Error(firestoreError)
+                                onError(firestoreError)
                             }
                         }
                     } else {
                         val errorMessage = task.exception?.message ?: "Failed to delete account."
                         Log.e("AuthViewModel", "Failed to delete user account: $errorMessage", task.exception)
-                        _authResult.value = AuthResult.Error(errorMessage) // Report Auth deletion error
+                        _authResult.value = AuthResult.Error(errorMessage)
 
-                        // Handle re-authentication requirement
                         if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
-                            onError("re-authenticate-required") // Use a specific code for UI to interpret
+                            onError("re-authenticate-required")
                         } else {
                             onError(errorMessage)
                         }

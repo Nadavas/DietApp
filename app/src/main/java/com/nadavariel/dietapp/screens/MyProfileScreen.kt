@@ -1,5 +1,10 @@
 package com.nadavariel.dietapp.screens
 
+import android.app.DatePickerDialog
+import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,16 +35,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.nadavariel.dietapp.AuthViewModel
-import com.nadavariel.dietapp.AuthResult
-import com.nadavariel.dietapp.NavRoutes
-// ⭐ Use this import:
 import androidx.lifecycle.compose.collectAsStateWithLifecycle // Correct import for StateFlow in Compose
+import androidx.navigation.NavController
+import com.nadavariel.dietapp.AuthResult
+import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.NavRoutes
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,25 +56,33 @@ fun MyProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
-    // ⭐ These are already `mutableStateOf` in AuthViewModel, so direct access is correct.
+    val context = LocalContext.current // Get context for DatePickerDialog
+
     val currentUser = authViewModel.currentUser
     val userProfile = authViewModel.userProfile
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) } // To show errors on the screen directly
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // ⭐ Correct way to collect StateFlow from ViewModel
+    // State to control visibility of additional details
+    var showAdditionalDetails by remember { mutableStateOf(false) }
+
+    // Date of Birth state (will be populated from userProfile.dateOfBirth)
+    var dateOfBirth: Date? by remember { mutableStateOf(null) }
+
+    // Format for displaying date of birth
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+
+
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
-
 
     LaunchedEffect(authResult) {
         when (authResult) {
             AuthResult.Success -> {
-                errorMessage = null // Clear any previous error
-                // Account deleted successfully, navigate to landing
-                authViewModel.signOut() // Ensure ViewModel state is reset
+                errorMessage = null
+                authViewModel.signOut()
                 navController.navigate(NavRoutes.LANDING) {
                     popUpTo(NavRoutes.HOME) { inclusive = true }
                     launchSingleTop = true
@@ -76,18 +93,25 @@ fun MyProfileScreen(
                 val error = (authResult as AuthResult.Error).message
                 if (error == "re-authenticate-required") {
                     showReauthDialog = true
-                    errorMessage = "Please re-enter your password to confirm deletion." // Specific message for user
+                    errorMessage = "Please re-enter your password to confirm deletion."
                 } else {
-                    errorMessage = error // Display generic error
+                    errorMessage = error
                 }
             }
             AuthResult.Loading -> {
-                errorMessage = null // Clear errors when loading
+                errorMessage = null
             }
             AuthResult.Idle -> {
-                errorMessage = null // Clear errors when idle
+                errorMessage = null
             }
         }
+    }
+
+    // ⭐ NEW: LaunchedEffect to initialize dateOfBirth from userProfile
+    LaunchedEffect(userProfile) {
+        // Assuming userProfile.dateOfBirth is a Date or Timestamp
+        // You'll need to adjust this based on how dateOfBirth is stored in UserProfile
+        dateOfBirth = userProfile.dateOfBirth // Make sure userProfile has a dateOfBirth property (e.g., Date type)
     }
 
     Scaffold(
@@ -108,7 +132,7 @@ fun MyProfileScreen(
                 .padding(paddingValues)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top // Changed to Top for better layout with hideable section
         ) {
             Text(
                 text = "Profile Details",
@@ -116,12 +140,55 @@ fun MyProfileScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // ⭐ Ensure these properties are correctly accessed from userProfile object
+            // Essential Details
             ProfileDetailRow("Name:", userProfile.name.ifEmpty { "Not set" })
-            ProfileDetailRow("Email:", currentUser?.email ?: "N/A")
             ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "Not set")
-            ProfileDetailRow("Age:", if (userProfile.age > 0) userProfile.age.toString() else "Not set")
             ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "Not set")
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Show/Hide Button for Additional Info
+            Button(
+                onClick = { showAdditionalDetails = !showAdditionalDetails },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (showAdditionalDetails) "Hide Details" else "Show More Details")
+            }
+
+            // Animated visibility for additional details
+            AnimatedVisibility(
+                visible = showAdditionalDetails,
+                enter = expandVertically(expandFrom = Alignment.Top),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ProfileDetailRow("Email:", currentUser?.email ?: "N/A")
+
+                    // ⭐ NEW: Date of Birth field
+                    ProfileDetailRow(
+                        label = "Date of Birth:",
+                        value = dateOfBirth?.let { dateFormatter.format(it) } ?: "Not set"
+                    )
+                    // If you want to allow editing DOB directly from this screen, you'd add a button and dialog here
+                    // However, the request implies it's more for display, and editing happens via "Edit Profile".
+                    // If you want to enable direct editing, it'd look something like this:
+                    /*
+                    Button(onClick = {
+                        showDatePicker(context, dateOfBirth ?: Date()) { newDate ->
+                            dateOfBirth = newDate
+                            // You would then need to call a function in AuthViewModel
+                            // to update this date in Firestore for the user profile.
+                            // authViewModel.updateUserDateOfBirth(newDate)
+                        }
+                    }) {
+                        Text("Edit DOB")
+                    }
+                    */
+                }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -134,7 +201,6 @@ fun MyProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Delete Account Button
             Button(
                 onClick = { showDeleteConfirmationDialog = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -143,7 +209,6 @@ fun MyProfileScreen(
                 Text("Delete Account")
             }
 
-            // Display Error Message
             errorMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -160,14 +225,14 @@ fun MyProfileScreen(
         AlertDialog(
             onDismissRequest = {
                 showDeleteConfirmationDialog = false
-                authViewModel.resetAuthResult() // Reset if user cancels dialog
+                authViewModel.resetAuthResult()
             },
             title = { Text("Confirm Account Deletion") },
             text = { Text("Are you sure you want to permanently delete your account and all associated data? This action cannot be undone.") },
             confirmButton = {
                 Button(onClick = {
                     showDeleteConfirmationDialog = false
-                    errorMessage = null // Clear error when attempting delete
+                    errorMessage = null
                     authViewModel.deleteCurrentUser(
                         onSuccess = { /* Handled by LaunchedEffect */ },
                         onError = { /* Handled by LaunchedEffect */ }
@@ -190,7 +255,7 @@ fun MyProfileScreen(
             onDismissRequest = {
                 showReauthDialog = false
                 reauthPassword = ""
-                authViewModel.resetAuthResult() // Reset if user dismisses reauth dialog
+                authViewModel.resetAuthResult()
             },
             title = { Text("Re-authentication Required") },
             text = {
@@ -212,10 +277,8 @@ fun MyProfileScreen(
                     onClick = {
                         val currentEmail = currentUser?.email
                         if (currentEmail != null && reauthPassword.isNotBlank()) {
-                            errorMessage = null // Clear any input-related errors
-                            // ⭐ This is the call that might be problematic:
+                            errorMessage = null
                             authViewModel.signIn(currentEmail, reauthPassword) {
-                                // If signIn (re-auth) is successful, retry deletion
                                 showReauthDialog = false
                                 reauthPassword = ""
                                 authViewModel.deleteCurrentUser(
@@ -236,7 +299,7 @@ fun MyProfileScreen(
                 Button(onClick = {
                     showReauthDialog = false
                     reauthPassword = ""
-                    authViewModel.resetAuthResult() // Reset if user cancels reauth
+                    authViewModel.resetAuthResult()
                 }) {
                     Text("Cancel")
                 }
@@ -266,4 +329,30 @@ fun ProfileDetailRow(label: String, value: String) {
             modifier = Modifier.weight(0.6f)
         )
     }
+}
+
+// ⭐ NEW: Helper function to show Android's DatePickerDialog
+fun showDatePicker(
+    context: Context,
+    initialDate: Date,
+    onDateSelected: (Date) -> Unit
+) {
+    val calendar = Calendar.getInstance().apply { time = initialDate }
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, selectedYear, selectedMonth, selectedDayOfMonth ->
+            val newCalendar = Calendar.getInstance().apply {
+                set(selectedYear, selectedMonth, selectedDayOfMonth)
+            }
+            onDateSelected(newCalendar.time)
+        },
+        year,
+        month,
+        day
+    )
+    datePickerDialog.show()
 }

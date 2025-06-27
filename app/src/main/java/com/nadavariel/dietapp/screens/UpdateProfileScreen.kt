@@ -1,5 +1,9 @@
 package com.nadavariel.dietapp.screens
 
+import android.app.DatePickerDialog
+import android.content.Context
+import android.widget.DatePicker
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange // ⭐ NEW: Import for DateRange icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -32,7 +38,11 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.LaunchedEffect
-import com.nadavariel.dietapp.NavRoutes // Import NavRoutes
+import com.nadavariel.dietapp.NavRoutes
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,12 +52,15 @@ fun UpdateProfileScreen(
     onBack: () -> Unit,
     isNewUser: Boolean = false
 ) {
+    val context = LocalContext.current
     val userProfile = authViewModel.userProfile
 
     var nameInput by remember { mutableStateOf(userProfile.name) }
     var weightInput by remember { mutableStateOf(userProfile.weight.toString()) }
-    var ageInput by remember { mutableStateOf(userProfile.age.toString()) }
+    var dateOfBirthInput: Date? by remember { mutableStateOf(null) }
     var targetWeightInput by remember { mutableStateOf(userProfile.targetWeight.toString()) }
+
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     LaunchedEffect(userProfile, isNewUser) {
         nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
@@ -56,12 +69,22 @@ fun UpdateProfileScreen(
             userProfile.name
         }
         weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
-        ageInput = if (userProfile.age > 0) userProfile.age.toString() else ""
+        dateOfBirthInput = userProfile.dateOfBirth
         targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""
     }
 
-    // Removed saveProfileAction lambda if it was solely for keyboard actions.
-    // The Button's onClick will now be the primary way to save.
+    val saveProfileAction: () -> Unit = {
+        authViewModel.updateProfile(nameInput, weightInput, dateOfBirthInput, targetWeightInput) {
+            if (isNewUser) {
+                navController.navigate(NavRoutes.HOME) {
+                    popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
+                    launchSingleTop = true
+                }
+            } else {
+                navController.popBackStack()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -102,7 +125,9 @@ fun UpdateProfileScreen(
                 value = nameInput,
                 onValueChange = { nameInput = it },
                 label = { Text("Name") },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
@@ -116,22 +141,70 @@ fun UpdateProfileScreen(
                 },
                 label = { Text("Weight (kg)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
                 singleLine = true
             )
 
+            // ⭐ MODIFIED: Date of Birth as an OutlinedTextField with a clickable trailing icon
             OutlinedTextField(
-                value = ageInput,
-                onValueChange = { newValue ->
-                    if (newValue.all { it.isDigit() }) {
-                        ageInput = newValue
+                value = dateOfBirthInput?.let { dateFormatter.format(it) } ?: "",
+                onValueChange = { /* Read-only, no direct text input */ },
+                label = { Text("Date of Birth") },
+                readOnly = true, // Make it read-only
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .clickable { // ⭐ Make the whole field clickable to open date picker
+                        val initialCalendar = Calendar.getInstance().apply {
+                            time = dateOfBirthInput ?: Date()
+                        }
+                        val year = initialCalendar.get(Calendar.YEAR)
+                        val month = initialCalendar.get(Calendar.MONTH)
+                        val day = initialCalendar.get(Calendar.DAY_OF_MONTH)
+
+                        DatePickerDialog(
+                            context,
+                            { _: DatePicker, selectedYear: Int, selectedMonth: Int, selectedDayOfMonth: Int ->
+                                val newDate = Calendar.getInstance().apply {
+                                    set(selectedYear, selectedMonth, selectedDayOfMonth)
+                                }.time
+                                dateOfBirthInput = newDate
+                            },
+                            year,
+                            month,
+                            day
+                        ).show()
+                    },
+                trailingIcon = { // ⭐ Add a calendar icon
+                    IconButton(onClick = {
+                        val initialCalendar = Calendar.getInstance().apply {
+                            time = dateOfBirthInput ?: Date()
+                        }
+                        val year = initialCalendar.get(Calendar.YEAR)
+                        val month = initialCalendar.get(Calendar.MONTH)
+                        val day = initialCalendar.get(Calendar.DAY_OF_MONTH)
+
+                        DatePickerDialog(
+                            context,
+                            { _: DatePicker, selectedYear: Int, selectedMonth: Int, selectedDayOfMonth: Int ->
+                                val newDate = Calendar.getInstance().apply {
+                                    set(selectedYear, selectedMonth, selectedDayOfMonth)
+                                }.time
+                                dateOfBirthInput = newDate
+                            },
+                            year,
+                            month,
+                            day
+                        ).show()
+                    }) {
+                        Icon(Icons.Default.DateRange, contentDescription = "Select Date of Birth")
                     }
                 },
-                label = { Text("Age") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 singleLine = true
             )
+
 
             OutlinedTextField(
                 value = targetWeightInput,
@@ -141,25 +214,15 @@ fun UpdateProfileScreen(
                     }
                 },
                 label = { Text("Target Weight (kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), // Kept ImeAction.Done for visual cue
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
                 singleLine = true
-                // Removed: keyboardActions = KeyboardActions(onDone = { saveProfileAction() })
             )
 
             Button(
-                onClick = {
-                    authViewModel.updateProfile(nameInput, weightInput, ageInput, targetWeightInput) {
-                        if (isNewUser) {
-                            navController.navigate(NavRoutes.HOME) {
-                                popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        } else {
-                            navController.popBackStack()
-                        }
-                    }
-                },
+                onClick = { saveProfileAction() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (isNewUser) "Create Profile" else "Save Changes")
