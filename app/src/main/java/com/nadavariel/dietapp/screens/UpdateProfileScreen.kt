@@ -1,7 +1,6 @@
 package com.nadavariel.dietapp.screens
 
 import android.app.DatePickerDialog
-import android.content.Context
 import android.widget.DatePicker
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column

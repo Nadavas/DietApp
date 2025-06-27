@@ -226,9 +226,12 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ⭐ NEW: Composable for the Account Screen (accessed from bottom nav)
+                        // ⭐ THE ONLY CHANGE HERE: Pass the existing authViewModel instance
                         composable(NavRoutes.ACCOUNT) {
-                            AccountScreen(navController = navController)
+                            AccountScreen(
+                                navController = navController,
+                                authViewModel = authViewModel // <-- **THIS WAS ADDED**
+                            )
                         }
 
                         // MyProfileScreen is now navigated to from AccountScreen

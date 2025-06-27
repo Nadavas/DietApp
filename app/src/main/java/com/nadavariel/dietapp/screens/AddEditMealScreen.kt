@@ -68,8 +68,11 @@ fun AddEditMealScreen(
             TopAppBar(
                 title = { Text(if (mealToEdit == null) "Add New Meal" else "Edit Meal") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    // ⭐ MODIFIED: Only show IconButton if mealToEdit is not null
+                    if (mealToEdit != null) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
                     }
                 }
             )
