@@ -12,6 +12,7 @@ activityCompose = "1.10.1"
 composeBom = "2025.06.01"
 firebaseAuthKtx = "23.2.1"
 material = "1.8.3"
+mpandroidchartVersion = "v3.1.0"
 navigationCompose = "2.9.0"
 # Add this new version entry
 firebase-firestore = "25.1.4" # This is a common and recent version. Use the one you prefer if different.
@@ -45,6 +46,7 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx", version.ref = "firebaseAuthKtx" }
+mpandroidchart-vv310 = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchartVersion" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomRuntimeAndroid" }

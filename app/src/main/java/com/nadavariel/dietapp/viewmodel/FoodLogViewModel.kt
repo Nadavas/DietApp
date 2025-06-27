@@ -25,6 +25,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
 
+@Suppress("DEPRECATION")
 @RequiresApi(Build.VERSION_CODES.O)
 class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth

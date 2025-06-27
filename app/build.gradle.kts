@@ -44,7 +44,7 @@ android {
 }
 
 dependencies {
-
+    implementation(libs.mpandroidchart.vv310)
     // Core Android KTX and Compose dependencies
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom)) // BOM should generally be near the top or specifically grouped
