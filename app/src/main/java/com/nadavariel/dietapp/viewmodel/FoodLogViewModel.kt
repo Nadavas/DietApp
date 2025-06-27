@@ -17,6 +17,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Meal
+import com.nadavariel.dietapp.model.MealSection // ⭐ NEW: Import MealSection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -25,7 +26,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
 
-@Suppress("DEPRECATION")
 @RequiresApi(Build.VERSION_CODES.O)
 class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
@@ -47,6 +47,7 @@ class FoodLogViewModel : ViewModel() {
     val weeklyCalories = _weeklyCalories.asStateFlow()
 
     private val _caloriesByTimeOfDay = MutableStateFlow(
+        // ⭐ MODIFIED: Initialize with expected keys for MealSection AND StatisticsScreen
         mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
@@ -99,8 +100,7 @@ class FoodLogViewModel : ViewModel() {
                 val meals = querySnapshot.toObjects(Meal::class.java)
                 Log.d("FoodLogViewModel", "Fetched ${meals.size} meals for the last 7 days.")
                 processWeeklyCalories(meals)
-                processCaloriesByTimeOfDay(meals)
-
+                processCaloriesByTimeOfDay(meals) // Re-run this after fetching meals
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
             }
@@ -124,26 +124,33 @@ class FoodLogViewModel : ViewModel() {
         _weeklyCalories.value = caloriesByDay
     }
 
+    // ⭐ MODIFIED: Use MealSection for time-of-day categorization
     private fun processCaloriesByTimeOfDay(meals: List<Meal>) {
-        val timeBuckets = mutableMapOf(
-            "Morning" to 0f,    // 5–10
-            "Afternoon" to 0f,  // 11–15
-            "Evening" to 0f,    // 16–20
-            "Night" to 0f       // 21–4
+        // Use MealSection's section names for initial bucket accumulation
+        val rawTimeBuckets = mutableMapOf(
+            MealSection.MORNING.sectionName to 0f,
+            MealSection.NOON.sectionName to 0f,
+            MealSection.EVENING.sectionName to 0f,
+            MealSection.NIGHT.sectionName to 0f
         )
 
         for (meal in meals) {
-            val hour = meal.timestamp.toDate().hours // Deprecated but fine for local logic
-            when (hour) {
-                in 5..10 -> timeBuckets["Morning"] = timeBuckets["Morning"]!! + meal.calories
-                in 10..15 -> timeBuckets["Afternoon"] = timeBuckets["Afternoon"]!! + meal.calories
-                in 15..20 -> timeBuckets["Evening"] = timeBuckets["Evening"]!! + meal.calories
-                else -> timeBuckets["Night"] = timeBuckets["Night"]!! + meal.calories
-            }
+            // ⭐ Use MealSection.getMealSection to determine the category
+            val section = MealSection.getMealSection(meal.timestamp.toDate())
+            rawTimeBuckets[section.sectionName] = (rawTimeBuckets[section.sectionName] ?: 0f) + meal.calories
         }
 
-        _caloriesByTimeOfDay.value = timeBuckets
-        Log.d("FoodLogViewModel", "Processed time-of-day calories: $timeBuckets")
+        // ⭐ Mapping "Noon" to "Afternoon" for consistency with StatisticsScreen's current keys
+        val finalTimeBuckets = mutableMapOf<String, Float>()
+        finalTimeBuckets["Morning"] = rawTimeBuckets[MealSection.MORNING.sectionName] ?: 0f
+        // Map "Noon" from MealSection to "Afternoon" expected by StatisticsScreen
+        finalTimeBuckets["Afternoon"] = rawTimeBuckets[MealSection.NOON.sectionName] ?: 0f
+        finalTimeBuckets["Evening"] = rawTimeBuckets[MealSection.EVENING.sectionName] ?: 0f
+        finalTimeBuckets["Night"] = rawTimeBuckets[MealSection.NIGHT.sectionName] ?: 0f
+
+
+        _caloriesByTimeOfDay.value = finalTimeBuckets
+        Log.d("FoodLogViewModel", "Processed time-of-day calories using MealSection: $finalTimeBuckets")
     }
 
     fun logMeal(foodName: String, calories: Int, mealTime: Date = Date()) {
@@ -164,7 +171,7 @@ class FoodLogViewModel : ViewModel() {
                 val docRef = firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 firestore.collection("users").document(userId).collection("meals").document(docRef.id).update("id", docRef.id).await()
                 Log.d("FoodLogViewModel", "Meal '${meal.foodName}' logged successfully.")
-                fetchMealsForLastSevenDays()
+                fetchMealsForLastSevenDays() // Re-fetch all data to update stats
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
@@ -193,7 +200,7 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.update(updatedData as Map<String, Any>).await()
                 Log.d("FoodLogViewModel", "Meal '$mealId' updated successfully.")
-                fetchMealsForLastSevenDays()
+                fetchMealsForLastSevenDays() // Re-fetch all data to update stats
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -210,7 +217,7 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.delete().await()
                 Log.d("FoodLogViewModel", "Meal '$mealId' deleted successfully.")
-                fetchMealsForLastSevenDays()
+                fetchMealsForLastSevenDays() // Re-fetch all data to update stats
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }
@@ -256,8 +263,6 @@ class FoodLogViewModel : ViewModel() {
         Log.d("FoodLogViewModel", "ViewModel cleared, firestore listener removed.")
     }
 
-    // ⭐ MODIFIED: This function now only updates selectedDate and fetches meals,
-    // it does NOT change currentWeekStartDate when called from UI day clicks.
     fun selectDate(date: LocalDate) {
         if (selectedDate != date) {
             selectedDate = date
@@ -265,26 +270,24 @@ class FoodLogViewModel : ViewModel() {
             listenForMealsForDate(date)
         } else {
             Log.d("FoodLogViewModel", "selectDate: Date $date already selected. No change needed, ensuring listener is active.")
-            listenForMealsForDate(date) // Ensure listener is active even if same date is re-tapped
+            listenForMealsForDate(date)
         }
     }
 
-    // ⭐ MODIFIED: These functions now explicitly update currentWeekStartDate
-    // and then set selectedDate to the end of that *new* week.
     fun previousWeek() {
         val newCurrentWeekStartDate = currentWeekStartDate.minusWeeks(1)
-        currentWeekStartDate = newCurrentWeekStartDate // Update the week range
-        selectedDate = newCurrentWeekStartDate.plusDays(6) // Set selected date to the new end of the week
+        currentWeekStartDate = newCurrentWeekStartDate
+        selectedDate = newCurrentWeekStartDate.plusDays(6)
         Log.d("FoodLogViewModel", "Navigating to previous week. New week starts: $currentWeekStartDate. New selected date: $selectedDate.")
-        listenForMealsForDate(selectedDate) // Fetch meals for the new selected date
+        listenForMealsForDate(selectedDate)
     }
 
     fun nextWeek() {
         val newCurrentWeekStartDate = currentWeekStartDate.plusWeeks(1)
-        currentWeekStartDate = newCurrentWeekStartDate // Update the week range
-        selectedDate = newCurrentWeekStartDate.plusDays(6) // Set selected date to the new end of the week
+        currentWeekStartDate = newCurrentWeekStartDate
+        selectedDate = newCurrentWeekStartDate.plusDays(6)
         Log.d("FoodLogViewModel", "Navigating to next week. New week starts: $currentWeekStartDate. New selected date: $selectedDate.")
-        listenForMealsForDate(selectedDate) // Fetch meals for the new selected date
+        listenForMealsForDate(selectedDate)
     }
 
     fun getMealById(mealId: String): Meal? {
