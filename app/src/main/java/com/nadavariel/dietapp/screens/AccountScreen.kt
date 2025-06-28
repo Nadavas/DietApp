@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background // ⭐ NEW: Import for background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,9 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.graphics.ColorFilter
 import com.nadavariel.dietapp.AuthResult
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
+import androidx.compose.ui.res.painterResource
+import com.nadavariel.dietapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,6 +152,32 @@ fun AccountScreen(
             )
             HorizontalDivider()
 
+            // Questions List Item
+            ListItem(
+                headlineContent = { Text("Questions") },
+                leadingContent = {
+                    // Get the current content color, which Icons typically use by default
+                    val currentIconColor = LocalContentColor.current
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_query_filled),
+                        contentDescription = "Questions",
+                        colorFilter = ColorFilter.tint(currentIconColor) // Apply the tint
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Go to Questions"
+                        // This Icon will also use LocalContentColor.current by default
+                        // or a color appropriate for its context in ListItem
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate(NavRoutes.QUESTIONS) }
+            )
+            HorizontalDivider()
+
             // Settings List Item
             ListItem(
                 headlineContent = { Text("Settings") },
@@ -167,7 +198,9 @@ fun AccountScreen(
             // Sign Out Button
             Button(
                 onClick = { showSignOutDialog = true },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(
@@ -183,7 +216,9 @@ fun AccountScreen(
 
             Button(
                 onClick = { showDeleteConfirmationDialog = true },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text("Delete Account")

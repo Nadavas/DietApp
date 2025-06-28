@@ -15,6 +15,8 @@ object NavRoutes {
     // ⭐ NEW: Route for Change Password screen
     const val CHANGE_PASSWORD = "change_password"
 
+    const val QUESTIONS = "questions"
+
     const val UPDATE_PROFILE_BASE = "update_profile"
     const val IS_NEW_USER_ARG = "isNewUser"
     const val UPDATE_PROFILE = "$UPDATE_PROFILE_BASE?${IS_NEW_USER_ARG}={${IS_NEW_USER_ARG}}"

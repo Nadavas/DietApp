@@ -50,6 +50,7 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.offset
+import com.nadavariel.dietapp.screens.QuestionsScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -262,6 +263,13 @@ class MainActivity : ComponentActivity() {
 
                         composable(NavRoutes.SETTINGS) {
                             SettingsScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+
+                        composable(NavRoutes.QUESTIONS) {
+                            QuestionsScreen(
                                 navController = navController,
                                 authViewModel = authViewModel
                             )
