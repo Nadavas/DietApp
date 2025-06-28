@@ -1,7 +1,6 @@
 package com.nadavariel.dietapp.screens
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +35,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -43,23 +43,18 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     foodLogViewModel: FoodLogViewModel,
     navController: NavController,
-    // ⭐ REMOVED: onSignOut parameter is no longer needed here
-    // onSignOut: () -> Unit
 ) {
-    val userProfile = authViewModel.userProfile
+    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val userName = userProfile.name
 
     val selectedDate = foodLogViewModel.selectedDate
     val currentWeekStartDate = foodLogViewModel.currentWeekStartDate
     val mealsForSelectedDate = foodLogViewModel.mealsForSelectedDate
-    Log.d("HomeScreen", "Composable Recomposition: selectedDate=$selectedDate, currentWeekStartDate=$currentWeekStartDate")
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
 
-    // ⭐ REMOVED: showSignOutDialog state is no longer needed here
-    // var showSignOutDialog by remember { mutableStateOf(false) }
     var showMealsList by remember { mutableStateOf(false) }
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
@@ -71,9 +66,7 @@ fun HomeScreen(
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            Log.d("HomeScreen", "LaunchedEffect: App RESUMED. Current selectedDate in VM: ${foodLogViewModel.selectedDate}. Current system date: ${LocalDate.now()}")
             foodLogViewModel.selectDate(LocalDate.now())
-            Log.d("HomeScreen", "LaunchedEffect: Called selectDate(LocalDate.now()) to ensure refresh.")
         }
     }
 
@@ -101,30 +94,7 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
-                // ⭐ REMOVED: Sign Out Button Row
-                /*
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Spacer(Modifier.weight(1f))
-
-                    IconButton(onClick = {
-                        showSignOutDialog = true
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Sign Out",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-                */
-
-                Spacer(modifier = Modifier.height(0.dp)) // Kept Spacer for top padding consistency
+                Spacer(modifier = Modifier.height(0.dp))
 
                 Text(
                     text = "Welcome, ${userName.ifBlank { "Guest" }}!",
@@ -316,44 +286,6 @@ fun HomeScreen(
         }
     }
 
-    // ⭐ REMOVED: Sign-out confirmation dialog is moved to AccountScreen
-    /*
-    if (showSignOutDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showSignOutDialog = false
-            },
-            title = {
-                Text(text = "Confirm Sign Out")
-            },
-            text = {
-                Text(text = "Are you sure you want to sign out?")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSignOutDialog = false
-                        authViewModel.signOut()
-                        onSignOut()
-                    }
-                ) {
-                    Text("Yes")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSignOutDialog = false
-                    }
-                ) {
-                    Text("No")
-                }
-            }
-        )
-    }
-    */
-
-    // Delete Confirmation Dialog (remains in HomeScreen)
     if (showDeleteConfirmationDialog && mealToDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmationDialog = false },
@@ -376,7 +308,6 @@ fun HomeScreen(
     }
 }
 
-// --- MealItem Composable (This would typically be in a separate file, but included here for "one section") ---
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MealItem(

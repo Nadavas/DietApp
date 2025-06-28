@@ -6,8 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.isSystemInDarkTheme // ⭐ NEW: Import isSystemInDarkTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -44,7 +45,11 @@ import com.nadavariel.dietapp.screens.StatisticsScreen
 import com.nadavariel.dietapp.screens.AccountScreen
 import com.nadavariel.dietapp.screens.SettingsScreen
 import com.nadavariel.dietapp.screens.ChangePasswordScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle // ⭐ NEW: Import collectAsStateWithLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.offset
 
 
 class MainActivity : ComponentActivity() {
@@ -77,15 +82,12 @@ class MainActivity : ComponentActivity() {
             val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
 
-            // ⭐ NEW: Observe the dark mode preference from AuthViewModel
             val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
+            val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
-            // ⭐ MODIFIED: Pass the observed dark mode preference to DietAppTheme.
-            // If `isDarkModeEnabled` is true, the app will be in dark mode.
-            // If `isDarkModeEnabled` is false, it will defer to `isSystemInDarkTheme()`.
             val useDarkTheme = isDarkModeEnabled || isSystemInDarkTheme()
 
-            DietAppTheme(darkTheme = useDarkTheme) { // ⭐ MODIFIED: Apply the determined theme
+            DietAppTheme(darkTheme = useDarkTheme) {
                 val startDestination = if (authViewModel.isUserSignedIn()) {
                     NavRoutes.HOME
                 } else {
@@ -93,16 +95,14 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val currentRouteEntry by navController.currentBackStackEntryAsState()
-                // Split by "/" to handle routes with arguments like ADD_EDIT_MEAL/{mealId}
                 val selectedRoute = currentRouteEntry?.destination?.route?.split("/")?.firstOrNull()
 
 
                 Scaffold(
                     modifier = Modifier,
                     bottomBar = {
-                        // Show bottom bar only on main navigation routes
                         if (selectedRoute == NavRoutes.HOME ||
-                            selectedRoute == NavRoutes.ADD_EDIT_MEAL || // Matches base route for Add/Edit Meal
+                            selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
                             selectedRoute == NavRoutes.STATISTICS ||
                             selectedRoute == NavRoutes.ACCOUNT
                         ) {
@@ -149,7 +149,26 @@ class MainActivity : ComponentActivity() {
                                         launchSingleTop = true
                                         restoreState = true
                                     }},
-                                    icon = { Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account") },
+                                    icon = {
+                                        BadgedBox(
+                                            badge = {
+                                                if (hasMissingProfileDetails) {
+                                                    Badge(
+                                                        Modifier
+                                                            .size(8.dp)
+                                                            .offset(x = 8.dp, y = (-4).dp)
+                                                    ) {
+                                                        // Content of the badge. Material Design recommends
+                                                        // a dot for notifications or small numbers.
+                                                        // By default, Badge uses theme's error color, which is typically red.
+
+                                                    }
+                                                }
+                                            }
+                                        ) {
+                                            Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
+                                        }
+                                    },
                                     label = { Text("Account") }
                                 )
                             }

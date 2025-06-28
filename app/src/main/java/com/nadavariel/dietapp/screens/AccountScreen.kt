@@ -1,20 +1,25 @@
 package com.nadavariel.dietapp.screens
 
+import androidx.compose.foundation.background // ⭐ NEW: Import for background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box // ⭐ NEW: Import for Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row // ⭐ NEW: Import for Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size // ⭐ NEW: Import for size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape // ⭐ NEW: Import for CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.ExitToApp // ⭐ NEW: Import for ExitToApp icon
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,11 +31,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton // ⭐ NEW: Import for TextButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color // ⭐ NEW: Import for Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,26 +56,25 @@ fun AccountScreen(
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showSignOutDialog by remember { mutableStateOf(false) } // ⭐ NEW: State for sign out dialog
+    var showSignOutDialog by remember { mutableStateOf(false) }
 
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
+    // ⭐ NEW: Observe the hasMissingPrimaryProfileDetails state
+    val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
     LaunchedEffect(authResult) {
         when (authResult) {
             AuthResult.Success -> {
                 errorMessage = null
-                // ⭐ MODIFIED: Sign out logic for delete account.
-                // The main sign out logic below will handle navigation after direct sign out.
-                // For delete, we want to ensure everything is cleared before navigating.
-                if (showDeleteConfirmationDialog) { // If success was due to delete, navigate to LANDING
-                    authViewModel.signOut() // This will clear preferences and set currentUser to null
+                if (showDeleteConfirmationDialog) {
+                    authViewModel.signOut()
                     navController.navigate(NavRoutes.LANDING) {
                         popUpTo(NavRoutes.HOME) { inclusive = true }
                         launchSingleTop = true
                     }
                 }
-                authViewModel.resetAuthResult() // Always reset after handling
+                authViewModel.resetAuthResult()
             }
             is AuthResult.Error -> {
                 val error = (authResult as AuthResult.Error).message
@@ -122,7 +127,19 @@ fun AccountScreen(
                     Icon(Icons.Filled.Person, contentDescription = "My Profile")
                 },
                 trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to My Profile")
+                    // ⭐ MODIFIED: Conditionally display the red dot
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (hasMissingDetails) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp) // Size of the red circle
+                                    .background(Color.Red, CircleShape)
+                                    .align(Alignment.CenterVertically) // Ensures vertical alignment with the icon
+                            )
+                            Spacer(modifier = Modifier.width(8.dp)) // Space between dot and arrow
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to My Profile")
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -147,7 +164,7 @@ fun AccountScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ⭐ NEW: Sign Out Button
+            // Sign Out Button
             Button(
                 onClick = { showSignOutDialog = true },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -269,7 +286,7 @@ fun AccountScreen(
         )
     }
 
-    // ⭐ NEW: Sign-out confirmation dialog
+    // Sign-out confirmation dialog
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -287,7 +304,7 @@ fun AccountScreen(
                         showSignOutDialog = false
                         authViewModel.signOut()
                         navController.navigate(NavRoutes.LANDING) {
-                            popUpTo(NavRoutes.HOME) { inclusive = true } // Pop up to home and clear backstack
+                            popUpTo(NavRoutes.HOME) { inclusive = true }
                             launchSingleTop = true
                         }
                     }

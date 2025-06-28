@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange // ⭐ NEW: Import for DateRange icon
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,6 +42,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle // ⭐ NEW: Import collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,24 +53,29 @@ fun UpdateProfileScreen(
     isNewUser: Boolean = false
 ) {
     val context = LocalContext.current
-    val userProfile = authViewModel.userProfile
+    // ⭐ MODIFIED: Collect userProfile as a state
+    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
 
-    var nameInput by remember { mutableStateOf(userProfile.name) }
-    var weightInput by remember { mutableStateOf(userProfile.weight.toString()) }
-    var dateOfBirthInput: Date? by remember { mutableStateOf(null) }
-    var targetWeightInput by remember { mutableStateOf(userProfile.targetWeight.toString()) }
+    // Initialize states from the collected userProfile value
+    var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
+    var weightInput by remember(userProfile.weight) { mutableStateOf(if (userProfile.weight > 0f) userProfile.weight.toString() else "") }
+    var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
+    var targetWeightInput by remember(userProfile.targetWeight) { mutableStateOf(if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else "") }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     LaunchedEffect(userProfile, isNewUser) {
+        // Only set name for new user if it's currently blank and email is available
         nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
             authViewModel.currentUser?.email?.substringBefore("@") ?: ""
         } else {
             userProfile.name
         }
-        weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
-        dateOfBirthInput = userProfile.dateOfBirth
-        targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""
+        // These are already handled by remember(userProfile.property) above, but kept
+        // for explicit clarity if additional logic was needed.
+        // weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
+        // dateOfBirthInput = userProfile.dateOfBirth
+        // targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""
     }
 
     val saveProfileAction: () -> Unit = {
@@ -146,16 +152,15 @@ fun UpdateProfileScreen(
                 singleLine = true
             )
 
-            // ⭐ MODIFIED: Date of Birth as an OutlinedTextField with a clickable trailing icon
             OutlinedTextField(
                 value = dateOfBirthInput?.let { dateFormatter.format(it) } ?: "",
                 onValueChange = { /* Read-only, no direct text input */ },
                 label = { Text("Date of Birth") },
-                readOnly = true, // Make it read-only
+                readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
-                    .clickable { // ⭐ Make the whole field clickable to open date picker
+                    .clickable { // Make the whole field clickable to open date picker
                         val initialCalendar = Calendar.getInstance().apply {
                             time = dateOfBirthInput ?: Date()
                         }
@@ -176,7 +181,7 @@ fun UpdateProfileScreen(
                             day
                         ).show()
                     },
-                trailingIcon = { // ⭐ Add a calendar icon
+                trailingIcon = { // Add a calendar icon
                     IconButton(onClick = {
                         val initialCalendar = Calendar.getInstance().apply {
                             time = dateOfBirthInput ?: Date()

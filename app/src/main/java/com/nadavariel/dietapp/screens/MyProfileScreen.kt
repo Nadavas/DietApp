@@ -1,5 +1,7 @@
 package com.nadavariel.dietapp.screens
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -14,6 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card // Import Card
+import androidx.compose.material3.CardDefaults // Import CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +43,7 @@ import com.nadavariel.dietapp.NavRoutes
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,21 +52,14 @@ fun MyProfileScreen(
     navController: NavController
 ) {
     val currentUser = authViewModel.currentUser
-    val userProfile = authViewModel.userProfile
+    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
-    // State to control visibility of additional details
     var showAdditionalDetails by remember { mutableStateOf(false) }
 
-    // Date of Birth state (will be populated from userProfile.dateOfBirth)
-    var dateOfBirth: Date? by remember { mutableStateOf(null) }
+    var dateOfBirth: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
 
-    // Format for displaying date of birth
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
-
-    // ⭐ NEW: LaunchedEffect to initialize dateOfBirth from userProfile
-    LaunchedEffect(userProfile) {
-        dateOfBirth = userProfile.dateOfBirth // Make sure userProfile has a dateOfBirth property (e.g., Date type)
-    }
 
     Scaffold(
         topBar = {
@@ -80,7 +79,7 @@ fun MyProfileScreen(
                 .padding(paddingValues)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top // Changed to Top for better layout with hide section
+            verticalArrangement = Arrangement.Top
         ) {
             Text(
                 text = "Profile Details",
@@ -88,14 +87,59 @@ fun MyProfileScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Essential Details
-            ProfileDetailRow("Name:", userProfile.name.ifEmpty { "Not set" })
-            ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "Not set")
-            ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "Not set")
+            AnimatedVisibility(
+                visible = hasMissingProfileDetails,
+                enter = expandVertically(expandFrom = Alignment.Top),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top)
+            ) {
+                val missingFields = mutableListOf<String>()
+                if (userProfile.name.isBlank()) {
+                    missingFields.add("name")
+                }
+                if (userProfile.weight <= 0f) {
+                    missingFields.add("current weight")
+                }
+                if (userProfile.targetWeight <= 0f) {
+                    missingFields.add("target weight")
+                }
+
+                val message = if (missingFields.isNotEmpty()) {
+                    val formattedFields = when (missingFields.size) {
+                        1 -> missingFields[0]
+                        2 -> "${missingFields[0]} and ${missingFields[1]}"
+                        else -> { // Handles 3 or more fields without duplicating the last one
+                            val allButLast = missingFields.dropLast(1).joinToString(", ")
+                            "$allButLast, and ${missingFields.last()}"
+                        }
+                    }
+                    "Your essential profile details for $formattedFields appear to be incomplete. Please update your profile to ensure accuracy."
+                } else {
+                    "Some essential profile details appear to be incomplete. Please update your profile to ensure accuracy."
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Show/Hide Button for Additional Info
+            ProfileDetailRow("Name:", userProfile.name.ifEmpty { "" })
+            ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "")
+            ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "")
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Button(
                 onClick = { showAdditionalDetails = !showAdditionalDetails },
                 modifier = Modifier.fillMaxWidth()
@@ -103,7 +147,6 @@ fun MyProfileScreen(
                 Text(if (showAdditionalDetails) "Hide Details" else "Show More Details")
             }
 
-            // Animated visibility for additional details
             AnimatedVisibility(
                 visible = showAdditionalDetails,
                 enter = expandVertically(expandFrom = Alignment.Top),
@@ -115,7 +158,6 @@ fun MyProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     ProfileDetailRow("Email:", currentUser?.email ?: "N/A")
 
-                    // ⭐ NEW: Date of Birth field
                     ProfileDetailRow(
                         label = "Date of Birth:",
                         value = dateOfBirth?.let { dateFormatter.format(it) } ?: "Not set"
@@ -127,7 +169,11 @@ fun MyProfileScreen(
 
             Button(
                 onClick = { navController.navigate(NavRoutes.UPDATE_PROFILE) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary, // Set the background color
+                    contentColor = MaterialTheme.colorScheme.onSecondary // Set the text/icon color on secondary
+                )
             ) {
                 Text("Edit Profile")
             }

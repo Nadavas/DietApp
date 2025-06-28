@@ -3,10 +3,10 @@
 package com.nadavariel.dietapp
 
 import android.content.Context
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -27,7 +27,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.collect // ⭐ Added for collecting flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
@@ -52,8 +55,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     val rememberMeState = mutableStateOf(false)
 
-    var userProfile: UserProfile by mutableStateOf(UserProfile())
-        private set
+    private val _userProfile = MutableStateFlow(UserProfile())
+    val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
     var currentUser: FirebaseUser? by mutableStateOf(null)
         private set
@@ -61,19 +64,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     val isEmailPasswordUser: Boolean
         get() = currentUser?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } ?: false
 
-    // ⭐ NEW: MutableStateFlow for dark mode preference
     private val _isDarkModeEnabled = MutableStateFlow(false)
     val isDarkModeEnabled: StateFlow<Boolean> = _isDarkModeEnabled.asStateFlow()
+
+    private val _hasMissingPrimaryProfileDetails = MutableStateFlow(false)
+    val hasMissingPrimaryProfileDetails: StateFlow<Boolean> = _hasMissingPrimaryProfileDetails.asStateFlow()
 
     init {
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
-            Log.d("AuthViewModel", "Auth state changed. Current user: ${currentUser?.uid}, isEmailPasswordUser: $isEmailPasswordUser")
             viewModelScope.launch {
                 if (currentUser != null) {
                     loadUserProfile()
                 } else {
-                    userProfile = UserProfile()
+                    _userProfile.value = UserProfile() // Reset user profile state on sign out
                 }
             }
         }
@@ -82,11 +86,30 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
 
-            // ⭐ NEW: Collect dark mode preference from repository
             preferencesRepository.darkModeEnabledFlow.collect { isEnabled ->
                 _isDarkModeEnabled.value = isEnabled
             }
         }
+
+        _userProfile.combine(snapshotFlow { currentUser }) { profile, user ->
+            val missing: Boolean = if (user == null) {
+                false // If no user, no profile to be missing
+            } else {
+                val isNameMissing = profile.name.isBlank()
+                val isWeightMissing = profile.weight <= 0f
+                val isTargetWeightMissing = profile.targetWeight <= 0f
+
+                val detailsMissing = isNameMissing || isWeightMissing || isTargetWeightMissing
+
+                detailsMissing
+            }
+            missing
+        }
+            .distinctUntilChanged()
+            .onEach { hasMissing ->
+                _hasMissingPrimaryProfileDetails.value = hasMissing
+            }
+            .launchIn(viewModelScope)
     }
 
     private suspend fun loadUserProfile() {
@@ -100,19 +123,15 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     val dateOfBirth = userDoc.getDate("dateOfBirth")
                     val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
 
-                    userProfile = UserProfile(name, weight, dateOfBirth, targetWeight)
-                    Log.d("AuthViewModel", "Loaded profile from firestore: $userProfile for UID: $userId")
+                    _userProfile.value = UserProfile(name, weight, dateOfBirth, targetWeight)
                 } else {
-                    userProfile = UserProfile()
-                    Log.d("AuthViewModel", "No profile found in firestore for UID: $userId. Setting empty.")
+                    _userProfile.value = UserProfile()
                 }
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error loading user profile from firestore: ${e.message}", e)
-                userProfile = UserProfile()
+                _userProfile.value = UserProfile()
             }
         } else {
-            userProfile = UserProfile()
-            Log.d("AuthViewModel", "No user signed in. Clearing profile states.")
+            _userProfile.value = UserProfile()
         }
     }
 
@@ -125,14 +144,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 "dateOfBirth" to profile.dateOfBirth,
                 "targetWeight" to profile.targetWeight
             )
-            try {
-                firestore.collection("users").document(userId).set(userProfileMap).await()
-                Log.d("AuthViewModel", "Profile saved to firestore for UID: $userId: $profile")
-            } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error saving user profile to firestore: ${e.message}", e)
-            }
-        } else {
-            Log.w("AuthViewModel", "Cannot save profile: No user signed in.")
+            // Try-catch block removed as requested
+            firestore.collection("users").document(userId).set(userProfileMap).await()
+            _userProfile.value = profile
         }
     }
 
@@ -160,14 +174,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        val newProfile = UserProfile(name = emailState.value.substringBefore("@"), dateOfBirth = null)
+                        val newProfile = UserProfile(name = auth.currentUser?.displayName ?: emailState.value.substringBefore("@"), dateOfBirth = null)
                         saveUserProfile(newProfile)
-                        userProfile = newProfile
                     }
                     onSuccess()
                     clearInputFields()
                 } else {
-                    _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign up failed.")
+                    val errorMessage = task.exception?.message ?: "Sign up failed."
+                    _authResult.value = AuthResult.Error(errorMessage)
                 }
             }
     }
@@ -192,7 +206,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     onSuccess()
                     clearInputFields()
                 } else {
-                    _authResult.value = AuthResult.Error(task.exception?.message ?: "Sign in failed.")
+                    val errorMessage = task.exception?.message ?: "Sign in failed."
+                    _authResult.value = AuthResult.Error(errorMessage)
                 }
             }
     }
@@ -208,6 +223,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
+            _userProfile.value = UserProfile()
         }
         clearInputFields()
     }
@@ -246,12 +262,15 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             if (!userDoc.exists()) {
                                 val newProfile = UserProfile(name = task.result.user?.displayName ?: "", dateOfBirth = null)
                                 saveUserProfile(newProfile)
+                            } else {
+                                loadUserProfile()
                             }
                         }
                         onSuccess()
                     }
                 } else {
-                    _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
+                    val errorMessage = task.exception?.message ?: "Google sign-in failed."
+                    _authResult.value = AuthResult.Error(errorMessage)
                 }
             }
     }
@@ -275,12 +294,15 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             if (!userDoc.exists()) {
                                 val newProfile = UserProfile(name = account.displayName ?: "", dateOfBirth = null)
                                 saveUserProfile(newProfile)
+                            } else {
+                                loadUserProfile()
                             }
                         }
                         onSuccess()
                     }
                 } else {
-                    _authResult.value = AuthResult.Error(task.exception?.message ?: "Google sign-in failed.")
+                    val errorMessage = task.exception?.message ?: "Google sign-in failed."
+                    _authResult.value = AuthResult.Error(errorMessage)
                 }
             }
     }
@@ -290,14 +312,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val parsedWeight = weight.toFloatOrNull() ?: 0f
             val parsedTargetWeight = targetWeight.toFloatOrNull() ?: 0f
 
-            val updatedProfile = userProfile.copy(
+            val updatedProfile = _userProfile.value.copy(
                 name = name,
                 weight = parsedWeight,
                 dateOfBirth = dateOfBirth,
                 targetWeight = parsedTargetWeight
             )
             saveUserProfile(updatedProfile)
-            userProfile = updatedProfile
             onSuccess()
         }
     }
@@ -313,12 +334,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             user.updatePassword(newPassword)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        Log.d("AuthViewModel", "User password updated successfully for UID: ${user.uid}")
                         _authResult.value = AuthResult.Success
                         onSuccess()
                     } else {
                         val errorMessage = task.exception?.message ?: "Failed to change password."
-                        Log.e("AuthViewModel", "Failed to change password: $errorMessage", task.exception)
                         _authResult.value = AuthResult.Error(errorMessage)
                         if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
                             onError("re-authenticate-required")
@@ -329,7 +348,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 }
         } else {
             val noUserError = "No user is currently signed in to change password."
-            Log.w("AuthViewModel", noUserError)
             _authResult.value = AuthResult.Error(noUserError)
             onError(noUserError)
         }
@@ -342,25 +360,21 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             user.delete()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        Log.d("AuthViewModel", "User account deleted from Firebase Auth for UID: ${user.uid}")
                         viewModelScope.launch {
                             try {
                                 firestore.collection("users").document(user.uid).delete().await()
-                                Log.d("AuthViewModel", "User data deleted from firestore for UID: ${user.uid}")
                                 _authResult.value = AuthResult.Success
-                                userProfile = UserProfile()
+                                _userProfile.value = UserProfile()
                                 preferencesRepository.clearUserPreferences()
                                 onSuccess()
                             } catch (e: Exception) {
                                 val firestoreError = "Account deleted, but failed to delete associated data: ${e.message}"
-                                Log.e("AuthViewModel", firestoreError, e)
                                 _authResult.value = AuthResult.Error(firestoreError)
                                 onError(firestoreError)
                             }
                         }
                     } else {
                         val errorMessage = task.exception?.message ?: "Failed to delete account."
-                        Log.e("AuthViewModel", "Failed to delete user account: $errorMessage", task.exception)
                         _authResult.value = AuthResult.Error(errorMessage)
 
                         if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
@@ -372,13 +386,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 }
         } else {
             val noUserError = "No user is currently signed in to delete."
-            Log.w("AuthViewModel", noUserError)
             _authResult.value = AuthResult.Error(noUserError)
             onError(noUserError)
         }
     }
 
-    // ⭐ NEW: Function to toggle dark mode preference
     fun toggleDarkMode(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.saveDarkModePreference(enabled)
