@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.github.mikephil.charting.charts.BarChart
@@ -28,7 +29,11 @@ import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
-import androidx.core.graphics.toColorInt
+import androidx.compose.foundation.layout.fillMaxSize
+import com.github.mikephil.charting.data.PieData
+import com.github.mikephil.charting.data.PieDataSet
+import com.github.mikephil.charting.data.PieEntry
+import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -69,7 +74,7 @@ fun StatisticsScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp),
+                    .height(200.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
@@ -108,7 +113,7 @@ fun StatisticsScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp),
+                    .height(250.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
@@ -125,7 +130,7 @@ fun StatisticsScreen(
                         )
                     }
                 } else {
-                    BeautifulPieChart(caloriesByTimeOfDay)
+                    BeautifulPieChart(caloriesByTimeOfDay, primaryColor.toArgb())
                 }
             }
         }
@@ -238,21 +243,37 @@ fun BeautifulBarChart(
 }
 
 @Composable
-fun BeautifulPieChart(data: Map<String, Float>) {
+fun BeautifulPieChart(
+    data: Map<String, Float>,
+    primaryColor: Int
+) {
     AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)  // Optional: add spacing around the chart
+            .height(270.dp), // Restrict height to avoid overflow
         factory = { context ->
             PieChart(context).apply {
-                setUsePercentValues(true)
-                setDrawEntryLabels(true)
+                setLayerType(View.LAYER_TYPE_SOFTWARE, null)
                 description.isEnabled = false
-                isRotationEnabled = true
-                setDrawCenterText(true)
-                centerText = "Meals by Time"
-                setEntryLabelColor(Color.DKGRAY)
-                setEntryLabelTextSize(12f)
+                setBackgroundColor(Color.TRANSPARENT)
+
+                setExtraOffsets(10f, 10f, 10f, 10f)
+                setUsePercentValues(true)
+
+                legend.isEnabled = false
+                isDrawHoleEnabled = true
                 setHoleColor(Color.TRANSPARENT)
-                legend.isEnabled = true
+                holeRadius = 50f
+                transparentCircleRadius = 60f
+                setDrawCenterText(true)
+                centerText = "Meals by\nTime"
+                setCenterTextSize(12f)
+                setCenterTextColor(Color.DKGRAY)
+
+                isRotationEnabled = false
+                isHighlightPerTapEnabled = false
+                setDrawEntryLabels(false)
             }
         },
         update = { chart ->
@@ -260,23 +281,41 @@ fun BeautifulPieChart(data: Map<String, Float>) {
                 .filter { it.value > 0 }
                 .map { PieEntry(it.value, it.key) }
 
-            val colors = listOf(
-                "#FFA726".toColorInt(), // Morning
-                "#66BB6A".toColorInt(), // Afternoon
-                "#42A5F5".toColorInt(), // Evening
-                "#AB47BC".toColorInt()  // Night (if you ever add it)
+            val alpha = (0.9f * 255).toInt()
+            val baseColor = Color.argb(
+                alpha,
+                Color.red(primaryColor),
+                Color.green(primaryColor),
+                Color.blue(primaryColor)
+            )
+            val colorsList = listOf(
+                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.01f), // Slightly darker
+                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.3f), // Medium darker
+                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.6f)  // Darkest
             )
 
             val dataSet = PieDataSet(entries, "Time of Day").apply {
-                this.colors = colors
-                valueTextSize = 14f
+                this.colors = colorsList
+                sliceSpace = 3f
                 valueTextColor = Color.DKGRAY
+                valueTextSize = 12f
+                yValuePosition = PieDataSet.ValuePosition.OUTSIDE_SLICE
+                xValuePosition = PieDataSet.ValuePosition.OUTSIDE_SLICE
+                valueLinePart1Length = 0.5f
+                valueLinePart2Length = 0.5f
+                valueLineColor = Color.LTGRAY
             }
 
             val pieData = PieData(dataSet).apply {
                 setValueFormatter(object : ValueFormatter() {
+                    private val format = DecimalFormat("###,###,##0")
+                    override fun getPieLabel(value: Float, pieEntry: PieEntry?): String {
+                        val label = pieEntry?.label ?: ""
+                        return "$label ${format.format(value)}%"
+                    }
+
                     override fun getFormattedValue(value: Float): String {
-                        return "${value.toInt()}%"
+                        return "${format.format(value)}%"
                     }
                 })
             }
