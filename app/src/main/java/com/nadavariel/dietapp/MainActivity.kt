@@ -270,8 +270,7 @@ class MainActivity : ComponentActivity() {
 
                         composable(NavRoutes.QUESTIONS) {
                             QuestionsScreen(
-                                navController = navController,
-                                authViewModel = authViewModel
+                                navController = navController
                             )
                         }
 
