@@ -9,16 +9,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
+import com.nadavariel.dietapp.AuthViewModel
 
-@SuppressLint("MutableCollectionMutableState")
+@SuppressLint("MutableCollectionMutableState", "AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuestionsScreen(
     navController: NavController,
-    questionsViewModel: QuestionsViewModel = viewModel()
+    authViewModel: AuthViewModel
 ) {
     val questions = listOf(
         Question(
@@ -31,21 +30,8 @@ fun QuestionsScreen(
         )
     )
 
-    var currentIndex by remember { mutableIntStateOf(0) }
+    var currentIndex by remember { mutableStateOf(0) }
     var answers by remember { mutableStateOf(mutableListOf<String?>().apply { repeat(questions.size) { add(null) } }) }
-
-    val savedAnswers by questionsViewModel.userAnswers.collectAsState()
-
-    // This effect runs when savedAnswers are loaded from the ViewModel.
-    // It populates the local `answers` state with the fetched data.
-    LaunchedEffect(savedAnswers) {
-        if (savedAnswers.isNotEmpty()) {
-            val newAnswers = questions.map { question ->
-                savedAnswers.find { it.question == question.text }?.answer
-            }.toMutableList()
-            answers = newAnswers
-        }
-    }
 
     val currentQuestion = questions[currentIndex]
 
@@ -69,8 +55,8 @@ fun QuestionsScreen(
         ) {
             Text(text = currentQuestion.text, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
 
-            currentQuestion.options.forEach { option ->
-                val selected = answers.getOrNull(currentIndex) == option
+            currentQuestion.options.forEachIndexed { index, option ->
+                val selected = answers[currentIndex] == option
                 OutlinedButton(
                     onClick = {
                         answers = answers.toMutableList().also { it[currentIndex] = option }
@@ -94,11 +80,11 @@ fun QuestionsScreen(
                         currentIndex++
                     } else {
                         // All questions answered – handle submission here
-                        questionsViewModel.saveUserAnswers(questions, answers)
+                        println("User answers: $answers")
                         navController.popBackStack()
                     }
                 },
-                enabled = answers.getOrNull(currentIndex) != null,
+                enabled = answers[currentIndex] != null,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (currentIndex < questions.lastIndex) "Next" else "Submit")
