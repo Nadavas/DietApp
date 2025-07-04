@@ -15,8 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card // Import Card
-import androidx.compose.material3.CardDefaults // Import CardDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,13 +41,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.Image // ⭐ NEW: Import Image
-import androidx.compose.foundation.shape.CircleShape // ⭐ NEW: Import CircleShape
-import androidx.compose.ui.draw.clip // ⭐ NEW: Import clip
-import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
-import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
-import androidx.compose.foundation.layout.size // ⭐ NEW: Import Modifier.size
-import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.size
+import com.nadavariel.dietapp.util.AvatarConstants
+import com.nadavariel.dietapp.model.Gender
+import com.nadavariel.dietapp.model.ActivityLevel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,8 +63,6 @@ fun MyProfileScreen(
     val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
     var showAdditionalDetails by remember { mutableStateOf(false) }
-
-    val dateOfBirth: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
@@ -92,7 +92,7 @@ fun MyProfileScreen(
                 contentDescription = "User Avatar",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(150.dp) // Larger size for display on profile screen
+                    .size(150.dp)
                     .clip(CircleShape)
                     .padding(bottom = 16.dp)
             )
@@ -115,6 +115,9 @@ fun MyProfileScreen(
                 if (userProfile.weight <= 0f) {
                     missingFields.add("current weight")
                 }
+                if (userProfile.height <= 0f) {
+                    missingFields.add("height")
+                }
                 if (userProfile.targetWeight <= 0f) {
                     missingFields.add("target weight")
                 }
@@ -123,7 +126,7 @@ fun MyProfileScreen(
                     val formattedFields = when (missingFields.size) {
                         1 -> missingFields[0]
                         2 -> "${missingFields[0]} and ${missingFields[1]}"
-                        else -> { // Handles 3 or more fields without duplicating the last one
+                        else -> {
                             val allButLast = missingFields.dropLast(1).joinToString(", ")
                             "$allButLast, and ${missingFields.last()}"
                         }
@@ -150,11 +153,12 @@ fun MyProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            ProfileDetailRow("Name:", userProfile.name.ifEmpty { "" })
-            ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "")
-            ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "")
+            ProfileDetailRow("Name:", userProfile.name.ifEmpty { "Not Set" })
+            ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "Not Set")
+            ProfileDetailRow("Height:", if (userProfile.height > 0f) "${userProfile.height} cm" else "Not Set")
+            ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "Not Set") // ⭐ MOVED: Display Target Weight here
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Spacer before the button
 
             Button(
                 onClick = { showAdditionalDetails = !showAdditionalDetails },
@@ -171,16 +175,23 @@ fun MyProfileScreen(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    // ⭐ REMOVED: Email display from MyProfileScreen
+                    Spacer(modifier = Modifier.height(16.dp)) // Spacer inside the expanded section
                     ProfileDetailRow(
                         label = "Date of Birth:",
-                        value = dateOfBirth?.let { dateFormatter.format(it) } ?: "Not set"
+                        value = userProfile.dateOfBirth?.let { dateFormatter.format(it) } ?: "Not Set"
+                    )
+                    ProfileDetailRow(
+                        label = "Gender:",
+                        value = userProfile.gender.displayName
+                    )
+                    ProfileDetailRow(
+                        label = "Activity Level:",
+                        value = userProfile.activityLevel.displayName
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp)) // Spacer before the edit button
 
             Button(
                 onClick = { navController.navigate(NavRoutes.UPDATE_PROFILE) },
@@ -196,7 +207,6 @@ fun MyProfileScreen(
     }
 }
 
-// ProfileDetailRow is correctly kept here
 @Composable
 fun ProfileDetailRow(label: String, value: String) {
     Row(

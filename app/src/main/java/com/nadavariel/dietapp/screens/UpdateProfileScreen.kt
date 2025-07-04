@@ -43,22 +43,33 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.Image // ⭐ NEW: Import Image
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape // ⭐ NEW: Import CircleShape
-import androidx.compose.ui.draw.clip // ⭐ NEW: Import clip
-import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
-import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
-import androidx.compose.ui.window.Dialog // ⭐ NEW: Import Dialog
-import androidx.compose.foundation.lazy.grid.GridCells // ⭐ NEW: For LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid // ⭐ NEW: For LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items // ⭐ NEW: For LazyVerticalGrid items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface // ⭐ NEW: For Dialog content background
-import androidx.compose.material3.TextButton // ⭐ NEW: For dialog buttons
-import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import com.nadavariel.dietapp.util.AvatarConstants
+
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import com.nadavariel.dietapp.model.Gender
+import com.nadavariel.dietapp.model.ActivityLevel
+import androidx.compose.material.icons.filled.ArrowDropDown
+
+import androidx.compose.foundation.rememberScrollState // ⭐ NEW
+import androidx.compose.foundation.verticalScroll // ⭐ NEW
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,13 +84,19 @@ fun UpdateProfileScreen(
 
     var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
     var weightInput by remember(userProfile.weight) { mutableStateOf(if (userProfile.weight > 0f) userProfile.weight.toString() else "") }
+    var heightInput by remember(userProfile.height) { mutableStateOf(if (userProfile.height > 0f) userProfile.height.toString() else "") }
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
     var targetWeightInput by remember(userProfile.targetWeight) { mutableStateOf(if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else "") }
-    // ⭐ NEW: State for selected avatar ID, initialized from userProfile
     var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
 
-    // ⭐ NEW: State to control avatar selection dialog visibility
+    var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
+    var selectedActivityLevel by remember(userProfile.activityLevel) { mutableStateOf(userProfile.activityLevel) }
+
     var showAvatarDialog by remember { mutableStateOf(false) }
+
+    var isGenderDropdownExpanded by remember { mutableStateOf(false) }
+    var isActivityLevelDropdownExpanded by remember { mutableStateOf(false) }
+
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
@@ -89,21 +106,29 @@ fun UpdateProfileScreen(
         } else {
             userProfile.name
         }
-        // Ensure avatarId is also updated if userProfile changes from external source
         selectedAvatarId = userProfile.avatarId
+        selectedGender = userProfile.gender
+        selectedActivityLevel = userProfile.activityLevel
     }
 
     val saveProfileAction: () -> Unit = {
-        // ⭐ MODIFIED: Pass the selectedAvatarId to updateProfile
-        authViewModel.updateProfile(nameInput, weightInput, dateOfBirthInput, targetWeightInput, selectedAvatarId) {
-            if (isNewUser) {
-                navController.navigate(NavRoutes.HOME) {
-                    popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
-                    launchSingleTop = true
-                }
-            } else {
-                navController.popBackStack()
+        authViewModel.updateProfile(
+            name = nameInput,
+            weight = weightInput,
+            height = heightInput,
+            dateOfBirth = dateOfBirthInput,
+            targetWeight = targetWeightInput,
+            avatarId = selectedAvatarId,
+            gender = selectedGender,
+            activityLevel = selectedActivityLevel
+        )
+        if (isNewUser) {
+            navController.navigate(NavRoutes.HOME) {
+                popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
+                launchSingleTop = true
             }
+        } else {
+            navController.popBackStack()
         }
     }
 
@@ -132,17 +157,17 @@ fun UpdateProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp) // Apply horizontal padding
+                .verticalScroll(rememberScrollState()), // ⭐ ADDED: Make the column scrollable
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top // Changed to Top to allow scrolling from the top
         ) {
             Text(
                 text = if (isNewUser) "Tell us about yourself!" else "Update Your Profile",
                 fontSize = 28.sp,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(vertical = 24.dp) // Adjusted padding
             )
 
-            // ⭐ NEW: Avatar Display and Selection Button
             Image(
                 painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
                 contentDescription = "User Avatar",
@@ -150,14 +175,13 @@ fun UpdateProfileScreen(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .clickable { showAvatarDialog = true } // Open dialog on click
+                    .clickable { showAvatarDialog = true }
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showAvatarDialog = true }) {
                 Text("Change Avatar")
             }
             Spacer(modifier = Modifier.height(24.dp))
-            // ⭐ END NEW: Avatar Display and Selection Button
 
             OutlinedTextField(
                 value = nameInput,
@@ -177,13 +201,44 @@ fun UpdateProfileScreen(
                         weightInput = newValue
                     }
                 },
-                label = { Text("Weight (kg)") },
+                label = { Text("Current Weight (kg)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 singleLine = true
             )
+
+            OutlinedTextField(
+                value = heightInput,
+                onValueChange = { newValue ->
+                    if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                        heightInput = newValue
+                    }
+                },
+                label = { Text("Height (cm)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = targetWeightInput,
+                onValueChange = { newValue ->
+                    if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                        targetWeightInput = newValue
+                    }
+                },
+                label = { Text("Target Weight (kg)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next), // Changed to Next
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                singleLine = true
+            )
+
 
             OutlinedTextField(
                 value = dateOfBirthInput?.let { dateFormatter.format(it) } ?: "",
@@ -242,20 +297,75 @@ fun UpdateProfileScreen(
                 singleLine = true
             )
 
-            OutlinedTextField(
-                value = targetWeightInput,
-                onValueChange = { newValue ->
-                    if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                        targetWeightInput = newValue
-                    }
-                },
-                label = { Text("Target Weight (kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            // ⭐ VERIFIED: Label is present for Gender
+            ExposedDropdownMenuBox(
+                expanded = isGenderDropdownExpanded,
+                onExpandedChange = { isGenderDropdownExpanded = !isGenderDropdownExpanded },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                singleLine = true
-            )
+                    .padding(bottom = 16.dp)
+            ) {
+                OutlinedTextField(
+                    value = selectedGender.displayName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Gender") }, // ⭐ Label is here
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isGenderDropdownExpanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = isGenderDropdownExpanded,
+                    onDismissRequest = { isGenderDropdownExpanded = false }
+                ) {
+                    Gender.entries.forEach { genderOption ->
+                        DropdownMenuItem(
+                            text = { Text(genderOption.displayName) },
+                            onClick = {
+                                selectedGender = genderOption
+                                isGenderDropdownExpanded = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+
+            // ⭐ VERIFIED: Label is present for Activity Level
+            ExposedDropdownMenuBox(
+                expanded = isActivityLevelDropdownExpanded,
+                onExpandedChange = { isActivityLevelDropdownExpanded = !isActivityLevelDropdownExpanded },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp) // Keep padding before button
+            ) {
+                OutlinedTextField(
+                    value = selectedActivityLevel.displayName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Activity Level") }, // ⭐ Label is here
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isActivityLevelDropdownExpanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = isActivityLevelDropdownExpanded,
+                    onDismissRequest = { isActivityLevelDropdownExpanded = false }
+                ) {
+                    ActivityLevel.entries.forEach { levelOption ->
+                        DropdownMenuItem(
+                            text = { Text(levelOption.displayName) },
+                            onClick = {
+                                selectedActivityLevel = levelOption
+                                isActivityLevelDropdownExpanded = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
 
             Button(
                 onClick = { saveProfileAction() },
@@ -274,10 +384,10 @@ fun UpdateProfileScreen(
                     Text("Back")
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp)) // Add some space at the very bottom
         }
     }
 
-    // ⭐ NEW: Avatar Selection Dialog
     if (showAvatarDialog) {
         Dialog(onDismissRequest = { showAvatarDialog = false }) {
             Surface(
@@ -298,10 +408,10 @@ fun UpdateProfileScreen(
                     )
 
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(4), // 4 avatars per row
+                        columns = GridCells.Fixed(4),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp), // Limit height to make it scrollable if many avatars
+                            .heightIn(max = 300.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(8.dp)
@@ -312,11 +422,11 @@ fun UpdateProfileScreen(
                                 contentDescription = "Avatar $avatarId",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .size(64.dp) // Size of each avatar in the grid
+                                    .size(64.dp)
                                     .clip(CircleShape)
                                     .clickable {
                                         selectedAvatarId = avatarId
-                                        showAvatarDialog = false // Close dialog after selection
+                                        showAvatarDialog = false
                                     }
                             )
                         }
@@ -331,5 +441,4 @@ fun UpdateProfileScreen(
             }
         }
     }
-    // ⭐ END NEW: Avatar Selection Dialog
 }

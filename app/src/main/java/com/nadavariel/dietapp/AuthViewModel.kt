@@ -22,6 +22,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.data.UserPreferencesRepository
+import com.nadavariel.dietapp.model.ActivityLevel
+import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,10 +100,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 val isNameMissing = profile.name.isBlank()
                 val isWeightMissing = profile.weight <= 0f
                 val isTargetWeightMissing = profile.targetWeight <= 0f
+                val isHeightMissing = profile.height <= 0f // Check for missing height
 
-                // ⭐ MODIFIED: Check for missing avatar too if you want the red dot for it
-                // For now, I'm keeping it focused on primary details as per your existing logic
-                val detailsMissing = isNameMissing || isWeightMissing || isTargetWeightMissing // || profile.avatarId.isNullOrBlank()
+                // ⭐ MODIFIED: Removed isGenderMissing and isActivityLevelMissing from this check
+                val detailsMissing = isNameMissing || isWeightMissing || isTargetWeightMissing || isHeightMissing
 
                 detailsMissing
             }
@@ -122,17 +124,40 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 if (userDoc.exists()) {
                     val name = userDoc.getString("name") ?: ""
                     val weight = (userDoc.get("weight") as? Number)?.toFloat() ?: 0f
+                    val height = (userDoc.get("height") as? Number)?.toFloat() ?: 0f
                     val dateOfBirth = userDoc.getDate("dateOfBirth")
                     val targetWeight = (userDoc.get("targetWeight") as? Number)?.toFloat() ?: 0f
-                    // ⭐ NEW: Load avatarId
                     val avatarId = userDoc.getString("avatarId")
+                    val genderString = userDoc.getString("gender")
+                    val activityLevelString = userDoc.getString("activityLevel")
 
-                    _userProfile.value = UserProfile(name, weight, dateOfBirth, targetWeight, avatarId)
+                    val gender = try {
+                        genderString?.let { Gender.valueOf(it) } ?: Gender.UNKNOWN
+                    } catch (e: IllegalArgumentException) {
+                        Gender.UNKNOWN
+                    }
+                    val activityLevel = try {
+                        activityLevelString?.let { ActivityLevel.valueOf(it) } ?: ActivityLevel.NOT_SET
+                    } catch (e: IllegalArgumentException) {
+                        ActivityLevel.NOT_SET
+                    }
+
+                    _userProfile.value = UserProfile(
+                        name = name,
+                        weight = weight,
+                        height = height,
+                        dateOfBirth = dateOfBirth,
+                        targetWeight = targetWeight,
+                        avatarId = avatarId,
+                        gender = gender,
+                        activityLevel = activityLevel
+                    )
                 } else {
                     _userProfile.value = UserProfile()
                 }
             } catch (e: Exception) {
                 _userProfile.value = UserProfile()
+                // Log the exception if needed: Log.e("AuthViewModel", "Error loading user profile", e)
             }
         } else {
             _userProfile.value = UserProfile()
@@ -145,9 +170,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val userProfileMap = hashMapOf(
                 "name" to profile.name,
                 "weight" to profile.weight,
+                "height" to profile.height,
                 "dateOfBirth" to profile.dateOfBirth,
                 "targetWeight" to profile.targetWeight,
-                "avatarId" to profile.avatarId // ⭐ NEW: Save avatarId
+                "avatarId" to profile.avatarId,
+                "gender" to profile.gender.name,
+                "activityLevel" to profile.activityLevel.name
             )
             firestore.collection("users").document(userId).set(userProfileMap).await()
             _userProfile.value = profile
@@ -178,8 +206,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
-                        // ⭐ MODIFIED: Pass null for avatarId initially
-                        val newProfile = UserProfile(name = auth.currentUser?.displayName ?: emailState.value.substringBefore("@"), dateOfBirth = null, avatarId = null)
+                        val newProfile = UserProfile(
+                            name = auth.currentUser?.displayName ?: emailState.value.substringBefore("@"),
+                            dateOfBirth = null,
+                            avatarId = null,
+                            height = 0f,
+                            gender = Gender.UNKNOWN,
+                            activityLevel = ActivityLevel.NOT_SET
+                        )
                         saveUserProfile(newProfile)
                     }
                     onSuccess()
@@ -265,8 +299,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                // ⭐ MODIFIED: Pass null for avatarId initially
-                                val newProfile = UserProfile(name = task.result.user?.displayName ?: "", dateOfBirth = null, avatarId = null)
+                                val newProfile = UserProfile(
+                                    name = task.result.user?.displayName ?: "",
+                                    dateOfBirth = null,
+                                    avatarId = null,
+                                    height = 0f,
+                                    gender = Gender.UNKNOWN,
+                                    activityLevel = ActivityLevel.NOT_SET
+                                )
                                 saveUserProfile(newProfile)
                             } else {
                                 loadUserProfile()
@@ -298,8 +338,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                // ⭐ MODIFIED: Pass null for avatarId initially
-                                val newProfile = UserProfile(name = account.displayName ?: "", dateOfBirth = null, avatarId = null)
+                                val newProfile = UserProfile(
+                                    name = account.displayName ?: "",
+                                    dateOfBirth = null,
+                                    avatarId = null,
+                                    height = 0f,
+                                    gender = Gender.UNKNOWN,
+                                    activityLevel = ActivityLevel.NOT_SET
+                                )
                                 saveUserProfile(newProfile)
                             } else {
                                 loadUserProfile()
@@ -314,21 +360,32 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // ⭐ MODIFIED: Added avatarId parameter to updateProfile
-    fun updateProfile(name: String, weight: String, dateOfBirth: Date?, targetWeight: String, avatarId: String?, onSuccess: () -> Unit) {
+    fun updateProfile(
+        name: String,
+        weight: String,
+        height: String,
+        dateOfBirth: Date?,
+        targetWeight: String,
+        avatarId: String?,
+        gender: Gender,
+        activityLevel: ActivityLevel
+    ) {
         viewModelScope.launch {
             val parsedWeight = weight.toFloatOrNull() ?: 0f
+            val parsedHeight = height.toFloatOrNull() ?: 0f
             val parsedTargetWeight = targetWeight.toFloatOrNull() ?: 0f
 
             val updatedProfile = _userProfile.value.copy(
                 name = name,
                 weight = parsedWeight,
+                height = parsedHeight,
                 dateOfBirth = dateOfBirth,
                 targetWeight = parsedTargetWeight,
-                avatarId = avatarId // ⭐ NEW: Set avatarId in the updated profile
+                avatarId = avatarId,
+                gender = gender,
+                activityLevel = activityLevel
             )
             saveUserProfile(updatedProfile)
-            onSuccess()
         }
     }
 
