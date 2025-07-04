@@ -41,6 +41,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Image // ⭐ NEW: Import Image
+import androidx.compose.foundation.shape.CircleShape // ⭐ NEW: Import CircleShape
+import androidx.compose.ui.draw.clip // ⭐ NEW: Import clip
+import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
+import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
+import androidx.compose.foundation.layout.size // ⭐ NEW: Import Modifier.size
+import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants (ensure this path is correct, should be com.nadavariel.dietapp.util)
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +86,18 @@ fun MyProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
+            // ⭐ NEW: Avatar Display
+            Image(
+                painter = painterResource(id = AvatarConstants.getAvatarResId(userProfile.avatarId)),
+                contentDescription = "User Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(150.dp) // Larger size for display on profile screen
+                    .clip(CircleShape)
+                    .padding(bottom = 16.dp)
+            )
+            // ⭐ END NEW: Avatar Display
+
             Text(
                 text = "Profile Details",
                 fontSize = 20.sp,
@@ -168,8 +188,8 @@ fun MyProfileScreen(
                 onClick = { navController.navigate(NavRoutes.UPDATE_PROFILE) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary, // Set the background color
-                    contentColor = MaterialTheme.colorScheme.onSecondary // Set the text/icon color on secondary
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
                 )
             ) {
                 Text("Edit Profile")
@@ -178,6 +198,7 @@ fun MyProfileScreen(
     }
 }
 
+// ProfileDetailRow is correctly kept here as per your request
 @Composable
 fun ProfileDetailRow(label: String, value: String) {
     Row(

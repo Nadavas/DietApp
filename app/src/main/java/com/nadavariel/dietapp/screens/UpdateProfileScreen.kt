@@ -42,7 +42,23 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.lifecycle.compose.collectAsStateWithLifecycle // ⭐ NEW: Import collectAsStateWithLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Image // ⭐ NEW: Import Image
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape // ⭐ NEW: Import CircleShape
+import androidx.compose.ui.draw.clip // ⭐ NEW: Import clip
+import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
+import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
+import androidx.compose.ui.window.Dialog // ⭐ NEW: Import Dialog
+import androidx.compose.foundation.lazy.grid.GridCells // ⭐ NEW: For LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid // ⭐ NEW: For LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items // ⭐ NEW: For LazyVerticalGrid items
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface // ⭐ NEW: For Dialog content background
+import androidx.compose.material3.TextButton // ⭐ NEW: For dialog buttons
+import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,33 +69,33 @@ fun UpdateProfileScreen(
     isNewUser: Boolean = false
 ) {
     val context = LocalContext.current
-    // ⭐ MODIFIED: Collect userProfile as a state
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
 
-    // Initialize states from the collected userProfile value
     var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
     var weightInput by remember(userProfile.weight) { mutableStateOf(if (userProfile.weight > 0f) userProfile.weight.toString() else "") }
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
     var targetWeightInput by remember(userProfile.targetWeight) { mutableStateOf(if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else "") }
+    // ⭐ NEW: State for selected avatar ID, initialized from userProfile
+    var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
+
+    // ⭐ NEW: State to control avatar selection dialog visibility
+    var showAvatarDialog by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     LaunchedEffect(userProfile, isNewUser) {
-        // Only set name for new user if it's currently blank and email is available
         nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
             authViewModel.currentUser?.email?.substringBefore("@") ?: ""
         } else {
             userProfile.name
         }
-        // These are already handled by remember(userProfile.property) above, but kept
-        // for explicit clarity if additional logic was needed.
-        // weightInput = if (userProfile.weight > 0f) userProfile.weight.toString() else ""
-        // dateOfBirthInput = userProfile.dateOfBirth
-        // targetWeightInput = if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else ""
+        // Ensure avatarId is also updated if userProfile changes from external source
+        selectedAvatarId = userProfile.avatarId
     }
 
     val saveProfileAction: () -> Unit = {
-        authViewModel.updateProfile(nameInput, weightInput, dateOfBirthInput, targetWeightInput) {
+        // ⭐ MODIFIED: Pass the selectedAvatarId to updateProfile
+        authViewModel.updateProfile(nameInput, weightInput, dateOfBirthInput, targetWeightInput, selectedAvatarId) {
             if (isNewUser) {
                 navController.navigate(NavRoutes.HOME) {
                     popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
@@ -126,6 +142,23 @@ fun UpdateProfileScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
+            // ⭐ NEW: Avatar Display and Selection Button
+            Image(
+                painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
+                contentDescription = "User Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .clickable { showAvatarDialog = true } // Open dialog on click
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { showAvatarDialog = true }) {
+                Text("Change Avatar")
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            // ⭐ END NEW: Avatar Display and Selection Button
+
             OutlinedTextField(
                 value = nameInput,
                 onValueChange = { nameInput = it },
@@ -160,7 +193,7 @@ fun UpdateProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
-                    .clickable { // Make the whole field clickable to open date picker
+                    .clickable {
                         val initialCalendar = Calendar.getInstance().apply {
                             time = dateOfBirthInput ?: Date()
                         }
@@ -181,7 +214,7 @@ fun UpdateProfileScreen(
                             day
                         ).show()
                     },
-                trailingIcon = { // Add a calendar icon
+                trailingIcon = {
                     IconButton(onClick = {
                         val initialCalendar = Calendar.getInstance().apply {
                             time = dateOfBirthInput ?: Date()
@@ -208,7 +241,6 @@ fun UpdateProfileScreen(
                 },
                 singleLine = true
             )
-
 
             OutlinedTextField(
                 value = targetWeightInput,
@@ -244,4 +276,60 @@ fun UpdateProfileScreen(
             }
         }
     }
+
+    // ⭐ NEW: Avatar Selection Dialog
+    if (showAvatarDialog) {
+        Dialog(onDismissRequest = { showAvatarDialog = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Select an Avatar",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4), // 4 avatars per row
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp), // Limit height to make it scrollable if many avatars
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
+                            Image(
+                                painter = painterResource(id = drawableResId),
+                                contentDescription = "Avatar $avatarId",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(64.dp) // Size of each avatar in the grid
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        selectedAvatarId = avatarId
+                                        showAvatarDialog = false // Close dialog after selection
+                                    }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TextButton(onClick = { showAvatarDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+    // ⭐ END NEW: Avatar Selection Dialog
 }
