@@ -36,6 +36,10 @@ import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Image // ⭐ NEW: Import Image
+import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
+import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
+import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -104,7 +108,20 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                //Spacer(modifier = Modifier.height(16.dp))
+
+                // ⭐ NEW: Avatar Display
+                Image(
+                    painter = painterResource(id = AvatarConstants.getAvatarResId(userProfile.avatarId)),
+                    contentDescription = "User Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(128.dp) // Smaller size for home screen, adjust as needed
+                        .clip(RoundedCornerShape(50)) // Making it circular
+                        .clickable { navController.navigate(NavRoutes.MY_PROFILE) } // Make avatar clickable
+                )
+
+                //Spacer(modifier = Modifier.height(16.dp)) // Space between avatar and date navigation
 
                 Row(
                     modifier = Modifier

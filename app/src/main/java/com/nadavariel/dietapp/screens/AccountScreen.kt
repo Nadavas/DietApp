@@ -50,6 +50,7 @@ import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
 import androidx.compose.ui.res.painterResource
 import com.nadavariel.dietapp.R
+import androidx.compose.material.icons.filled.Email // ⭐ NEW: Import for Email icon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +66,7 @@ fun AccountScreen(
 
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
-    // ⭐ NEW: Observe the hasMissingPrimaryProfileDetails state
+    // Observe the hasMissingPrimaryProfileDetails state
     val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
     LaunchedEffect(authResult) {
@@ -125,6 +126,18 @@ fun AccountScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
+            // ⭐ NEW: Email Display
+            ListItem(
+                headlineContent = { Text("Email Address") },
+                supportingContent = { Text(currentUser?.email ?: "N/A") },
+                leadingContent = {
+                    Icon(Icons.Filled.Email, contentDescription = "Email")
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            HorizontalDivider()
+            // ⭐ END NEW: Email Display
+
             // Profile List Item
             ListItem(
                 headlineContent = { Text("Profile") },
@@ -132,7 +145,7 @@ fun AccountScreen(
                     Icon(Icons.Filled.Person, contentDescription = "My Profile")
                 },
                 trailingContent = {
-                    // ⭐ MODIFIED: Conditionally display the red dot
+                    // Conditionally display the red dot
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (hasMissingDetails) {
                             Box(

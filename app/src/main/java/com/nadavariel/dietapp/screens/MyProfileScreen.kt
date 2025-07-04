@@ -47,7 +47,7 @@ import androidx.compose.ui.draw.clip // ⭐ NEW: Import clip
 import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
 import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
 import androidx.compose.foundation.layout.size // ⭐ NEW: Import Modifier.size
-import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants (ensure this path is correct, should be com.nadavariel.dietapp.util)
+import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +86,7 @@ fun MyProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // ⭐ NEW: Avatar Display
+            // Avatar Display
             Image(
                 painter = painterResource(id = AvatarConstants.getAvatarResId(userProfile.avatarId)),
                 contentDescription = "User Avatar",
@@ -96,7 +96,6 @@ fun MyProfileScreen(
                     .clip(CircleShape)
                     .padding(bottom = 16.dp)
             )
-            // ⭐ END NEW: Avatar Display
 
             Text(
                 text = "Profile Details",
@@ -173,8 +172,7 @@ fun MyProfileScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    ProfileDetailRow("Email:", currentUser?.email ?: "N/A")
-
+                    // ⭐ REMOVED: Email display from MyProfileScreen
                     ProfileDetailRow(
                         label = "Date of Birth:",
                         value = dateOfBirth?.let { dateFormatter.format(it) } ?: "Not set"
@@ -198,7 +196,7 @@ fun MyProfileScreen(
     }
 }
 
-// ProfileDetailRow is correctly kept here as per your request
+// ProfileDetailRow is correctly kept here
 @Composable
 fun ProfileDetailRow(label: String, value: String) {
     Row(
