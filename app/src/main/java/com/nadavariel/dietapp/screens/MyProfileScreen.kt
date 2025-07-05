@@ -38,7 +38,6 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Image
@@ -48,8 +47,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.size
 import com.nadavariel.dietapp.util.AvatarConstants
-import com.nadavariel.dietapp.model.Gender
-import com.nadavariel.dietapp.model.ActivityLevel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +55,6 @@ fun MyProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
-    val currentUser = authViewModel.currentUser
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 

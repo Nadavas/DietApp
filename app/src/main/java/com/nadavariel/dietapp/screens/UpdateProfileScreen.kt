@@ -65,10 +65,10 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.ActivityLevel
-import androidx.compose.material.icons.filled.ArrowDropDown
 
 import androidx.compose.foundation.rememberScrollState // ⭐ NEW
 import androidx.compose.foundation.verticalScroll // ⭐ NEW
+import androidx.compose.material3.MenuAnchorType
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -312,7 +312,8 @@ fun UpdateProfileScreen(
                     label = { Text("Gender") }, // ⭐ Label is here
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isGenderDropdownExpanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .exposedDropdownSize() // Often combined with this
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true) // This is the new way
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
@@ -347,7 +348,8 @@ fun UpdateProfileScreen(
                     label = { Text("Activity Level") }, // ⭐ Label is here
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isActivityLevelDropdownExpanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .exposedDropdownSize() // Often combined with this
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true) // This is the new way
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
