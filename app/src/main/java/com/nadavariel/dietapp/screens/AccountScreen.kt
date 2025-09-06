@@ -1,20 +1,20 @@
 package com.nadavariel.dietapp.screens
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background // ⭐ NEW: Import for background
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box // ⭐ NEW: Import for Box
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row // ⭐ NEW: Import for Row
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size // ⭐ NEW: Import for size
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape // ⭐ NEW: Import for CircleShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -37,7 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // ⭐ NEW: Import for Color
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,7 +50,7 @@ import com.nadavariel.dietapp.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
 import androidx.compose.ui.res.painterResource
 import com.nadavariel.dietapp.R
-import androidx.compose.material.icons.filled.Email // ⭐ NEW: Import for Email icon
+import androidx.compose.material.icons.filled.Email
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,17 +58,19 @@ fun AccountScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
+    // Dialog state management
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
+    // Get state from the viewmodel
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
-    // Observe the hasMissingPrimaryProfileDetails state
     val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
+    // Handle authentication results
     LaunchedEffect(authResult) {
         when (authResult) {
             AuthResult.Success -> {
@@ -100,19 +102,11 @@ fun AccountScreen(
         }
     }
 
+    // Main screen layout
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Account") },
-                navigationIcon = {
-                    // Back button is generally not shown for primary bottom navigation screens.
-                    // If you intend for this screen to also be reachable via other means where a back button is appropriate, uncomment this:
-                    /*
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                    */
-                }
+                title = { Text("Account") }
             )
         }
     ) { paddingValues ->
@@ -126,7 +120,7 @@ fun AccountScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ⭐ NEW: Email Display
+            // Email
             ListItem(
                 headlineContent = { Text("Email Address") },
                 supportingContent = { Text(currentUser?.email ?: "N/A") },
@@ -136,25 +130,24 @@ fun AccountScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             HorizontalDivider()
-            // ⭐ END NEW: Email Display
 
-            // Profile List Item
+            // Profile
             ListItem(
                 headlineContent = { Text("Profile") },
                 leadingContent = {
                     Icon(Icons.Filled.Person, contentDescription = "My Profile")
                 },
                 trailingContent = {
-                    // Conditionally display the red dot
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Red dot for incomplete profile
                         if (hasMissingDetails) {
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp) // Size of the red circle
+                                    .size(8.dp)
                                     .background(Color.Red, CircleShape)
-                                    .align(Alignment.CenterVertically) // Ensures vertical alignment with the icon
+                                    .align(Alignment.CenterVertically)
                             )
-                            Spacer(modifier = Modifier.width(8.dp)) // Space between dot and arrow
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to My Profile")
                     }
@@ -165,24 +158,21 @@ fun AccountScreen(
             )
             HorizontalDivider()
 
-            // Questions List Item
+            // Questions
             ListItem(
                 headlineContent = { Text("Questions") },
                 leadingContent = {
-                    // Get the current content color, which Icons typically use by default
                     val currentIconColor = LocalContentColor.current
                     Image(
                         painter = painterResource(id = R.drawable.ic_query_filled),
                         contentDescription = "Questions",
-                        colorFilter = ColorFilter.tint(currentIconColor) // Apply the tint
+                        colorFilter = ColorFilter.tint(currentIconColor)
                     )
                 },
                 trailingContent = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Go to Questions"
-                        // This Icon will also use LocalContentColor.current by default
-                        // or a color appropriate for its context in ListItem
                     )
                 },
                 modifier = Modifier
@@ -191,7 +181,7 @@ fun AccountScreen(
             )
             HorizontalDivider()
 
-            // Settings List Item
+            // Settings
             ListItem(
                 headlineContent = { Text("Settings") },
                 leadingContent = {
@@ -208,7 +198,7 @@ fun AccountScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Sign Out Button
+            // Sign out button
             Button(
                 onClick = { showSignOutDialog = true },
                 modifier = Modifier
@@ -225,8 +215,9 @@ fun AccountScreen(
                 Text("Sign Out")
             }
 
-            Spacer(modifier = Modifier.height(16.dp)) // Spacer between buttons
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Delete account button (in red)
             Button(
                 onClick = { showDeleteConfirmationDialog = true },
                 modifier = Modifier
@@ -237,6 +228,7 @@ fun AccountScreen(
                 Text("Delete Account")
             }
 
+            // Display error messages
             errorMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -249,6 +241,7 @@ fun AccountScreen(
         }
     }
 
+    // Dialogs
     if (showDeleteConfirmationDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -334,7 +327,6 @@ fun AccountScreen(
         )
     }
 
-    // Sign-out confirmation dialog
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -371,4 +363,5 @@ fun AccountScreen(
             }
         )
     }
+
 }

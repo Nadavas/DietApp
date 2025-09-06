@@ -37,17 +37,20 @@ import android.R.style as AndroidRStyle
 fun AddEditMealScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
     navController: NavController,
-    mealToEdit: Meal? = null // Optional: Pass a meal here if editing
+    mealToEdit: Meal? = null // Null if adding a new meal, otherwise contains the meal to edit
 ) {
     val context = LocalContext.current
 
+    // State variables for text fields and date/time
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
+    // Formats for displaying date and time
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
+    // Initializes the screen state (based on whether a meal is being edited)
     LaunchedEffect(mealToEdit) {
         if (mealToEdit != null) {
             foodName = mealToEdit.foodName
@@ -57,18 +60,18 @@ fun AddEditMealScreen(
         } else {
             foodName = ""
             caloriesText = ""
-            // Ensure new meals default to current date/time, and not in the future.
             val now = Calendar.getInstance()
             selectedDateTimeState = now
         }
     }
 
+    // Main screen layout
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (mealToEdit == null) "Add New Meal" else "Edit Meal") },
                 navigationIcon = {
-                    // ⭐ MODIFIED: Only show IconButton if mealToEdit is not null
+                    // Back button only for edit
                     if (mealToEdit != null) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -86,6 +89,7 @@ fun AddEditMealScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Food name field
             OutlinedTextField(
                 value = foodName,
                 onValueChange = { onFoodNameChange -> foodName = onFoodNameChange },
@@ -94,6 +98,7 @@ fun AddEditMealScreen(
                 singleLine = true
             )
 
+            // Calories field
             OutlinedTextField(
                 value = caloriesText,
                 onValueChange = { newValue ->
@@ -118,18 +123,14 @@ fun AddEditMealScreen(
                             newCalendar.set(Calendar.MONTH, month)
                             newCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
 
-                            // ⭐ NEW LOGIC FOR DATE: If selected date is today, clamp time to now
+                            // Clamp time to now if the date is today
                             val now = Calendar.getInstance()
                             if (newCalendar.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
                                 newCalendar.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
                                 newCalendar.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
                             ) {
-                                // If the newly set date is today, ensure the time is not in the future
                                 if (newCalendar.after(now)) {
-                                    newCalendar.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY))
-                                    newCalendar.set(Calendar.MINUTE, now.get(Calendar.MINUTE))
-                                    newCalendar.set(Calendar.SECOND, now.get(Calendar.SECOND))
-                                    newCalendar.set(Calendar.MILLISECOND, now.get(Calendar.MILLISECOND))
+                                    newCalendar.time = now.time
                                 }
                             }
                             selectedDateTimeState = newCalendar
@@ -138,7 +139,7 @@ fun AddEditMealScreen(
                         selectedDateTimeState.get(Calendar.MONTH),
                         selectedDateTimeState.get(Calendar.DAY_OF_MONTH)
                     )
-                    // ⭐ NEW: Set maximum date to today
+                    // Prevents selecting a future date
                     datePickerDialog.datePicker.maxDate = System.currentTimeMillis()
                     datePickerDialog.show()
                 },
@@ -155,7 +156,7 @@ fun AddEditMealScreen(
                             selectedDateTimeState.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
                             selectedDateTimeState.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
 
-                    // ⭐ NEW LOGIC FOR TIME: If the selected date is today, initial time is now
+                    // If the selected date is today, initial time is now
                     val initialHour = if (isSelectedDateToday) now.get(Calendar.HOUR_OF_DAY) else selectedDateTimeState.get(Calendar.HOUR_OF_DAY)
                     val initialMinute = if (isSelectedDateToday) now.get(Calendar.MINUTE) else selectedDateTimeState.get(Calendar.MINUTE)
 
@@ -166,17 +167,16 @@ fun AddEditMealScreen(
                             val newCalendar = selectedDateTimeState.clone() as Calendar
                             newCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
                             newCalendar.set(Calendar.MINUTE, minute)
-                            newCalendar.set(Calendar.SECOND, 0) // Clear seconds/milliseconds for clean comparison
+                            newCalendar.set(Calendar.SECOND, 0)
                             newCalendar.set(Calendar.MILLISECOND, 0)
 
-                            // ⭐ NEW LOGIC FOR TIME: If selected date is today and chosen time is in future, clamp
+                            // Clamps the time to the current time if the date is today and the selected time is in the future
                             if (isSelectedDateToday) {
                                 val currentSystemTimeCalendar = Calendar.getInstance().apply {
                                     set(Calendar.SECOND, 0)
                                     set(Calendar.MILLISECOND, 0)
                                 }
                                 if (newCalendar.after(currentSystemTimeCalendar)) {
-                                    // If the chosen time is in the future for today's date, clamp to current time
                                     newCalendar.set(Calendar.HOUR_OF_DAY, currentSystemTimeCalendar.get(Calendar.HOUR_OF_DAY))
                                     newCalendar.set(Calendar.MINUTE, currentSystemTimeCalendar.get(Calendar.MINUTE))
                                 }
@@ -185,7 +185,7 @@ fun AddEditMealScreen(
                         },
                         initialHour,
                         initialMinute,
-                        true // Set to true for 24-hour format, false for AM/PM
+                        true
                     ).show()
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -195,26 +195,24 @@ fun AddEditMealScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Add/Edit meal button
             Button(
                 onClick = {
                     val calValue = caloriesText.toIntOrNull() ?: 0
                     if (foodName.isNotBlank() && calValue > 0) {
-                        // Pass the Date object from selectedDateTimeState
                         val mealTimestamp = selectedDateTimeState.time
 
-                        // ⭐ NEW VALIDATION: Perform a final check before saving
+                        // Final check to prevent future timestamps
                         val now = Date()
                         if (mealTimestamp.after(now)) {
-                            // This case should ideally not be reached if UI pickers work correctly,
-                            // but it's a good final defense.
-                            // You might want to show a Toast/Snackbar here for the user.
-                            // Toast.makeText(context, "Meal time cannot be in the future.", Toast.LENGTH_SHORT).show()
-                            return@Button // Prevent saving if time is in the future
+                            return@Button
                         }
 
                         if (mealToEdit == null) {
+                            // Add a new meal
                             foodLogViewModel.logMeal(foodName, calValue, mealTimestamp)
                         } else {
+                            // Updates an existing meal
                             foodLogViewModel.updateMeal(
                                 mealToEdit.id,
                                 foodName,
@@ -223,15 +221,16 @@ fun AddEditMealScreen(
                             )
                         }
                         navController.popBackStack()
-                    } else {
-                        // TODO: Show a snackbar or toast for invalid input
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
+
+                // Button is only enabled if fields are valid
                 enabled = foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
             ) {
                 Text(if (mealToEdit == null) "Add Meal" else "Save Changes", fontSize = 18.sp)
             }
+
         }
     }
 }
