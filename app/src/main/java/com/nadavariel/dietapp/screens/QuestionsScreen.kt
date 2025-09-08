@@ -31,13 +31,16 @@ fun QuestionsScreen(
         )
     )
 
+    // Get state from the viewmodel
+    val savedAnswers by questionsViewModel.userAnswers.collectAsState()
+
+    // State variables
     var currentIndex by remember { mutableIntStateOf(0) }
     var answers by remember { mutableStateOf(mutableListOf<String?>().apply { repeat(questions.size) { add(null) } }) }
 
-    val savedAnswers by questionsViewModel.userAnswers.collectAsState()
+    val currentQuestion = questions[currentIndex]
 
-    // This effect runs when savedAnswers are loaded from the ViewModel.
-    // It populates the local `answers` state with the fetched data.
+    // Load saved answers from the viewmodel
     LaunchedEffect(savedAnswers) {
         if (savedAnswers.isNotEmpty()) {
             val newAnswers = questions.map { question ->
@@ -46,8 +49,6 @@ fun QuestionsScreen(
             answers = newAnswers
         }
     }
-
-    val currentQuestion = questions[currentIndex]
 
     Scaffold(
         topBar = {
@@ -67,6 +68,7 @@ fun QuestionsScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
+            // Question and options
             Text(text = currentQuestion.text, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
 
             currentQuestion.options.forEach { option ->
@@ -88,6 +90,7 @@ fun QuestionsScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            // Next/submit button
             Button(
                 onClick = {
                     if (currentIndex < questions.lastIndex) {

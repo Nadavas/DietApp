@@ -55,9 +55,11 @@ fun MyProfileScreen(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
+    // Get state from the viewmodel
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
+    // State variables
     var showAdditionalDetails by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
@@ -92,13 +94,14 @@ fun MyProfileScreen(
                     .clip(CircleShape)
                     .padding(bottom = 16.dp)
             )
-
+            // Title: profile details
             Text(
                 text = "Profile Details",
                 fontSize = 20.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
+            // Essential profile details
             AnimatedVisibility(
                 visible = hasMissingProfileDetails,
                 enter = expandVertically(expandFrom = Alignment.Top),
@@ -152,10 +155,11 @@ fun MyProfileScreen(
             ProfileDetailRow("Name:", userProfile.name.ifEmpty { "Not Set" })
             ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "Not Set")
             ProfileDetailRow("Height:", if (userProfile.height > 0f) "${userProfile.height} cm" else "Not Set")
-            ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "Not Set") // ⭐ MOVED: Display Target Weight here
+            ProfileDetailRow("Target Weight:", if (userProfile.targetWeight > 0f) "${userProfile.targetWeight} kg" else "Not Set")
 
-            Spacer(modifier = Modifier.height(16.dp)) // Spacer before the button
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Show/hide additional details button
             Button(
                 onClick = { showAdditionalDetails = !showAdditionalDetails },
                 modifier = Modifier.fillMaxWidth()
@@ -163,6 +167,7 @@ fun MyProfileScreen(
                 Text(if (showAdditionalDetails) "Hide Details" else "Show More Details")
             }
 
+            // Additional profile details
             AnimatedVisibility(
                 visible = showAdditionalDetails,
                 enter = expandVertically(expandFrom = Alignment.Top),
@@ -171,7 +176,7 @@ fun MyProfileScreen(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp)) // Spacer inside the expanded section
+                    Spacer(modifier = Modifier.height(16.dp))
                     ProfileDetailRow(
                         label = "Date of Birth:",
                         value = userProfile.dateOfBirth?.let { dateFormatter.format(it) } ?: "Not Set"
@@ -187,8 +192,9 @@ fun MyProfileScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp)) // Spacer before the edit button
+            Spacer(modifier = Modifier.height(32.dp))
 
+            // Edit profile button
             Button(
                 onClick = { navController.navigate(NavRoutes.UPDATE_PROFILE) },
                 modifier = Modifier.fillMaxWidth(),
@@ -203,6 +209,7 @@ fun MyProfileScreen(
     }
 }
 
+// Composable for displaying a label-value pair in a row
 @Composable
 fun ProfileDetailRow(label: String, value: String) {
     Row(
@@ -210,7 +217,6 @@ fun ProfileDetailRow(label: String, value: String) {
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,

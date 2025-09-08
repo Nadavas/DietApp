@@ -39,16 +39,17 @@ fun AddEditMealScreen(
     navController: NavController,
     mealToEdit: Meal? = null // Null if adding a new meal, otherwise contains the meal to edit
 ) {
+    // Formats for displaying date and time
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
     val context = LocalContext.current
 
-    // State variables for text fields and date/time
+    // State variables
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
-    // Formats for displaying date and time
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     // Initializes the screen state (based on whether a meal is being edited)
     LaunchedEffect(mealToEdit) {
@@ -65,7 +66,6 @@ fun AddEditMealScreen(
         }
     }
 
-    // Main screen layout
     Scaffold(
         topBar = {
             TopAppBar(

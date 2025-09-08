@@ -48,23 +48,25 @@ fun HomeScreen(
     foodLogViewModel: FoodLogViewModel,
     navController: NavController,
 ) {
-    // Collects user profile and meal data from ViewModels
+    // Get data from the viewmodel
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val userName = userProfile.name
     val selectedDate = foodLogViewModel.selectedDate
     val currentWeekStartDate = foodLogViewModel.currentWeekStartDate
     val mealsForSelectedDate = foodLogViewModel.mealsForSelectedDate
+
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
 
-    // State variables for
+    // State variables
     var showMealsList by remember { mutableStateOf(false) }
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
     var mealWithActionsShownId by remember { mutableStateOf<String?>(null) }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
     // Initializes the screen with the current date when the lifecycle resumes
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -72,6 +74,7 @@ fun HomeScreen(
         }
     }
 
+    // Groups the meals by their respective MealSection
     val groupedMeals = remember(mealsForSelectedDate) {
         mealsForSelectedDate
             .groupBy { meal -> MealSection.getMealSection(meal.timestamp.toDate()) }
@@ -98,6 +101,7 @@ fun HomeScreen(
             ) {
                 Spacer(modifier = Modifier.height(0.dp))
 
+                // Welcome
                 Text(
                     text = "Welcome, ${userName.ifBlank { "Guest" }}!",
                     modifier = Modifier.fillMaxWidth(),
@@ -117,6 +121,7 @@ fun HomeScreen(
                         .clickable { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
 
+                // Week selection
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -147,8 +152,10 @@ fun HomeScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next Week", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Week dates
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -192,8 +199,10 @@ fun HomeScreen(
                         }
                     }
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Total Calories for the selected day
                 Text(
                     text = "Total Calories: $totalCaloriesForSelectedDate kcal",
                     style = MaterialTheme.typography.titleMedium,
@@ -204,8 +213,10 @@ fun HomeScreen(
                         .padding(horizontal = 16.dp),
                     textAlign = TextAlign.Center
                 )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Show/hide meals button
                 Button(
                     onClick = {
                         showMealsList = !showMealsList
@@ -222,6 +233,7 @@ fun HomeScreen(
                     )
                 }
 
+                // The meals for the selected day
                 if (showMealsList) {
                     if (mealsForSelectedDate.isEmpty()) {
                         Box(
@@ -297,6 +309,7 @@ fun HomeScreen(
         }
     }
 
+    // Confirmation dialog for meal deletion
     if (showDeleteConfirmationDialog && mealToDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmationDialog = false },
@@ -319,6 +332,7 @@ fun HomeScreen(
     }
 }
 
+// Composable for a single meal item in the list
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MealItem(
@@ -344,6 +358,7 @@ fun MealItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Meal details
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -360,6 +375,7 @@ fun MealItem(
                 )
             }
 
+            // Edit/delete icons or calories
             if (showActions) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.DarkMode // ⭐ NEW: Import for Dark Mode icon
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -19,12 +19,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch // ⭐ NEW: Import Switch
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState // ⭐ NEW: Import collectAsState
-import androidx.compose.runtime.getValue // ⭐ NEW: Import getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -39,7 +39,7 @@ fun SettingsScreen(
     navController: NavController,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    // ⭐ NEW: Observe dark mode preference from AuthViewModel
+    // Get dark mode state from viewmodel
     val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsState()
 
     Scaffold(
@@ -64,7 +64,7 @@ fun SettingsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ⭐ NEW: Dark Mode Option ListItem
+            // Dark mode
             ListItem(
                 headlineContent = { Text("Dark Mode") },
                 leadingContent = {
@@ -80,9 +80,9 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
-            HorizontalDivider() // Separator after Dark Mode option
+            HorizontalDivider()
 
-            // Conditionally display Change Password option
+            // Change Password (only for manual registered users)
             if (authViewModel.isEmailPasswordUser) {
                 ListItem(
                     headlineContent = { Text("Change Password") },
@@ -96,12 +96,10 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .clickable { navController.navigate(NavRoutes.CHANGE_PASSWORD) }
                 )
-                HorizontalDivider() // Separator after Change Password option
+                HorizontalDivider()
             }
 
-            // Other settings items can go here later
             Spacer(modifier = Modifier.height(16.dp))
-            // You can remove this placeholder text when you add more settings items.
         }
     }
 }

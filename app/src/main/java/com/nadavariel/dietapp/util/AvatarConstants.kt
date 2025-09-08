@@ -1,7 +1,7 @@
 package com.nadavariel.dietapp.util
 
 import androidx.annotation.DrawableRes
-import com.nadavariel.dietapp.R // Make sure this import is correct for your project's R file
+import com.nadavariel.dietapp.R
 
 object AvatarConstants {
     val AVATAR_DRAWABLES = listOf(
@@ -19,10 +19,10 @@ object AvatarConstants {
     // A default avatar to show if none is selected or if the selected one is invalid
     @DrawableRes
     fun getDefaultAvatarResId(): Int {
-        return R.drawable.ic_person_filled // Default fallback icon
+        return R.drawable.ic_person_filled
     }
 
-    // Function to get the resource ID from an avatarId (the string key)
+    // Function to get the resource ID from an avatar Id (the string key)
     @DrawableRes
     fun getAvatarResId(avatarId: String?): Int {
         return AVATAR_DRAWABLES.firstOrNull { it.first == avatarId }?.second

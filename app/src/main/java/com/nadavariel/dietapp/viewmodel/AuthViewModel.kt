@@ -103,7 +103,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 val isTargetWeightMissing = profile.targetWeight <= 0f
                 val isHeightMissing = profile.height <= 0f // Check for missing height
 
-                // ⭐ MODIFIED: Removed isGenderMissing and isActivityLevelMissing from this check
                 val detailsMissing = isNameMissing || isWeightMissing || isTargetWeightMissing || isHeightMissing
 
                 detailsMissing
@@ -158,7 +157,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 }
             } catch (e: Exception) {
                 _userProfile.value = UserProfile()
-                // Log the exception if needed: Log.e("AuthViewModel", "Error loading user profile", e)
             }
         } else {
             _userProfile.value = UserProfile()

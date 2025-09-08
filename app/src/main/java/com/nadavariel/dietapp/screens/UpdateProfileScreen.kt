@@ -66,8 +66,8 @@ import androidx.compose.material3.DropdownMenuItem
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.ActivityLevel
 
-import androidx.compose.foundation.rememberScrollState // ⭐ NEW
-import androidx.compose.foundation.verticalScroll // ⭐ NEW
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MenuAnchorType
 
 
@@ -157,15 +157,15 @@ fun UpdateProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp) // Apply horizontal padding
-                .verticalScroll(rememberScrollState()), // ⭐ ADDED: Make the column scrollable
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top // Changed to Top to allow scrolling from the top
+            verticalArrangement = Arrangement.Top
         ) {
             Text(
                 text = if (isNewUser) "Tell us about yourself!" else "Update Your Profile",
                 fontSize = 28.sp,
-                modifier = Modifier.padding(vertical = 24.dp) // Adjusted padding
+                modifier = Modifier.padding(vertical = 24.dp)
             )
 
             Image(
@@ -297,7 +297,6 @@ fun UpdateProfileScreen(
                 singleLine = true
             )
 
-            // ⭐ VERIFIED: Label is present for Gender
             ExposedDropdownMenuBox(
                 expanded = isGenderDropdownExpanded,
                 onExpandedChange = { isGenderDropdownExpanded = !isGenderDropdownExpanded },
@@ -309,11 +308,11 @@ fun UpdateProfileScreen(
                     value = selectedGender.displayName,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Gender") }, // ⭐ Label is here
+                    label = { Text("Gender") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isGenderDropdownExpanded) },
                     modifier = Modifier
-                        .exposedDropdownSize() // Often combined with this
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true) // This is the new way
+                        .exposedDropdownSize()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
@@ -333,23 +332,22 @@ fun UpdateProfileScreen(
                 }
             }
 
-            // ⭐ VERIFIED: Label is present for Activity Level
             ExposedDropdownMenuBox(
                 expanded = isActivityLevelDropdownExpanded,
                 onExpandedChange = { isActivityLevelDropdownExpanded = !isActivityLevelDropdownExpanded },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp) // Keep padding before button
+                    .padding(bottom = 24.dp)
             ) {
                 OutlinedTextField(
                     value = selectedActivityLevel.displayName,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Activity Level") }, // ⭐ Label is here
+                    label = { Text("Activity Level") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isActivityLevelDropdownExpanded) },
                     modifier = Modifier
-                        .exposedDropdownSize() // Often combined with this
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true) // This is the new way
+                        .exposedDropdownSize()
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
@@ -386,7 +384,7 @@ fun UpdateProfileScreen(
                     Text("Back")
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp)) // Add some space at the very bottom
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 

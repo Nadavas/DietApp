@@ -22,15 +22,15 @@ fun ChangePasswordScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-    // State variables for input fields and dialogs
+    // Get data from the viewmodel
+    val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
+
+    // State variables
     var newPassword by remember { mutableStateOf("") }
     var confirmNewPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
-
-    // observes the authentication result as a state
-    val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
 
     // Handle authentication results
     LaunchedEffect(authResult) {
@@ -60,7 +60,6 @@ fun ChangePasswordScreen(
         }
     }
 
-    // Main screen layout
     Scaffold(
         topBar = {
             TopAppBar(

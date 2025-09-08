@@ -250,7 +250,7 @@ fun BeautifulPieChart(
     AndroidView(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)  // Optional: add spacing around the chart
+            .padding(16.dp)
             .height(270.dp), // Restrict height to avoid overflow
         factory = { context ->
             PieChart(context).apply {

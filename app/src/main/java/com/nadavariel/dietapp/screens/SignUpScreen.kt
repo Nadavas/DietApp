@@ -42,17 +42,21 @@ fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
     onSignUpSuccess: () -> Unit,
-    onNavigateToSignIn: () -> Unit // New callback for "Log In" link
+    onNavigateToSignIn: () -> Unit
 ) {
     val context = LocalContext.current
+    // Get state from viewmodel
     val email by authViewModel.emailState
     val password by authViewModel.passwordState
     val confirmPassword by authViewModel.confirmPasswordState
     val authResult by authViewModel.authResult.collectAsState()
+
+    // Snackbar message
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val googleSignInLauncher = rememberLauncherForActivityResult(
+    // TODO: fix this part so that connection with google isn't automatic, you need to choose the account
+    val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -61,7 +65,7 @@ fun SignUpScreen(
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account.idToken
                 if (idToken != null) {
-                    authViewModel.firebaseAuthWithGoogle(idToken) { // Pass onSignUpSuccess for Google Sign-In
+                    authViewModel.firebaseAuthWithGoogle(idToken) {
                         onSignUpSuccess()
                     }
                 } else {
@@ -73,24 +77,23 @@ fun SignUpScreen(
                 scope.launch {
                     snackbarHostState.showSnackbar("Google Sign-In failed: ${e.localizedMessage}")
                 }
-            } catch (e: Exception) { // Catch other potential exceptions during result processing
+            } catch (e: Exception) {
                 scope.launch {
                     snackbarHostState.showSnackbar("An unexpected error occurred during Google Sign-In.")
                 }
             }
         } else {
             scope.launch {
-                // User cancelled or another error occurred (result.resultCode might be Activity.RESULT_CANCELED)
                 snackbarHostState.showSnackbar("Google Sign-In cancelled or failed.")
             }
         }
     }
 
+    // Handle authentication results
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
-                // Handled by the onSuccess callbacks directly within signUp/firebaseAuthWithGoogle
-                authViewModel.resetAuthResult() // Reset only after the callback completes
+                authViewModel.resetAuthResult()
             }
             is AuthResult.Error -> {
                 scope.launch {
@@ -105,13 +108,13 @@ fun SignUpScreen(
         }
     }
 
+    // Additional actins for first google sign in (not authenticated already)
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(context.getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
     }
-
     val googleSignInClient = remember {
         GoogleSignIn.getClient(context, gso)
     }
@@ -122,6 +125,7 @@ fun SignUpScreen(
             TopAppBar(
                 title = { },
                 navigationIcon = {
+                    // Back button
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -146,6 +150,7 @@ fun SignUpScreen(
         ) {
             Text("Create Account", fontSize = 28.sp, modifier = Modifier.padding(bottom = 24.dp))
 
+            // Email, password and confirm password
             OutlinedTextField(
                 value = email,
                 onValueChange = { authViewModel.emailState.value = it },
@@ -178,8 +183,9 @@ fun SignUpScreen(
                 singleLine = true
             )
 
+            // Sign up button
             Button(
-                onClick = { authViewModel.signUp(onSignUpSuccess) }, // Correctly passes the onSuccess lambda
+                onClick = { authViewModel.signUp(onSignUpSuccess) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
             ) {
@@ -195,6 +201,7 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // navigate to sign in option
             val annotatedTextLogin = buildAnnotatedString {
                 append("Already have an account? ")
                 pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
@@ -221,9 +228,10 @@ fun SignUpScreen(
                 fontSize = 14.sp
             )
 
+            // Google sign in
             OutlinedButton(
                 onClick = {
-                    googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                    launcher.launch(googleSignInClient.signInIntent)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading

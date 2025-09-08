@@ -58,17 +58,17 @@ fun AccountScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-    // Dialog state management
+    // Get data from the viewmodel
+    val currentUser = authViewModel.currentUser
+    val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
+    val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
+
+    // State variables
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
-
-    // Get state from the viewmodel
-    val currentUser = authViewModel.currentUser
-    val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
-    val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
     // Handle authentication results
     LaunchedEffect(authResult) {
@@ -102,7 +102,6 @@ fun AccountScreen(
         }
     }
 
-    // Main screen layout
     Scaffold(
         topBar = {
             TopAppBar(

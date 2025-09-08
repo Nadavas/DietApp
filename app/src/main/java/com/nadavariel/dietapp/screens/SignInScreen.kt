@@ -21,7 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api // Needed for TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,23 +60,39 @@ import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.R
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class) // Needed for TopAppBar
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
     onSignInSuccess: () -> Unit,
-    onNavigateToSignUp: () -> Unit // New callback for "Sign Up" link
+    onNavigateToSignUp: () -> Unit
 ) {
+    val context = LocalContext.current
+    // Get state from viewmodel
     val email by authViewModel.emailState
     val password by authViewModel.passwordState
     val authResult by authViewModel.authResult.collectAsState()
+
+    // Snackbar message
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Removed performSignIn lambda as it was only called by keyboardActions
-    // The Button's onClick will now be the primary way to sign in.
+    // TODO: fix this part so that connection with google isn't automatic, you need to choose the account
+    val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            authViewModel.handleGoogleSignInResult(account, onSignInSuccess)
+        } catch (e: ApiException) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Google sign-in failed: ${e.message}")
+            }
+            authViewModel.resetAuthResult()
+        }
+    }
 
+    // Handle authentication results
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
@@ -97,26 +113,13 @@ fun SignInScreen(
         }
     }
 
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            authViewModel.handleGoogleSignInResult(account, onSignInSuccess)
-        } catch (e: ApiException) {
-            scope.launch {
-                snackbarHostState.showSnackbar("Google sign-in failed: ${e.message}")
-            }
-            authViewModel.resetAuthResult()
-        }
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { },
                 navigationIcon = {
+                    // Back button
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -141,6 +144,7 @@ fun SignInScreen(
         ) {
             Text("Sign In", fontSize = 28.sp, modifier = Modifier.padding(bottom = 24.dp))
 
+            // Email and password
             OutlinedTextField(
                 value = email,
                 onValueChange = { authViewModel.emailState.value = it },
@@ -161,10 +165,10 @@ fun SignInScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done) // Kept ImeAction.Done for visual cue, but removed action
-                // Removed: keyboardActions = KeyboardActions(onDone = { performSignIn() })
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
             )
 
+            // Remember me checkbox
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -180,6 +184,7 @@ fun SignInScreen(
                 Text("Remember Me", style = MaterialTheme.typography.bodyLarge)
             }
 
+            // Sign in button
             Button(
                 onClick = {
                     if (authResult != AuthResult.Loading) {
@@ -195,8 +200,10 @@ fun SignInScreen(
                     Text("Sign In", fontSize = 18.sp)
                 }
             }
+
             Spacer(modifier = Modifier.height(16.dp))
 
+            // navigate to sign up option
             val annotatedTextSignUp = buildAnnotatedString {
                 append("Don't have an account? ")
                 pushStringAnnotation(tag = "SIGNUP", annotation = "Sign up")
@@ -223,6 +230,7 @@ fun SignInScreen(
                 fontSize = 14.sp
             )
 
+            // Google sign in
             OutlinedButton(
                 onClick = {
                     val signInClient = authViewModel.getGoogleSignInClient(context)

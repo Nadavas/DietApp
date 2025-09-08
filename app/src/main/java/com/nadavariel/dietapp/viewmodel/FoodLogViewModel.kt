@@ -17,7 +17,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Meal
-import com.nadavariel.dietapp.model.MealSection // ⭐ NEW: Import MealSection
+import com.nadavariel.dietapp.model.MealSection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -47,7 +47,6 @@ class FoodLogViewModel : ViewModel() {
     val weeklyCalories = _weeklyCalories.asStateFlow()
 
     private val _caloriesByTimeOfDay = MutableStateFlow(
-        // ⭐ MODIFIED: Initialize with expected keys for MealSection AND StatisticsScreen
         mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
@@ -124,7 +123,6 @@ class FoodLogViewModel : ViewModel() {
         _weeklyCalories.value = caloriesByDay
     }
 
-    // ⭐ MODIFIED: Use MealSection for time-of-day categorization
     private fun processCaloriesByTimeOfDay(meals: List<Meal>) {
         // Use MealSection's section names for initial bucket accumulation
         val rawTimeBuckets = mutableMapOf(
@@ -135,12 +133,10 @@ class FoodLogViewModel : ViewModel() {
         )
 
         for (meal in meals) {
-            // ⭐ Use MealSection.getMealSection to determine the category
             val section = MealSection.getMealSection(meal.timestamp.toDate())
             rawTimeBuckets[section.sectionName] = (rawTimeBuckets[section.sectionName] ?: 0f) + meal.calories
         }
 
-        // ⭐ Mapping "Noon" to "Afternoon" for consistency with StatisticsScreen's current keys
         val finalTimeBuckets = mutableMapOf<String, Float>()
         finalTimeBuckets["Morning"] = rawTimeBuckets[MealSection.MORNING.sectionName] ?: 0f
         // Map "Noon" from MealSection to "Afternoon" expected by StatisticsScreen
