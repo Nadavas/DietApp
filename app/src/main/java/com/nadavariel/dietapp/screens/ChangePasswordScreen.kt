@@ -12,8 +12,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.AuthResult
-import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.AuthResult
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,22 +22,25 @@ fun ChangePasswordScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
+    // State variables for input fields and dialogs
     var newPassword by remember { mutableStateOf("") }
     var confirmNewPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showReauthDialog by remember { mutableStateOf(false) }
-    var reauthPassword by remember { mutableStateOf("") } // For re-authentication dialog
+    var reauthPassword by remember { mutableStateOf("") }
 
+    // observes the authentication result as a state
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
 
+    // Handle authentication results
     LaunchedEffect(authResult) {
         when (authResult) {
             AuthResult.Success -> {
                 errorMessage = null
                 newPassword = ""
                 confirmNewPassword = ""
-                authViewModel.resetAuthResult() // Reset for next operation
-                navController.popBackStack() // Go back to settings on success
+                authViewModel.resetAuthResult()
+                navController.popBackStack()
             }
             is AuthResult.Error -> {
                 val error = (authResult as AuthResult.Error).message
@@ -57,11 +60,13 @@ fun ChangePasswordScreen(
         }
     }
 
+    // Main screen layout
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Change Password") },
                 navigationIcon = {
+                    // Back button
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
@@ -79,6 +84,7 @@ fun ChangePasswordScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
+            // New password field
             OutlinedTextField(
                 value = newPassword,
                 onValueChange = { newPassword = it },
@@ -91,6 +97,7 @@ fun ChangePasswordScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Confirm new password field
             OutlinedTextField(
                 value = confirmNewPassword,
                 onValueChange = { confirmNewPassword = it },
@@ -103,6 +110,7 @@ fun ChangePasswordScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Change password button
             Button(
                 onClick = {
                     errorMessage = null
@@ -118,10 +126,11 @@ fun ChangePasswordScreen(
                         errorMessage = "Password must be at least 6 characters long."
                         return@Button
                     }
+                    // Calls the viewmodel to change password
                     authViewModel.changePassword(
                         newPassword = newPassword,
                         onSuccess = { /* Handled by LaunchedEffect */ },
-                        onError = { errorMsg -> errorMessage = errorMsg }
+                        onError = { /* Handled by LaunchedEffect */ }
                     )
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -140,7 +149,7 @@ fun ChangePasswordScreen(
         }
     }
 
-    // Re-authentication dialog (similar to the one in AccountScreen for delete)
+    // Re-authentication dialog
     if (showReauthDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -173,11 +182,10 @@ fun ChangePasswordScreen(
                             authViewModel.signIn(currentEmail, reauthPassword) {
                                 showReauthDialog = false
                                 reauthPassword = ""
-                                // After re-authentication, immediately retry password change
                                 authViewModel.changePassword(
                                     newPassword = newPassword,
                                     onSuccess = { /* Handled by LaunchedEffect */ },
-                                    onError = { errorMsg -> errorMessage = errorMsg }
+                                    onError = { /* Handled by LaunchedEffect */ }
                                 )
                             }
                         } else {

@@ -34,7 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.LaunchedEffect
 import com.nadavariel.dietapp.NavRoutes

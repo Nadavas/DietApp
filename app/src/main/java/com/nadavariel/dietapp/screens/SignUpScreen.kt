@@ -31,8 +31,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.nadavariel.dietapp.AuthResult
-import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.AuthResult
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.R
 import kotlinx.coroutines.launch
 

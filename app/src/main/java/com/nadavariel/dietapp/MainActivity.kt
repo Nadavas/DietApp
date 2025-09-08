@@ -51,6 +51,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.offset
 import com.nadavariel.dietapp.screens.QuestionsScreen
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 
 
 class MainActivity : ComponentActivity() {

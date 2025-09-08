@@ -45,8 +45,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.graphics.ColorFilter
-import com.nadavariel.dietapp.AuthResult
-import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.AuthResult
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
 import androidx.compose.ui.res.painterResource
 import com.nadavariel.dietapp.R

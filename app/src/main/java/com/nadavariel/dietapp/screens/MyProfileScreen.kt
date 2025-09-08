@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.NavRoutes
 import java.text.SimpleDateFormat
 import java.util.Locale

@@ -25,7 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.NavRoutes
@@ -36,10 +36,10 @@ import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.Image // ⭐ NEW: Import Image
-import androidx.compose.ui.layout.ContentScale // ⭐ NEW: Import ContentScale
-import androidx.compose.ui.res.painterResource // ⭐ NEW: Import painterResource
-import com.nadavariel.dietapp.util.AvatarConstants // ⭐ NEW: Import AvatarConstants
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.nadavariel.dietapp.util.AvatarConstants
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -48,26 +48,24 @@ fun HomeScreen(
     foodLogViewModel: FoodLogViewModel,
     navController: NavController,
 ) {
+    // Collects user profile and meal data from ViewModels
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val userName = userProfile.name
-
     val selectedDate = foodLogViewModel.selectedDate
     val currentWeekStartDate = foodLogViewModel.currentWeekStartDate
     val mealsForSelectedDate = foodLogViewModel.mealsForSelectedDate
-
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
 
+    // State variables for
     var showMealsList by remember { mutableStateOf(false) }
-
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
-
     var mealWithActionsShownId by remember { mutableStateOf<String?>(null) }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-
+    // Initializes the screen with the current date when the lifecycle resumes
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             foodLogViewModel.selectDate(LocalDate.now())
@@ -108,20 +106,16 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                //Spacer(modifier = Modifier.height(16.dp))
-
-                // ⭐ NEW: Avatar Display
+                // Avatar Display
                 Image(
                     painter = painterResource(id = AvatarConstants.getAvatarResId(userProfile.avatarId)),
                     contentDescription = "User Avatar",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(128.dp) // Smaller size for home screen, adjust as needed
-                        .clip(RoundedCornerShape(50)) // Making it circular
-                        .clickable { navController.navigate(NavRoutes.MY_PROFILE) } // Make avatar clickable
+                        .size(128.dp)
+                        .clip(RoundedCornerShape(50))
+                        .clickable { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
-
-                //Spacer(modifier = Modifier.height(16.dp)) // Space between avatar and date navigation
 
                 Row(
                     modifier = Modifier

@@ -27,6 +27,7 @@ fun Greeting(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Welcome
         Text(
             text = "Welcome to DietApp",
             fontSize = 28.sp,
@@ -37,11 +38,15 @@ fun Greeting(
                 .fillMaxWidth()
                 .padding(bottom = 40.dp)
         )
+
+        // App logo
         Image(
             painter = painterResource(id = R.drawable.diet_app_logo_no_bg),
             contentDescription = "Diet App Logo",
             modifier = Modifier.size(240.dp)
         )
+
+        // Sign in button
         Button(
             onClick = onSignInClick,
             modifier = Modifier
@@ -50,6 +55,8 @@ fun Greeting(
         ) {
             Text(text = "Sign In", fontSize = 18.sp)
         }
+
+        // Sign out button
         Button(
             onClick = onSignUpClick,
             modifier = Modifier
