@@ -289,4 +289,8 @@ class FoodLogViewModel : ViewModel() {
     fun getMealById(mealId: String): Meal? {
         return mealsForSelectedDate.firstOrNull { it.id == mealId }
     }
+
+    fun refreshStatistics() {
+        fetchMealsForLastSevenDays()
+    }
 }

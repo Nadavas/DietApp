@@ -67,7 +67,7 @@ fun HomeScreen(
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // Initializes the screen with the current date when the lifecycle resumes
+    // Ensure the log starts on the current day
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             foodLogViewModel.selectDate(LocalDate.now())

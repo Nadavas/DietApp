@@ -59,17 +59,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import com.nadavariel.dietapp.util.AvatarConstants
-
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.ActivityLevel
-
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MenuAnchorType
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,36 +77,24 @@ fun UpdateProfileScreen(
     isNewUser: Boolean = false
 ) {
     val context = LocalContext.current
+
+    // Get data from the viewmodel
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
 
+    // State variables
     var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
     var weightInput by remember(userProfile.weight) { mutableStateOf(if (userProfile.weight > 0f) userProfile.weight.toString() else "") }
     var heightInput by remember(userProfile.height) { mutableStateOf(if (userProfile.height > 0f) userProfile.height.toString() else "") }
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
     var targetWeightInput by remember(userProfile.targetWeight) { mutableStateOf(if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else "") }
     var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
-
     var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
     var selectedActivityLevel by remember(userProfile.activityLevel) { mutableStateOf(userProfile.activityLevel) }
-
     var showAvatarDialog by remember { mutableStateOf(false) }
-
     var isGenderDropdownExpanded by remember { mutableStateOf(false) }
     var isActivityLevelDropdownExpanded by remember { mutableStateOf(false) }
 
-
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
-
-    LaunchedEffect(userProfile, isNewUser) {
-        nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
-            authViewModel.currentUser?.email?.substringBefore("@") ?: ""
-        } else {
-            userProfile.name
-        }
-        selectedAvatarId = userProfile.avatarId
-        selectedGender = userProfile.gender
-        selectedActivityLevel = userProfile.activityLevel
-    }
 
     val saveProfileAction: () -> Unit = {
         authViewModel.updateProfile(
@@ -132,11 +117,24 @@ fun UpdateProfileScreen(
         }
     }
 
+    // Load initial values from the viewmodel
+    LaunchedEffect(userProfile, isNewUser) {
+        nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
+            authViewModel.currentUser?.email?.substringBefore("@") ?: ""
+        } else {
+            userProfile.name
+        }
+        selectedAvatarId = userProfile.avatarId
+        selectedGender = userProfile.gender
+        selectedActivityLevel = userProfile.activityLevel
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (isNewUser) "Create Profile" else "Update Profile") },
                 navigationIcon = {
+                    // Back button
                     IconButton(onClick = {
                         if (isNewUser) {
                             navController.navigate(NavRoutes.HOME) {
@@ -168,6 +166,7 @@ fun UpdateProfileScreen(
                 modifier = Modifier.padding(vertical = 24.dp)
             )
 
+            // Avatar display and change button
             Image(
                 painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
                 contentDescription = "User Avatar",
@@ -181,8 +180,10 @@ fun UpdateProfileScreen(
             Button(onClick = { showAvatarDialog = true }) {
                 Text("Change Avatar")
             }
+
             Spacer(modifier = Modifier.height(24.dp))
 
+            // profile data
             OutlinedTextField(
                 value = nameInput,
                 onValueChange = { nameInput = it },
@@ -367,6 +368,7 @@ fun UpdateProfileScreen(
                 }
             }
 
+            // Save button
             Button(
                 onClick = { saveProfileAction() },
                 modifier = Modifier.fillMaxWidth()
@@ -375,19 +377,10 @@ fun UpdateProfileScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            if (!isNewUser) {
-                Button(
-                    onClick = onBack,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Back")
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
+    // Avatar selection dialog
     if (showAvatarDialog) {
         Dialog(onDismissRequest = { showAvatarDialog = false }) {
             Surface(

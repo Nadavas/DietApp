@@ -30,6 +30,7 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
@@ -43,11 +44,17 @@ fun StatisticsScreen(
     @Suppress("UNUSED_PARAMETER")
     navController: NavController
 ) {
+    // Get state from viewmodel
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
+    val foodLogViewModel: FoodLogViewModel = viewModel()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    LaunchedEffect(Unit) {
+        foodLogViewModel.refreshStatistics()
+    }
 
     Scaffold(
         topBar = {
@@ -63,6 +70,7 @@ fun StatisticsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Bar chart of weekly calories
             Text(
                 text = "Your weekly calorie intake",
                 style = MaterialTheme.typography.headlineSmall,
@@ -70,7 +78,6 @@ fun StatisticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
-
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -102,6 +109,7 @@ fun StatisticsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Pie chart of calories by time of day
             Text(
                 text = "Calorie distribution by time of day",
                 style = MaterialTheme.typography.headlineSmall,
@@ -109,7 +117,6 @@ fun StatisticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
-
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,6 +144,7 @@ fun StatisticsScreen(
     }
 }
 
+// Composable for the bar chart
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BeautifulBarChart(
@@ -242,6 +250,7 @@ fun BeautifulBarChart(
     )
 }
 
+// Composable for the pie chart
 @Composable
 fun BeautifulPieChart(
     data: Map<String, Float>,

@@ -73,15 +73,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val _hasMissingPrimaryProfileDetails = MutableStateFlow(false)
     val hasMissingPrimaryProfileDetails: StateFlow<Boolean> = _hasMissingPrimaryProfileDetails.asStateFlow()
 
+    private val _isLoadingProfile = MutableStateFlow(true) //
+    val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
+
     init {
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
             viewModelScope.launch {
+                _isLoadingProfile.value = true
                 if (currentUser != null) {
                     loadUserProfile()
                 } else {
-                    _userProfile.value = UserProfile() // Reset user profile state on sign out
+                    _userProfile.value = UserProfile()
                 }
+                _isLoadingProfile.value = false
             }
         }
 
