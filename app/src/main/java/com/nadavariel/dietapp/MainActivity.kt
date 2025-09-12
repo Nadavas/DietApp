@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.foundation.layout.offset
+import com.nadavariel.dietapp.screens.GoalsScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -289,6 +290,13 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.QUESTIONS) {
                                 QuestionsScreen(
                                     navController = navController
+                                )
+                            }
+
+                            composable(NavRoutes.GOALS) {
+                                GoalsScreen(
+                                    navController = navController
+                                    // authViewModel = authViewModel, // Pass if your GoalsScreen or GoalsViewModel needs it
                                 )
                             }
 

@@ -179,7 +179,28 @@ fun AccountScreen(
                     .clickable { navController.navigate(NavRoutes.QUESTIONS) }
             )
             HorizontalDivider()
-
+            // Goals
+            ListItem(
+                headlineContent = { Text("Set Goals") },
+                leadingContent = {
+                    val currentIconColor = LocalContentColor.current
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_goals), // your drawable here
+                        contentDescription = "Set Goals",
+                        colorFilter = ColorFilter.tint(currentIconColor)
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Go to Goals"
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate(NavRoutes.GOALS) }
+            )
+            HorizontalDivider()
             // Settings
             ListItem(
                 headlineContent = { Text("Settings") },
