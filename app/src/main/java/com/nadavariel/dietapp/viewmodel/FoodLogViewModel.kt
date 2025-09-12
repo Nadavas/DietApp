@@ -15,6 +15,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
@@ -292,5 +293,43 @@ class FoodLogViewModel : ViewModel() {
 
     fun refreshStatistics() {
         fetchMealsForLastSevenDays()
+    }
+
+    fun analyzeImage(foodName: String) {
+        // 1. Initialize Firebase Functions, specifying the 'me-west1' region.
+        val functions = Firebase.functions("me-west1")
+        Log.d("FoodLogViewModel", "Value of foodName: $foodName")
+        // 2. Use a coroutine to handle the network call asynchronously.
+        viewModelScope.launch {
+            try {
+                // 3. Prepare the data payload to send to the Cloud Function.
+                val data = hashMapOf("foodName" to foodName)
+
+                // 4. Call the 'analyzeImage' function and wait for the result.
+                val result = functions
+                    .getHttpsCallable("analyzeImage")
+                    .call(data)
+                    .await()
+
+                // 5. Process the response from the function.
+                val responseData = result.data as? Map<String, Any>
+                if (responseData != null) {
+                    val success = responseData["success"] as? Boolean
+                    val apiResult = responseData["data"] as? Map<String, Any>
+
+                    if (success == true) {
+                        // Handle the successful API response here
+                        Log.d("ViewModel", "API call successful: $apiResult")
+                    } else {
+                        // Handle errors returned from the function
+                        val errorMsg = responseData["error"] as? String
+                        Log.e("ViewModel", "Function error: $errorMsg")
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle exceptions that occur during the network call
+                Log.e("ViewModel", "Function call failed", e)
+            }
+        }
     }
 }

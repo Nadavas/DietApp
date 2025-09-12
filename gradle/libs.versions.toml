@@ -12,21 +12,20 @@ activityCompose = "1.10.1"
 composeBom = "2025.06.01"
 firebaseAuthKtx = "23.2.1"
 navigationCompose = "2.9.0"
-# Add this new version entry
-firebase-firestore = "25.1.4" # This is a common and recent version. Use the one you prefer if different.
+firebase-firestore = "25.1.4"
 playServicesAuth = "21.3.0"
 mpandroidchart = "3.1.0"
 roomRuntimeAndroid = "2.7.2"
+firebase-functions-ktx = "20.3.0"
 
 [libraries]
-# Add this new library entry
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebase-firestore" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-google-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
+#google-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -46,6 +45,7 @@ firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx",
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomRuntimeAndroid" }
+firebase-functions-ktx = { group = "com.google.firebase", name = "firebase-functions-ktx", version.ref = "firebase-functions-ktx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

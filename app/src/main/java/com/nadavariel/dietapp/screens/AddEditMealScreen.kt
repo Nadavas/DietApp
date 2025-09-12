@@ -195,6 +195,18 @@ fun AddEditMealScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // New button to trigger the API call
+            OutlinedButton(
+                onClick = {
+                    foodLogViewModel.analyzeImage(foodName)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                // Enabled only when foodName is not blank
+                enabled = foodName.isNotBlank()
+            ) {
+                Text("Analyze Meal Image", fontSize = 18.sp)
+            }
+
             // Add/Edit meal button
             Button(
                 onClick = {
@@ -202,7 +214,6 @@ fun AddEditMealScreen(
                     if (foodName.isNotBlank() && calValue > 0) {
                         val mealTimestamp = selectedDateTimeState.time
 
-                        // Final check to prevent future timestamps
                         val now = Date()
                         if (mealTimestamp.after(now)) {
                             return@Button
@@ -230,7 +241,6 @@ fun AddEditMealScreen(
             ) {
                 Text(if (mealToEdit == null) "Add Meal" else "Save Changes", fontSize = 18.sp)
             }
-
         }
     }
 }

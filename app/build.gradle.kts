@@ -39,18 +39,18 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.6.0" // This is the crucial line to add/update
+        kotlinCompilerExtensionVersion = "1.6.0"
     }
 }
 
 dependencies {
     // Core Android KTX and Compose dependencies
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom)) // BOM should generally be near the top or specifically grouped
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.datastore.preferences) // DataStore
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.material3) // Material 3
+    implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.runtime.livedata)
@@ -59,12 +59,12 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
 
     // Firebase dependencies
-    implementation(platform(libs.firebase.bom)) // Firebase BOM should generally be near the top or specifically grouped
+    implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
-    implementation(libs.google.firebase.auth.ktx) // Duplication? firebase.auth.ktx and google.firebase.auth.ktx
-    implementation(libs.play.services.auth) // Google Play Services Auth
+    implementation(libs.play.services.auth)
+    implementation(libs.firebase.functions.ktx)
 
     // For graphics
     implementation(libs.mpandroidchart)
