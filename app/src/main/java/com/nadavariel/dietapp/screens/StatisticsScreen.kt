@@ -22,18 +22,16 @@ import androidx.navigation.NavController
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.nadavariel.dietapp.util.RoundedBarChartRenderer
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
-import com.github.mikephil.charting.data.PieData
-import com.github.mikephil.charting.data.PieDataSet
-import com.github.mikephil.charting.data.PieEntry
 import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,13 +39,13 @@ import java.text.DecimalFormat
 @Composable
 fun StatisticsScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
+    goalviewModel: GoalsViewModel = viewModel(),
     @Suppress("UNUSED_PARAMETER")
     navController: NavController
 ) {
-    // Get state from viewmodel
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
-    val foodLogViewModel: FoodLogViewModel = viewModel()
+    val calorieTarget = goalviewModel.getCalorieTarget()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -70,7 +68,7 @@ fun StatisticsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Bar chart of weekly calories
+            // Bar chart
             Text(
                 text = "Your weekly calorie intake",
                 style = MaterialTheme.typography.headlineSmall,
@@ -102,14 +100,15 @@ fun StatisticsScreen(
                 } else {
                     BeautifulBarChart(
                         weeklyCalories = weeklyCalories,
-                        primaryColor = primaryColor.toArgb()
+                        primaryColor = primaryColor.toArgb(),
+                        calorieTarget = calorieTarget
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Pie chart of calories by time of day
+            // Pie chart
             Text(
                 text = "Calorie distribution by time of day",
                 style = MaterialTheme.typography.headlineSmall,
@@ -144,12 +143,12 @@ fun StatisticsScreen(
     }
 }
 
-// Composable for the bar chart
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BeautifulBarChart(
     weeklyCalories: Map<LocalDate, Int>,
-    primaryColor: Int
+    primaryColor: Int,
+    calorieTarget: Int?
 ) {
     val sortedDates = weeklyCalories.keys.sorted()
     val dayLabels = sortedDates.map { it.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
@@ -166,8 +165,8 @@ fun BeautifulBarChart(
                 val renderer = RoundedBarChartRenderer(this, animator, viewPortHandler)
                 renderer.setCornerRadius(25f)
                 this.renderer = renderer
+                setExtraOffsets(10f, 10f, 10f, 10f)
 
-                setExtraOffsets(0f, 0f, 0f, 20f)
                 description.isEnabled = false
                 legend.isEnabled = false
                 setDrawGridBackground(false)
@@ -204,6 +203,24 @@ fun BeautifulBarChart(
                     setDrawAxisLine(false)
                     textColor = Color.GRAY
                     textSize = 11f
+
+                    // 👇 ensure target line is visible
+                    val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
+                    val target = calorieTarget?.toFloat() ?: 0f
+                    axisMaximum = maxOf(maxBar, target) * 1.1f  // add 10% headroom
+
+                    calorieTarget?.let {
+                        val targetLine = LimitLine(it.toFloat(), "Target $it kcal").apply {
+                            lineWidth = 2f
+                            lineColor = Color.RED
+                            textColor = Color.RED
+                            textSize = 12f
+                            enableDashedLine(10f, 10f, 0f)
+                            labelPosition = LimitLine.LimitLabelPosition.RIGHT_TOP
+                        }
+                        removeAllLimitLines()
+                        addLimitLine(targetLine)
+                    }
                 }
 
                 axisRight.isEnabled = false
@@ -213,20 +230,11 @@ fun BeautifulBarChart(
             val todayIndex = sortedDates.indexOf(LocalDate.now())
 
             val dataSet = BarDataSet(barEntries, "Weekly Calories").apply {
-                val alpha = (0.6f * 255).toInt()
-                val startColor = Color.argb(
-                    alpha,
-                    Color.red(primaryColor),
-                    Color.green(primaryColor),
-                    Color.blue(primaryColor)
-                )
-
                 colors = List(barEntries.size) { i ->
                     if (i == todayIndex) Color.argb(255, 255, 127, 80)
                     else primaryColor
                 }
 
-                setGradientColor(startColor, primaryColor)
                 setDrawValues(true)
                 valueTextColor = Color.DKGRAY
                 valueTextSize = 11f
@@ -240,17 +248,13 @@ fun BeautifulBarChart(
                 highLightAlpha = 100
             }
 
-            chart.data = BarData(dataSet).apply {
-                barWidth = 0.6f
-            }
-
+            chart.data = BarData(dataSet).apply { barWidth = 0.6f }
             chart.invalidate()
             chart.animateY(800, com.github.mikephil.charting.animation.Easing.EaseOutBack)
         }
     )
 }
 
-// Composable for the pie chart
 @Composable
 fun BeautifulPieChart(
     data: Map<String, Float>,
@@ -260,7 +264,7 @@ fun BeautifulPieChart(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .height(270.dp), // Restrict height to avoid overflow
+            .height(270.dp),
         factory = { context ->
             PieChart(context).apply {
                 setLayerType(View.LAYER_TYPE_SOFTWARE, null)
@@ -298,9 +302,9 @@ fun BeautifulPieChart(
                 Color.blue(primaryColor)
             )
             val colorsList = listOf(
-                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.01f), // Slightly darker
-                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.3f), // Medium darker
-                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.6f)  // Darkest
+                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.01f),
+                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.3f),
+                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.6f)
             )
 
             val dataSet = PieDataSet(entries, "Time of Day").apply {
@@ -322,7 +326,6 @@ fun BeautifulPieChart(
                         val label = pieEntry?.label ?: ""
                         return "$label ${format.format(value)}%"
                     }
-
                     override fun getFormattedValue(value: Float): String {
                         return "${format.format(value)}%"
                     }
@@ -335,4 +338,3 @@ fun BeautifulPieChart(
         }
     )
 }
-

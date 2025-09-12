@@ -38,42 +38,46 @@ class GoalsViewModel : ViewModel() {
             return
         }
 
-        viewModelScope.launch {
-            try {
-                // 1. Load all goals (could also come from Firestore, here just an example list)
-                val allGoals = listOf(
-                    Goal(text = "How often do you eat breakfast?", options = listOf("Never", "Sometimes", "Always")),
-                    Goal(text = "Do you drink soda?", options = listOf("Never", "Occasionally", "Daily")),
-                    Goal(text = "How many fruits do you eat per day?", options = listOf("0", "1–2", "3+"))
-                )
+        // 1. Define your static list of all possible goals
+        val allGoals = listOf(
+            Goal(text = "How often do you eat breakfast?", options = listOf("Never", "Sometimes", "Always")),
+            Goal(text = "Do you drink soda?", options = listOf("Never", "Occasionally", "Daily")),
+            Goal(text = "How many fruits do you eat per day?", options = listOf("0", "1–2", "3+")),
+            Goal(text = "How many calories a day is your target?", options = listOf("1000", "1500", "2000"))
+        )
 
-                // 2. Fetch user answers
-                val docRef = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("diet_habits")
-
-                val snapshot = docRef.get().await()
-
-                val answersMap = if (snapshot.exists()) {
-                    @Suppress("UNCHECKED_CAST")
-                    snapshot.get("answers") as? List<Map<String, String>>
-                } else null
-
-                val userAnswers = answersMap?.map {
-                    it["question"] to it["answer"]
-                }?.toMap() ?: emptyMap()
-
-                // 3. Merge answers into goals
-                val mergedGoals = allGoals.map { goal ->
-                    goal.copy(selectedAnswer = userAnswers[goal.text])
+        // 2. Attach a snapshot listener for live updates
+        firestore.collection("users").document(userId)
+            .collection("user_answers").document("diet_habits")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.e("GoalsViewModel", "Error listening to user answers", e)
+                    return@addSnapshotListener
                 }
 
-                _goals.value = mergedGoals
-                Log.d("GoalsViewModel", "fetchUserGoals: loaded ${mergedGoals.size} items")
-            } catch (e: Exception) {
-                Log.e("GoalsViewModel", "Error fetching goals", e)
+                if (snapshot != null && snapshot.exists()) {
+                    @Suppress("UNCHECKED_CAST")
+                    val answersMap = snapshot.get("answers") as? List<Map<String, String>>
+
+                    val userAnswers = answersMap?.map {
+                        it["question"] to it["answer"]
+                    }?.toMap() ?: emptyMap()
+
+                    // 3. Merge answers into goals
+                    val mergedGoals = allGoals.map { goal ->
+                        goal.copy(selectedAnswer = userAnswers[goal.text])
+                    }
+
+                    _goals.value = mergedGoals
+                    Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items")
+                } else {
+                    // If no answers yet, just load the base goals
+                    _goals.value = allGoals
+                    Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
+                }
             }
-        }
     }
+
 
     fun saveUserAnswers() {
         val userId = auth.currentUser?.uid
@@ -103,5 +107,10 @@ class GoalsViewModel : ViewModel() {
         _goals.value = _goals.value.map { goal ->
             if (goal.id == goalId) goal.copy(selectedAnswer = answer) else goal
         }
+    }
+
+    fun getCalorieTarget(): Int? {
+        val goal = _goals.value.find { it.text.contains("calories", ignoreCase = true) }
+        return goal?.selectedAnswer?.toIntOrNull()
     }
 }
