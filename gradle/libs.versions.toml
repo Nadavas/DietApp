@@ -17,6 +17,7 @@ playServicesAuth = "21.3.0"
 mpandroidchart = "3.1.0"
 roomRuntimeAndroid = "2.7.2"
 firebase-functions-ktx = "20.3.0"
+gson = "2.10.1"
 
 [libraries]
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
@@ -46,6 +47,7 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomRuntimeAndroid" }
 firebase-functions-ktx = { group = "com.google.firebase", name = "firebase-functions-ktx", version.ref = "firebase-functions-ktx" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

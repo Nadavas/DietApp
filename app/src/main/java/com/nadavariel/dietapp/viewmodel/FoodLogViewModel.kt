@@ -17,6 +17,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
+import com.google.gson.Gson
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,17 @@ import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
+
+// Data class to easily handle the JSON response from Gemini
+data class FoodNutritionalInfo(
+    val food_name: String?,
+    val serving_unit: String?,
+    val serving_amount: String?,
+    val calories: String?,
+    val protein: String?,
+    val carbohydrates: String?,
+    val fat: String?
+)
 
 @RequiresApi(Build.VERSION_CODES.O)
 class FoodLogViewModel : ViewModel() {
@@ -295,39 +307,103 @@ class FoodLogViewModel : ViewModel() {
         fetchMealsForLastSevenDays()
     }
 
+    private fun parseFoodData(responseData: Map<String, Any>): Pair<String?, String?> {
+        val foodsWrapper = responseData["data"] as? Map<String, Any>
+        val foodsSearch = foodsWrapper?.get("foods_search") as? Map<String, Any>
+        val foodsResults = foodsSearch?.get("results") as? Map<String, Any>
+        val foodList = foodsResults?.get("food") as? List<Map<String, Any>>
+
+        if (!foodList.isNullOrEmpty()) {
+            val firstFood = foodList[0]
+            val returnedFoodName = firstFood["food_name"] as? String
+
+            val servings = firstFood["servings"] as? Map<String, Any>
+            val servingList = servings?.get("serving") as? List<Map<String, Any>>
+
+            if (!servingList.isNullOrEmpty()) {
+                val firstServing = servingList[0]
+                val calories = firstServing["calories"] as? String
+                return Pair(returnedFoodName, calories)
+            }
+        }
+        return Pair(null, null)
+    }
+
     fun analyzeImage(foodName: String) {
-        // 1. Initialize Firebase Functions, specifying the 'me-west1' region.
         val functions = Firebase.functions("me-west1")
         Log.d("FoodLogViewModel", "Value of foodName: $foodName")
-        // 2. Use a coroutine to handle the network call asynchronously.
+
         viewModelScope.launch {
             try {
-                // 3. Prepare the data payload to send to the Cloud Function.
                 val data = hashMapOf("foodName" to foodName)
 
-                // 4. Call the 'analyzeImage' function and wait for the result.
                 val result = functions
                     .getHttpsCallable("analyzeImage")
                     .call(data)
                     .await()
 
-                // 5. Process the response from the function.
                 val responseData = result.data as? Map<String, Any>
+
+                if (responseData != null) {
+                    // Call the new helper function to parse the data
+                    val (parsedFoodName, parsedCalories) = parseFoodData(responseData)
+
+                    if (parsedFoodName != null && parsedCalories != null) {
+                        Log.d("ViewModel", "Food Name: $parsedFoodName, Calories: $parsedCalories")
+                    } else {
+                        Log.d("ViewModel", "No food results found or parsing failed for $foodName.")
+                    }
+                } else {
+                    Log.e("ViewModel", "Function response data is null.")
+                }
+            } catch (e: Exception) {
+                Log.e("ViewModel", "Function call failed", e)
+            }
+        }
+    }
+
+    fun analyzeImageWithGemini(foodName: String) {
+        val functions = Firebase.functions("me-west1")
+        Log.d("FoodLogViewModel", "Analyzing food with Gemini: $foodName")
+
+        viewModelScope.launch {
+            try {
+                val data = hashMapOf("foodName" to foodName)
+
+                // Make sure this name matches the new export name in your index.js
+                val result = functions
+                    .getHttpsCallable("analyzeFoodWithGemini")
+                    .call(data)
+                    .await()
+
+                val responseData = result.data as? Map<String, Any>
+
                 if (responseData != null) {
                     val success = responseData["success"] as? Boolean
-                    val apiResult = responseData["data"] as? Map<String, Any>
+                    val geminiData = responseData["data"] as? Map<String, Any>
 
-                    if (success == true) {
-                        // Handle the successful API response here
-                        Log.d("ViewModel", "API call successful: $apiResult")
+                    if (success == true && geminiData != null) {
+                        val gson = Gson()
+                        val jsonString = gson.toJson(geminiData)
+                        val parsedInfo = gson.fromJson(jsonString, FoodNutritionalInfo::class.java)
+
+                        Log.d("ViewModel", "Food Name: ${parsedInfo.food_name}")
+                        Log.d("ViewModel", "Serving Amount: ${parsedInfo.serving_amount}")
+                        Log.d("ViewModel", "Serving Unit: ${parsedInfo.serving_unit}")
+                        Log.d("ViewModel", "Calories: ${parsedInfo.calories}")
+                        Log.d("ViewModel", "Protein: ${parsedInfo.protein}")
+                        Log.d("ViewModel", "Carbohydrates: ${parsedInfo.carbohydrates}")
+                        Log.d("ViewModel", "Fat: ${parsedInfo.fat}")
+
+                        // TODO: Now you can use this `parsedInfo` object to update your UI
                     } else {
-                        // Handle errors returned from the function
                         val errorMsg = responseData["error"] as? String
                         Log.e("ViewModel", "Function error: $errorMsg")
                     }
+                } else {
+                    Log.e("ViewModel", "Function response data is null.")
                 }
             } catch (e: Exception) {
-                // Handle exceptions that occur during the network call
                 Log.e("ViewModel", "Function call failed", e)
             }
         }

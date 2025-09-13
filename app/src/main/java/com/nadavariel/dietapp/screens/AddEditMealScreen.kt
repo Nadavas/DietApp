@@ -106,7 +106,7 @@ fun AddEditMealScreen(
                         caloriesText = newValue
                     }
                 },
-                label = { Text("Calories (kcal)") },
+                label = { Text("Calories") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -198,7 +198,7 @@ fun AddEditMealScreen(
             // New button to trigger the API call
             OutlinedButton(
                 onClick = {
-                    foodLogViewModel.analyzeImage(foodName)
+                    foodLogViewModel.analyzeImageWithGemini(foodName)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 // Enabled only when foodName is not blank
