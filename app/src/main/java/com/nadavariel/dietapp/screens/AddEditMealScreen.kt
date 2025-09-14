@@ -106,9 +106,10 @@ fun AddEditMealScreen(
             OutlinedTextField(
                 value = foodName,
                 onValueChange = { onFoodNameChange -> foodName = onFoodNameChange },
-                label = { Text("What did you eat?") },
+                label = { Text("Describe the meal") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3, // Set the minimum number of lines
+                minLines = 3,
+                maxLines = 5
             )
 
             if (mealToEdit != null) {
@@ -166,8 +167,8 @@ fun AddEditMealScreen(
                             selectedDateTimeState.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
                             selectedDateTimeState.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
 
-                    val initialHour = if (isSelectedDateToday) now.get(Calendar.HOUR_OF_DAY) else selectedDateTimeState.get(Calendar.HOUR_OF_DAY)
-                    val initialMinute = if (isSelectedDateToday) now.get(Calendar.MINUTE) else selectedDateTimeState.get(Calendar.MINUTE)
+                    val initialHour = selectedDateTimeState.get(Calendar.HOUR_OF_DAY)
+                    val initialMinute = selectedDateTimeState.get(Calendar.MINUTE)
 
                     TimePickerDialog(
                         context,
@@ -235,7 +236,7 @@ fun AddEditMealScreen(
                 val buttonText = if (mealToEdit == null) {
                     when (geminiResult) {
                         is GeminiResult.Loading -> "Analyzing..."
-                        else -> "Analyze and Add Meal"
+                        else -> "Add Meal"
                     }
                 } else {
                     "Save Changes"

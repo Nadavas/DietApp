@@ -3,9 +3,6 @@ package com.nadavariel.dietapp.viewmodel
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
@@ -24,9 +21,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 // Data class for Gemini's nutritional information. No date or time fields as they are handled manually.
 data class FoodNutritionalInfo(
@@ -51,14 +50,16 @@ class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
 
-    var selectedDate: LocalDate by mutableStateOf(LocalDate.now())
-        private set
+    // Replaced mutableStateOf with StateFlow for proper observation by Compose UI
+    private val _selectedDateState = MutableStateFlow(LocalDate.now())
+    val selectedDateState = _selectedDateState.asStateFlow()
 
-    var currentWeekStartDate: LocalDate by mutableStateOf(LocalDate.now().minusDays(6))
-        private set
+    private val _currentWeekStartDateState = MutableStateFlow(LocalDate.now().minusDays(6))
+    val currentWeekStartDateState = _currentWeekStartDateState.asStateFlow()
 
-    var mealsForSelectedDate: List<Meal> by mutableStateOf(emptyList())
-        private set
+    private val _mealsForSelectedDateState = MutableStateFlow<List<Meal>>(emptyList())
+    val mealsForSelectedDate = _mealsForSelectedDateState.asStateFlow()
+
     private var mealsListenerRegistration: ListenerRegistration? = null
 
     private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
@@ -72,29 +73,35 @@ class FoodLogViewModel : ViewModel() {
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
 
-    private fun calculateWeekStartEndingOnDate(date: LocalDate): LocalDate {
-        return date.minusDays(6)
-    }
-
     init {
         val today = LocalDate.now()
-        currentWeekStartDate = calculateWeekStartEndingOnDate(today)
-        selectedDate = today
+        _currentWeekStartDateState.value = calculateWeekStartDate(today)
+        _selectedDateState.value = today
 
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 val currentUser = firebaseAuth.currentUser
                 if (currentUser != null) {
-                    listenForMealsForDate(selectedDate)
+                    listenForMealsForDate(selectedDateState.value)
                     fetchMealsForLastSevenDays()
                 } else {
                     mealsListenerRegistration?.remove()
                     mealsListenerRegistration = null
-                    mealsForSelectedDate = emptyList()
+                    _mealsForSelectedDateState.value = emptyList()
                     _weeklyCalories.value = emptyMap()
                 }
             }
         }
+    }
+
+    // Now correctly calculates the Sunday of the week for any given date.
+    private fun calculateWeekStartDate(date: LocalDate): LocalDate {
+        var daysToSubtract = date.dayOfWeek.value
+        // If the day is not Sunday (i.e. not 7), subtract the value. If it is Sunday, subtract 7.
+        if (daysToSubtract == 7) {
+            daysToSubtract = 0
+        }
+        return date.minusDays(daysToSubtract.toLong())
     }
 
     private fun fetchMealsForLastSevenDays() {
@@ -209,16 +216,16 @@ class FoodLogViewModel : ViewModel() {
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    mealsForSelectedDate = emptyList()
+                    _mealsForSelectedDateState.value = emptyList()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
                     val mealList = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Meal::class.java)?.copy(id = doc.id)
                     }
-                    mealsForSelectedDate = mealList
+                    _mealsForSelectedDateState.value = mealList
                 } else {
-                    mealsForSelectedDate = emptyList()
+                    _mealsForSelectedDateState.value = emptyList()
                 }
             }
     }
@@ -229,30 +236,32 @@ class FoodLogViewModel : ViewModel() {
     }
 
     fun selectDate(date: LocalDate) {
-        if (selectedDate != date) {
-            selectedDate = date
-            listenForMealsForDate(date)
-        } else {
-            listenForMealsForDate(date)
-        }
+        val newWeekStartDate = calculateWeekStartDate(date)
+        _selectedDateState.value = date
+        _currentWeekStartDateState.value = newWeekStartDate
+        listenForMealsForDate(date)
     }
 
     fun previousWeek() {
-        val newCurrentWeekStartDate = currentWeekStartDate.minusWeeks(1)
-        currentWeekStartDate = newCurrentWeekStartDate
-        selectedDate = newCurrentWeekStartDate.plusDays(6)
-        listenForMealsForDate(selectedDate)
+        val newCurrentWeekStartDate = _currentWeekStartDateState.value.minusWeeks(1)
+        _currentWeekStartDateState.value = newCurrentWeekStartDate
+        _selectedDateState.value = newCurrentWeekStartDate
+        listenForMealsForDate(_selectedDateState.value)
     }
 
     fun nextWeek() {
-        val newCurrentWeekStartDate = currentWeekStartDate.plusWeeks(1)
-        currentWeekStartDate = newCurrentWeekStartDate
-        selectedDate = newCurrentWeekStartDate.plusDays(6)
-        listenForMealsForDate(selectedDate)
+        val newCurrentWeekStartDate = _currentWeekStartDateState.value.plusWeeks(1)
+        _currentWeekStartDateState.value = newCurrentWeekStartDate
+        _selectedDateState.value = newCurrentWeekStartDate
+        listenForMealsForDate(_selectedDateState.value)
+    }
+
+    fun goToToday() {
+        selectDate(LocalDate.now())
     }
 
     fun getMealById(mealId: String): Meal? {
-        return mealsForSelectedDate.firstOrNull { it.id == mealId }
+        return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
 
     fun refreshStatistics() {
