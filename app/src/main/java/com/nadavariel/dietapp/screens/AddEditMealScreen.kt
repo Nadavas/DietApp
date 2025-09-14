@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.viewmodel.GeminiResult
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -37,21 +38,19 @@ import android.R.style as AndroidRStyle
 fun AddEditMealScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
     navController: NavController,
-    mealToEdit: Meal? = null // Null if adding a new meal, otherwise contains the meal to edit
+    mealToEdit: Meal? = null
 ) {
-    // Formats for displaying date and time
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     val context = LocalContext.current
 
-    // State variables
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
+    val geminiResult by foodLogViewModel.geminiResult.collectAsState()
 
-    // Initializes the screen state (based on whether a meal is being edited)
     LaunchedEffect(mealToEdit) {
         if (mealToEdit != null) {
             foodName = mealToEdit.foodName
@@ -61,8 +60,24 @@ fun AddEditMealScreen(
         } else {
             foodName = ""
             caloriesText = ""
-            val now = Calendar.getInstance()
-            selectedDateTimeState = now
+        }
+    }
+
+    LaunchedEffect(geminiResult) {
+        if (geminiResult is GeminiResult.Success) {
+            val successResult = geminiResult as GeminiResult.Success
+            val geminiFoodName = successResult.foodInfo.food_name
+            val geminiCalories = successResult.foodInfo.calories?.toIntOrNull()
+
+            if (geminiFoodName != null && geminiCalories != null) {
+                val mealTimestamp = Timestamp(selectedDateTimeState.time)
+
+                foodLogViewModel.logMeal(geminiFoodName, geminiCalories, mealTimestamp)
+
+                navController.popBackStack()
+            }
+
+            foodLogViewModel.resetGeminiResult()
         }
     }
 
@@ -71,7 +86,6 @@ fun AddEditMealScreen(
             TopAppBar(
                 title = { Text(if (mealToEdit == null) "Add New Meal" else "Edit Meal") },
                 navigationIcon = {
-                    // Back button only for edit
                     if (mealToEdit != null) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -89,30 +103,29 @@ fun AddEditMealScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Food name field
             OutlinedTextField(
                 value = foodName,
                 onValueChange = { onFoodNameChange -> foodName = onFoodNameChange },
-                label = { Text("Food Name") },
+                label = { Text("What did you eat?") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                minLines = 3, // Set the minimum number of lines
             )
 
-            // Calories field
-            OutlinedTextField(
-                value = caloriesText,
-                onValueChange = { newValue ->
-                    if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
-                        caloriesText = newValue
-                    }
-                },
-                label = { Text("Calories") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            if (mealToEdit != null) {
+                OutlinedTextField(
+                    value = caloriesText,
+                    onValueChange = { newValue ->
+                        if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
+                            caloriesText = newValue
+                        }
+                    },
+                    label = { Text("Calories") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
 
-            // Date Picker Button
             OutlinedButton(
                 onClick = {
                     val datePickerDialog = DatePickerDialog(
@@ -123,7 +136,6 @@ fun AddEditMealScreen(
                             newCalendar.set(Calendar.MONTH, month)
                             newCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
 
-                            // Clamp time to now if the date is today
                             val now = Calendar.getInstance()
                             if (newCalendar.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
                                 newCalendar.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
@@ -139,7 +151,6 @@ fun AddEditMealScreen(
                         selectedDateTimeState.get(Calendar.MONTH),
                         selectedDateTimeState.get(Calendar.DAY_OF_MONTH)
                     )
-                    // Prevents selecting a future date
                     datePickerDialog.datePicker.maxDate = System.currentTimeMillis()
                     datePickerDialog.show()
                 },
@@ -148,7 +159,6 @@ fun AddEditMealScreen(
                 Text("Date: ${dateFormat.format(selectedDateTimeState.time)}")
             }
 
-            // Time Picker Button
             OutlinedButton(
                 onClick = {
                     val now = Calendar.getInstance()
@@ -156,7 +166,6 @@ fun AddEditMealScreen(
                             selectedDateTimeState.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
                             selectedDateTimeState.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
 
-                    // If the selected date is today, initial time is now
                     val initialHour = if (isSelectedDateToday) now.get(Calendar.HOUR_OF_DAY) else selectedDateTimeState.get(Calendar.HOUR_OF_DAY)
                     val initialMinute = if (isSelectedDateToday) now.get(Calendar.MINUTE) else selectedDateTimeState.get(Calendar.MINUTE)
 
@@ -170,7 +179,6 @@ fun AddEditMealScreen(
                             newCalendar.set(Calendar.SECOND, 0)
                             newCalendar.set(Calendar.MILLISECOND, 0)
 
-                            // Clamps the time to the current time if the date is today and the selected time is in the future
                             if (isSelectedDateToday) {
                                 val currentSystemTimeCalendar = Calendar.getInstance().apply {
                                     set(Calendar.SECOND, 0)
@@ -195,51 +203,44 @@ fun AddEditMealScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // New button to trigger the API call
-            OutlinedButton(
-                onClick = {
-                    foodLogViewModel.analyzeImageWithGemini(foodName)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                // Enabled only when foodName is not blank
-                enabled = foodName.isNotBlank()
-            ) {
-                Text("Analyze Meal Image", fontSize = 18.sp)
-            }
-
-            // Add/Edit meal button
             Button(
                 onClick = {
-                    val calValue = caloriesText.toIntOrNull() ?: 0
-                    if (foodName.isNotBlank() && calValue > 0) {
-                        val mealTimestamp = selectedDateTimeState.time
-
-                        val now = Date()
-                        if (mealTimestamp.after(now)) {
-                            return@Button
-                        }
-
-                        if (mealToEdit == null) {
-                            // Add a new meal
-                            foodLogViewModel.logMeal(foodName, calValue, mealTimestamp)
-                        } else {
-                            // Updates an existing meal
+                    if (mealToEdit == null) {
+                        foodLogViewModel.analyzeImageWithGemini(foodName)
+                    } else {
+                        val calValue = caloriesText.toIntOrNull() ?: 0
+                        if (foodName.isNotBlank() && calValue > 0) {
+                            val mealTimestamp = selectedDateTimeState.time
+                            val now = Date()
+                            if (mealTimestamp.after(now)) {
+                                return@Button
+                            }
                             foodLogViewModel.updateMeal(
                                 mealToEdit.id,
                                 foodName,
                                 calValue,
                                 Timestamp(mealTimestamp)
                             )
+                            navController.popBackStack()
                         }
-                        navController.popBackStack()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-
-                // Button is only enabled if fields are valid
-                enabled = foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
+                enabled = if (mealToEdit == null) {
+                    foodName.isNotBlank()
+                } else {
+                    foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
+                }
             ) {
-                Text(if (mealToEdit == null) "Add Meal" else "Save Changes", fontSize = 18.sp)
+                val buttonText = if (mealToEdit == null) {
+                    when (geminiResult) {
+                        is GeminiResult.Loading -> "Analyzing..."
+                        else -> "Analyze and Add Meal"
+                    }
+                } else {
+                    "Save Changes"
+                }
+                Text(buttonText, fontSize = 18.sp)
             }
         }
     }

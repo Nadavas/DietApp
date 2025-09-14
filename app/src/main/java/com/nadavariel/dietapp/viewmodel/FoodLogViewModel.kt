@@ -28,7 +28,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Date
 
-// Data class to easily handle the JSON response from Gemini
+// Data class for Gemini's nutritional information. No date or time fields as they are handled manually.
 data class FoodNutritionalInfo(
     val food_name: String?,
     val serving_unit: String?,
@@ -39,16 +39,21 @@ data class FoodNutritionalInfo(
     val fat: String?
 )
 
+sealed class GeminiResult {
+    object Idle : GeminiResult()
+    object Loading : GeminiResult()
+    data class Success(val foodInfo: FoodNutritionalInfo) : GeminiResult()
+    data class Error(val message: String) : GeminiResult()
+}
+
 @RequiresApi(Build.VERSION_CODES.O)
 class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
 
-    // State for daily meal view
     var selectedDate: LocalDate by mutableStateOf(LocalDate.now())
         private set
 
-    // This will represent the start of the currently displayed 7-day period.
     var currentWeekStartDate: LocalDate by mutableStateOf(LocalDate.now().minusDays(6))
         private set
 
@@ -64,28 +69,25 @@ class FoodLogViewModel : ViewModel() {
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
 
-    // Helper function to get the start date of a 7-day period ending on 'date'
+    private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
+    val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
+
     private fun calculateWeekStartEndingOnDate(date: LocalDate): LocalDate {
         return date.minusDays(6)
     }
 
     init {
         val today = LocalDate.now()
-        // Initialize currentWeekStartDate so that 'today' is the end of the week
         currentWeekStartDate = calculateWeekStartEndingOnDate(today)
-        selectedDate = today // Ensure selectedDate is today initially
-
-        Log.d("FoodLogViewModel", "VM Init: Initial selectedDate=$selectedDate, currentWeekStartDate=$currentWeekStartDate (Week ending on selectedDate).")
+        selectedDate = today
 
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 val currentUser = firebaseAuth.currentUser
                 if (currentUser != null) {
-                    Log.d("FoodLogViewModel", "Auth state changed: User ${currentUser.uid} signed in.")
                     listenForMealsForDate(selectedDate)
                     fetchMealsForLastSevenDays()
                 } else {
-                    Log.d("FoodLogViewModel", "Auth state changed: User signed out.")
                     mealsListenerRegistration?.remove()
                     mealsListenerRegistration = null
                     mealsForSelectedDate = emptyList()
@@ -101,18 +103,13 @@ class FoodLogViewModel : ViewModel() {
             try {
                 val sevenDaysAgo = LocalDate.now().minusDays(6)
                 val startOfPeriod = Date.from(sevenDaysAgo.atStartOfDay(ZoneId.systemDefault()).toInstant())
-
-                Log.d("FoodLogViewModel", "Fetching meals for stats from: $startOfPeriod")
-
                 val querySnapshot = firestore.collection("users").document(userId).collection("meals")
                     .whereGreaterThanOrEqualTo("timestamp", startOfPeriod)
                     .get()
                     .await()
-
                 val meals = querySnapshot.toObjects(Meal::class.java)
-                Log.d("FoodLogViewModel", "Fetched ${meals.size} meals for the last 7 days.")
                 processWeeklyCalories(meals)
-                processCaloriesByTimeOfDay(meals) // Re-run this after fetching meals
+                processCaloriesByTimeOfDay(meals)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
             }
@@ -124,63 +121,42 @@ class FoodLogViewModel : ViewModel() {
         val caloriesByDay = (0..6).associate {
             today.minusDays(it.toLong()) to 0
         }.toMutableMap()
-
         for (meal in meals) {
             val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
             if (caloriesByDay.containsKey(mealDate)) {
                 caloriesByDay[mealDate] = (caloriesByDay[mealDate] ?: 0) + meal.calories
             }
         }
-
-        Log.d("FoodLogViewModel", "Processed weekly calories: $caloriesByDay")
         _weeklyCalories.value = caloriesByDay
     }
 
     private fun processCaloriesByTimeOfDay(meals: List<Meal>) {
-        // Use MealSection's section names for initial bucket accumulation
         val rawTimeBuckets = mutableMapOf(
             MealSection.MORNING.sectionName to 0f,
             MealSection.NOON.sectionName to 0f,
             MealSection.EVENING.sectionName to 0f,
             MealSection.NIGHT.sectionName to 0f
         )
-
         for (meal in meals) {
             val section = MealSection.getMealSection(meal.timestamp.toDate())
             rawTimeBuckets[section.sectionName] = (rawTimeBuckets[section.sectionName] ?: 0f) + meal.calories
         }
-
         val finalTimeBuckets = mutableMapOf<String, Float>()
         finalTimeBuckets["Morning"] = rawTimeBuckets[MealSection.MORNING.sectionName] ?: 0f
-        // Map "Noon" from MealSection to "Afternoon" expected by StatisticsScreen
         finalTimeBuckets["Afternoon"] = rawTimeBuckets[MealSection.NOON.sectionName] ?: 0f
         finalTimeBuckets["Evening"] = rawTimeBuckets[MealSection.EVENING.sectionName] ?: 0f
         finalTimeBuckets["Night"] = rawTimeBuckets[MealSection.NIGHT.sectionName] ?: 0f
-
-
         _caloriesByTimeOfDay.value = finalTimeBuckets
-        Log.d("FoodLogViewModel", "Processed time-of-day calories using MealSection: $finalTimeBuckets")
     }
 
-    fun logMeal(foodName: String, calories: Int, mealTime: Date = Date()) {
-        val userId = auth.currentUser?.uid ?: run {
-            Log.e("FoodLogViewModel", "Cannot log meal: User not signed in.")
-            return
-        }
-
-        val now = Date()
-        if (mealTime.after(now)) {
-            Log.e("FoodLogViewModel", "Attempted to log a meal in the future. Meal not logged.")
-            return
-        }
-
-        val meal = Meal(foodName = foodName, calories = calories, timestamp = Timestamp(mealTime))
+    fun logMeal(foodName: String, calories: Int, mealTime: Timestamp) {
+        val userId = auth.currentUser?.uid ?: return
+        val meal = Meal(foodName = foodName, calories = calories, timestamp = mealTime)
         viewModelScope.launch {
             try {
                 val docRef = firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 firestore.collection("users").document(userId).collection("meals").document(docRef.id).update("id", docRef.id).await()
-                Log.d("FoodLogViewModel", "Meal '${meal.foodName}' logged successfully.")
-                fetchMealsForLastSevenDays() // Re-fetch all data to update stats
+                fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
@@ -188,17 +164,11 @@ class FoodLogViewModel : ViewModel() {
     }
 
     fun updateMeal(mealId: String, newFoodName: String, newCalories: Int, newTimestamp: Timestamp) {
-        val userId = auth.currentUser?.uid ?: run {
-            Log.e("FoodLogViewModel", "Cannot update meal: User not signed in.")
-            return
-        }
-
+        val userId = auth.currentUser?.uid ?: return
         val now = Date()
         if (newTimestamp.toDate().after(now)) {
-            Log.e("FoodLogViewModel", "Attempted to update meal '$mealId' to a future time. Update not performed.")
             return
         }
-
         val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         val updatedData = hashMapOf(
             "foodName" to newFoodName,
@@ -208,8 +178,7 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 mealRef.update(updatedData as Map<String, Any>).await()
-                Log.d("FoodLogViewModel", "Meal '$mealId' updated successfully.")
-                fetchMealsForLastSevenDays() // Re-fetch all data to update stats
+                fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -217,16 +186,12 @@ class FoodLogViewModel : ViewModel() {
     }
 
     fun deleteMeal(mealId: String) {
-        val userId = auth.currentUser?.uid ?: run {
-            Log.e("FoodLogViewModel", "Cannot delete meal: User not signed in.")
-            return
-        }
+        val userId = auth.currentUser?.uid ?: return
         val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         viewModelScope.launch {
             try {
                 mealRef.delete().await()
-                Log.d("FoodLogViewModel", "Meal '$mealId' deleted successfully.")
-                fetchMealsForLastSevenDays() // Re-fetch all data to update stats
+                fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }
@@ -235,21 +200,15 @@ class FoodLogViewModel : ViewModel() {
 
     private fun listenForMealsForDate(date: LocalDate) {
         mealsListenerRegistration?.remove()
-        val userId = auth.currentUser?.uid ?: run {
-            Log.e("FoodLogViewModel", "Cannot listen for meals: User not signed in.")
-            mealsForSelectedDate = emptyList()
-            return
-        }
+        val userId = auth.currentUser?.uid ?: return
         val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        Log.d("FoodLogViewModel", "Listening for meals for date: $date ($startOfDay - $endOfDay)")
         mealsListenerRegistration = firestore.collection("users").document(userId).collection("meals")
             .whereGreaterThanOrEqualTo("timestamp", Timestamp(Date(startOfDay)))
             .whereLessThan("timestamp", Timestamp(Date(endOfDay)))
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    Log.w("FoodLogViewModel", "Listen failed.", e)
                     mealsForSelectedDate = emptyList()
                     return@addSnapshotListener
                 }
@@ -258,9 +217,7 @@ class FoodLogViewModel : ViewModel() {
                         doc.toObject(Meal::class.java)?.copy(id = doc.id)
                     }
                     mealsForSelectedDate = mealList
-                    Log.d("FoodLogViewModel", "Meals for $date updated: ${mealList.size} meals.")
                 } else {
-                    Log.d("FoodLogViewModel", "Current data: null")
                     mealsForSelectedDate = emptyList()
                 }
             }
@@ -269,16 +226,13 @@ class FoodLogViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         mealsListenerRegistration?.remove()
-        Log.d("FoodLogViewModel", "ViewModel cleared, firestore listener removed.")
     }
 
     fun selectDate(date: LocalDate) {
         if (selectedDate != date) {
             selectedDate = date
-            Log.d("FoodLogViewModel", "selectDate: Selected date changed to $selectedDate. Re-listening for meals.")
             listenForMealsForDate(date)
         } else {
-            Log.d("FoodLogViewModel", "selectDate: Date $date already selected. No change needed, ensuring listener is active.")
             listenForMealsForDate(date)
         }
     }
@@ -287,7 +241,6 @@ class FoodLogViewModel : ViewModel() {
         val newCurrentWeekStartDate = currentWeekStartDate.minusWeeks(1)
         currentWeekStartDate = newCurrentWeekStartDate
         selectedDate = newCurrentWeekStartDate.plusDays(6)
-        Log.d("FoodLogViewModel", "Navigating to previous week. New week starts: $currentWeekStartDate. New selected date: $selectedDate.")
         listenForMealsForDate(selectedDate)
     }
 
@@ -295,7 +248,6 @@ class FoodLogViewModel : ViewModel() {
         val newCurrentWeekStartDate = currentWeekStartDate.plusWeeks(1)
         currentWeekStartDate = newCurrentWeekStartDate
         selectedDate = newCurrentWeekStartDate.plusDays(6)
-        Log.d("FoodLogViewModel", "Navigating to next week. New week starts: $currentWeekStartDate. New selected date: $selectedDate.")
         listenForMealsForDate(selectedDate)
     }
 
@@ -307,75 +259,16 @@ class FoodLogViewModel : ViewModel() {
         fetchMealsForLastSevenDays()
     }
 
-    private fun parseFoodData(responseData: Map<String, Any>): Pair<String?, String?> {
-        val foodsWrapper = responseData["data"] as? Map<String, Any>
-        val foodsSearch = foodsWrapper?.get("foods_search") as? Map<String, Any>
-        val foodsResults = foodsSearch?.get("results") as? Map<String, Any>
-        val foodList = foodsResults?.get("food") as? List<Map<String, Any>>
-
-        if (!foodList.isNullOrEmpty()) {
-            val firstFood = foodList[0]
-            val returnedFoodName = firstFood["food_name"] as? String
-
-            val servings = firstFood["servings"] as? Map<String, Any>
-            val servingList = servings?.get("serving") as? List<Map<String, Any>>
-
-            if (!servingList.isNullOrEmpty()) {
-                val firstServing = servingList[0]
-                val calories = firstServing["calories"] as? String
-                return Pair(returnedFoodName, calories)
-            }
-        }
-        return Pair(null, null)
-    }
-
-    fun analyzeImage(foodName: String) {
-        val functions = Firebase.functions("me-west1")
-        Log.d("FoodLogViewModel", "Value of foodName: $foodName")
-
-        viewModelScope.launch {
-            try {
-                val data = hashMapOf("foodName" to foodName)
-
-                val result = functions
-                    .getHttpsCallable("analyzeImage")
-                    .call(data)
-                    .await()
-
-                val responseData = result.data as? Map<String, Any>
-
-                if (responseData != null) {
-                    // Call the new helper function to parse the data
-                    val (parsedFoodName, parsedCalories) = parseFoodData(responseData)
-
-                    if (parsedFoodName != null && parsedCalories != null) {
-                        Log.d("ViewModel", "Food Name: $parsedFoodName, Calories: $parsedCalories")
-                    } else {
-                        Log.d("ViewModel", "No food results found or parsing failed for $foodName.")
-                    }
-                } else {
-                    Log.e("ViewModel", "Function response data is null.")
-                }
-            } catch (e: Exception) {
-                Log.e("ViewModel", "Function call failed", e)
-            }
-        }
-    }
-
     fun analyzeImageWithGemini(foodName: String) {
+        _geminiResult.value = GeminiResult.Loading
         val functions = Firebase.functions("me-west1")
-        Log.d("FoodLogViewModel", "Analyzing food with Gemini: $foodName")
-
         viewModelScope.launch {
             try {
                 val data = hashMapOf("foodName" to foodName)
-
-                // Make sure this name matches the new export name in your index.js
                 val result = functions
                     .getHttpsCallable("analyzeFoodWithGemini")
                     .call(data)
                     .await()
-
                 val responseData = result.data as? Map<String, Any>
 
                 if (responseData != null) {
@@ -395,17 +288,21 @@ class FoodLogViewModel : ViewModel() {
                         Log.d("ViewModel", "Carbohydrates: ${parsedInfo.carbohydrates}")
                         Log.d("ViewModel", "Fat: ${parsedInfo.fat}")
 
-                        // TODO: Now you can use this `parsedInfo` object to update your UI
+                        _geminiResult.value = GeminiResult.Success(parsedInfo)
                     } else {
                         val errorMsg = responseData["error"] as? String
-                        Log.e("ViewModel", "Function error: $errorMsg")
+                        _geminiResult.value = GeminiResult.Error(errorMsg ?: "Unknown API error")
                     }
                 } else {
-                    Log.e("ViewModel", "Function response data is null.")
+                    _geminiResult.value = GeminiResult.Error("Function response data is null.")
                 }
             } catch (e: Exception) {
-                Log.e("ViewModel", "Function call failed", e)
+                _geminiResult.value = GeminiResult.Error("Function call failed: ${e.message}")
             }
         }
+    }
+
+    fun resetGeminiResult() {
+        _geminiResult.value = GeminiResult.Idle
     }
 }
