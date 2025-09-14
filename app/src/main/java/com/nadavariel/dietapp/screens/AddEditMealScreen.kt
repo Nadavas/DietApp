@@ -47,6 +47,8 @@ fun AddEditMealScreen(
 
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
+    var servingAmountText by remember { mutableStateOf("") }
+    var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
@@ -55,11 +57,15 @@ fun AddEditMealScreen(
         if (mealToEdit != null) {
             foodName = mealToEdit.foodName
             caloriesText = mealToEdit.calories.toString()
+            servingAmountText = mealToEdit.servingAmount.orEmpty()
+            servingUnitText = mealToEdit.servingUnit.orEmpty()
             val newCalendar = Calendar.getInstance().apply { time = mealToEdit.timestamp.toDate() }
             selectedDateTimeState = newCalendar
         } else {
             foodName = ""
             caloriesText = ""
+            servingAmountText = ""
+            servingUnitText = ""
         }
     }
 
@@ -68,11 +74,19 @@ fun AddEditMealScreen(
             val successResult = geminiResult as GeminiResult.Success
             val geminiFoodName = successResult.foodInfo.food_name
             val geminiCalories = successResult.foodInfo.calories?.toIntOrNull()
+            val geminiServingAmount = successResult.foodInfo.serving_amount
+            val geminiServingUnit = successResult.foodInfo.serving_unit
 
             if (geminiFoodName != null && geminiCalories != null) {
                 val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
-                foodLogViewModel.logMeal(geminiFoodName, geminiCalories, mealTimestamp)
+                foodLogViewModel.logMeal(
+                    geminiFoodName,
+                    geminiCalories,
+                    geminiServingAmount,
+                    geminiServingUnit,
+                    mealTimestamp
+                )
 
                 navController.popBackStack()
             }
@@ -108,11 +122,31 @@ fun AddEditMealScreen(
                 onValueChange = { onFoodNameChange -> foodName = onFoodNameChange },
                 label = { Text("Describe the meal") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
+                minLines = if (mealToEdit == null) 3 else 1,
+                maxLines = if (mealToEdit == null) 5 else 1
             )
-
             if (mealToEdit != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = servingAmountText,
+                        onValueChange = { servingAmountText = it },
+                        label = { Text("Amount") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = servingUnitText,
+                        onValueChange = { servingUnitText = it },
+                        label = { Text("Unit") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
                 OutlinedTextField(
                     value = caloriesText,
                     onValueChange = { newValue ->
@@ -220,6 +254,8 @@ fun AddEditMealScreen(
                                 mealToEdit.id,
                                 foodName,
                                 calValue,
+                                servingAmountText,
+                                servingUnitText,
                                 Timestamp(mealTimestamp)
                             )
                             navController.popBackStack()

@@ -39,6 +39,7 @@ import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -375,8 +376,14 @@ fun MealItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                // Construct the display string with serving information if available
+                val servingInfo = if (!meal.servingAmount.isNullOrBlank() && !meal.servingUnit.isNullOrBlank()) {
+                    " (${meal.servingAmount} ${meal.servingUnit})"
+                } else {
+                    ""
+                }
                 Text(
-                    text = meal.foodName,
+                    text = "${meal.foodName}$servingInfo",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = sectionColor

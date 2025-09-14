@@ -156,9 +156,21 @@ class FoodLogViewModel : ViewModel() {
         _caloriesByTimeOfDay.value = finalTimeBuckets
     }
 
-    fun logMeal(foodName: String, calories: Int, mealTime: Timestamp) {
+    fun logMeal(
+        foodName: String,
+        calories: Int,
+        servingAmount: String?,
+        servingUnit: String?,
+        mealTime: Timestamp
+    ) {
         val userId = auth.currentUser?.uid ?: return
-        val meal = Meal(foodName = foodName, calories = calories, timestamp = mealTime)
+        val meal = Meal(
+            foodName = foodName,
+            calories = calories,
+            servingAmount = servingAmount,
+            servingUnit = servingUnit,
+            timestamp = mealTime
+        )
         viewModelScope.launch {
             try {
                 val docRef = firestore.collection("users").document(userId).collection("meals").add(meal).await()
@@ -170,7 +182,14 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    fun updateMeal(mealId: String, newFoodName: String, newCalories: Int, newTimestamp: Timestamp) {
+    fun updateMeal(
+        mealId: String,
+        newFoodName: String,
+        newCalories: Int,
+        newServingAmount: String?,
+        newServingUnit: String?,
+        newTimestamp: Timestamp
+    ) {
         val userId = auth.currentUser?.uid ?: return
         val now = Date()
         if (newTimestamp.toDate().after(now)) {
@@ -180,6 +199,8 @@ class FoodLogViewModel : ViewModel() {
         val updatedData = hashMapOf(
             "foodName" to newFoodName,
             "calories" to newCalories,
+            "servingAmount" to newServingAmount,
+            "servingUnit" to newServingUnit,
             "timestamp" to newTimestamp
         )
         viewModelScope.launch {

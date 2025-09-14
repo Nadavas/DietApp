@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +50,7 @@ import com.nadavariel.dietapp.NavRoutes
 import androidx.compose.ui.res.painterResource
 import com.nadavariel.dietapp.R
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.automirrored.filled.Logout
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -227,7 +227,7 @@ fun AccountScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
                     contentDescription = "Sign Out",
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
