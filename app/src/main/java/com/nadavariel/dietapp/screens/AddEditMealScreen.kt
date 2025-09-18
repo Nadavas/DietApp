@@ -47,6 +47,9 @@ fun AddEditMealScreen(
 
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
+    var proteinText by remember { mutableStateOf("") }
+    var carbsText by remember { mutableStateOf("") }
+    var fatText by remember { mutableStateOf("") }
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
@@ -59,6 +62,10 @@ fun AddEditMealScreen(
             caloriesText = mealToEdit.calories.toString()
             servingAmountText = mealToEdit.servingAmount.orEmpty()
             servingUnitText = mealToEdit.servingUnit.orEmpty()
+            // Populate the new nutritional fields
+            proteinText = mealToEdit.protein?.toString() ?: ""
+            carbsText = mealToEdit.carbohydrates?.toString() ?: ""
+            fatText = mealToEdit.fat?.toString() ?: ""
             val newCalendar = Calendar.getInstance().apply { time = mealToEdit.timestamp.toDate() }
             selectedDateTimeState = newCalendar
         } else {
@@ -66,31 +73,43 @@ fun AddEditMealScreen(
             caloriesText = ""
             servingAmountText = ""
             servingUnitText = ""
+            proteinText = ""
+            carbsText = ""
+            fatText = ""
         }
     }
 
     LaunchedEffect(geminiResult) {
         if (geminiResult is GeminiResult.Success) {
             val successResult = geminiResult as GeminiResult.Success
-            val geminiFoodName = successResult.foodInfo.food_name
-            val geminiCalories = successResult.foodInfo.calories?.toIntOrNull()
-            val geminiServingAmount = successResult.foodInfo.serving_amount
-            val geminiServingUnit = successResult.foodInfo.serving_unit
+            val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
-            if (geminiFoodName != null && geminiCalories != null) {
-                val mealTimestamp = Timestamp(selectedDateTimeState.time)
+            // Loop through the list of food items returned by Gemini
+            for (foodInfo in successResult.foodInfoList) {
+                val geminiFoodName = foodInfo.food_name
+                val geminiCalories = foodInfo.calories?.toIntOrNull()
+                val geminiServingAmount = foodInfo.serving_amount
+                val geminiServingUnit = foodInfo.serving_unit
+                // Get the new nutritional values
+                val geminiProtein = foodInfo.protein?.toDoubleOrNull()
+                val geminiCarbs = foodInfo.carbohydrates?.toDoubleOrNull()
+                val geminiFat = foodInfo.fat?.toDoubleOrNull()
 
-                foodLogViewModel.logMeal(
-                    geminiFoodName,
-                    geminiCalories,
-                    geminiServingAmount,
-                    geminiServingUnit,
-                    mealTimestamp
-                )
-
-                navController.popBackStack()
+                if (geminiFoodName != null && geminiCalories != null) {
+                    foodLogViewModel.logMeal(
+                        geminiFoodName,
+                        geminiCalories,
+                        geminiServingAmount,
+                        geminiServingUnit,
+                        mealTimestamp,
+                        // Pass the new nutritional values
+                        geminiProtein,
+                        geminiCarbs,
+                        geminiFat
+                    )
+                }
             }
-
+            navController.popBackStack()
             foodLogViewModel.resetGeminiResult()
         }
     }
@@ -159,6 +178,37 @@ fun AddEditMealScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                // Add the new text fields for protein, carbs, and fat
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = proteinText,
+                        onValueChange = { proteinText = it },
+                        label = { Text("Protein (g)") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = carbsText,
+                        onValueChange = { carbsText = it },
+                        label = { Text("Carbs (g)") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = fatText,
+                        onValueChange = { fatText = it },
+                        label = { Text("Fat (g)") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
             }
 
             OutlinedButton(
@@ -244,6 +294,10 @@ fun AddEditMealScreen(
                         foodLogViewModel.analyzeImageWithGemini(foodName)
                     } else {
                         val calValue = caloriesText.toIntOrNull() ?: 0
+                        val proteinValue = proteinText.toDoubleOrNull()
+                        val carbsValue = carbsText.toDoubleOrNull()
+                        val fatValue = fatText.toDoubleOrNull()
+
                         if (foodName.isNotBlank() && calValue > 0) {
                             val mealTimestamp = selectedDateTimeState.time
                             val now = Date()
@@ -256,7 +310,11 @@ fun AddEditMealScreen(
                                 calValue,
                                 servingAmountText,
                                 servingUnitText,
-                                Timestamp(mealTimestamp)
+                                Timestamp(mealTimestamp),
+                                // Pass the new nutritional values here
+                                proteinValue,
+                                carbsValue,
+                                fatValue
                             )
                             navController.popBackStack()
                         }

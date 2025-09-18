@@ -1,111 +1,9 @@
 const { onCall } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
-const axios = require("axios");
-const crypto = require("crypto");
-const qs = require("qs");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Define secrets (must match what you set with `firebase functions:secrets:set`)
-const consumerKeySecret = defineSecret("FATSECRET_KEY");
-const consumerSecretSecret = defineSecret("FATSECRET_SECRET");
+// Define secret key
 const geminiApiKeySecret = defineSecret("GEMINI_API_KEY");
-
-exports.analyzeImage = onCall(
-  {
-    region: "me-west1",
-    vpcConnector: "diet-app-connector",
-    secrets: [consumerKeySecret, consumerSecretSecret], // allow access to secrets
-  },
-  async (data) => {
-    try {
-      console.log("Full data object received:", data);
-
-      const foodName = data.data.foodName;
-      console.log("Received food name:", foodName);
-
-      // Retrieve secret values securely
-      const consumerKey = consumerKeySecret.value();
-      const consumerSecret = consumerSecretSecret.value();
-
-      console.log("Using Consumer Key:", consumerKey);
-
-      const url = "https://platform.fatsecret.com/rest/server.api";
-      const httpMethod = "POST";
-
-      const timestamp = Math.floor(Date.now() / 1000);
-      const nonce = crypto.randomBytes(16).toString("hex");
-
-      const params = {
-        method: "foods.search.v2",
-        search_expression: foodName,
-        format: "json",
-        max_results: "1",
-        oauth_consumer_key: consumerKey,
-        oauth_nonce: nonce,
-        oauth_signature_method: "HMAC-SHA1",
-        oauth_timestamp: timestamp,
-        oauth_version: "1.0",
-      };
-
-      // Sort parameters
-      const sortedParams = Object.keys(params)
-        .sort()
-        .reduce((acc, key) => {
-          acc[key] = params[key];
-          return acc;
-        }, {});
-
-      const encodedParams = qs.stringify(sortedParams);
-      const signatureBaseString = [
-        httpMethod,
-        encodeURIComponent(url),
-        encodeURIComponent(encodedParams),
-      ].join("&");
-
-      const signingKey = `${encodeURIComponent(consumerSecret)}&`;
-
-      const signature = crypto
-        .createHmac("sha1", signingKey)
-        .update(signatureBaseString)
-        .digest("base64");
-
-      params.oauth_signature = signature;
-
-      const finalUrl = `${url}?${qs.stringify(params)}`;
-
-      const response = await axios({
-        method: httpMethod,
-        url: finalUrl,
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
-
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error("An error occurred:", error);
-      if (error.response) {
-        console.error(
-          "FatSecret API responded with an error:",
-          error.response.status,
-          error.response.data
-        );
-      } else if (error.request) {
-        console.error("No response received from FatSecret API.");
-      } else {
-        console.error("Error in Axios request setup:", error.message);
-      }
-
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  }
-);
 
 function extractJsonFromMarkdown(text) {
   // Check if the response is a markdown code block for JSON
@@ -124,7 +22,6 @@ function extractJsonFromMarkdown(text) {
 exports.analyzeFoodWithGemini = onCall(
   {
     region: "me-west1",
-    vpcConnector: "diet-app-connector",
     secrets: [geminiApiKeySecret],
   },
   async (data) => {
@@ -145,40 +42,57 @@ exports.analyzeFoodWithGemini = onCall(
 
         const prompt = `
           You are a nutritional assistant.
-          Analyze the nutritional content of the food item and quantity specified in "${foodName}".
-          Provide the calories, protein, carbs, and fat for that exact quantity.
-          If a number is not specified, use a common, natural serving size (e.g., "1 banana", "1 bowl").
-          Return the data as a single JSON object with the following structure:
-          {
-            "food_name": "...",
-            "serving_unit": "...",
-            "serving_amount": "...",
-            "calories": "...",
-            "protein": "...",
-            "carbohydrates": "...",
-            "fat": "..."
-          }
-          If the food is not found, return an empty object: {}.
+          Analyze the nutritional content of the food item(s) and quantity specified in "${foodName}".
+          For each distinct, main food item in the request, provide the calories, protein, carbs, and fat for that exact quantity.
+          Minor components (e.g., sauces, small garnishes, seasonings) that are typically consumed with a main dish should not be separated. For example, "pasta with tomato sauce" is one item, but "rice with chicken breast" contains two separate main food items.
+          If a number is not specified for a main food item, use a common, natural serving size (e.g., "1 banana", "1 bowl").
+          Return the data as a single JSON array containing an object for each main food item.
+          If the food is not found, return an empty array: [].
           Example for "5 bananas":
-          {
-            "food_name": "Banana",
-            "serving_unit": "pieces",
-            "serving_amount": "5",
-            "calories": "525",
-            "protein": "6.5",
-            "carbohydrates": "135",
-            "fat": "2"
-          }
-          Example for "cooked rice":
-          {
-            "food_name": "Cooked Rice",
-            "serving_unit": "cup",
-            "serving_amount": "1",
-            "calories": "205",
-            "protein": "4.3",
-            "carbohydrates": "44.5",
-            "fat": "0.4"
-          }
+          [
+            {
+              "food_name": "Banana",
+              "serving_unit": "pieces",
+              "serving_amount": "5",
+              "calories": "525",
+              "protein": "6.5",
+              "carbohydrates": "135",
+              "fat": "2"
+            }
+          ]
+          Example for "rice with chicken breast":
+          [
+            {
+              "food_name": "Cooked Rice",
+              "serving_unit": "cup",
+              "serving_amount": "1",
+              "calories": "205",
+              "protein": "4.3",
+              "carbohydrates": "44.5",
+              "fat": "0.4"
+            },
+            {
+              "food_name": "Chicken Breast",
+              "serving_unit": "ounce",
+              "serving_amount": "3",
+              "calories": "165",
+              "protein": "31",
+              "carbohydrates": "0",
+              "fat": "3.6"
+            }
+          ]
+          Example for "pasta with tomato sauce":
+          [
+            {
+              "food_name": "Pasta with Tomato Sauce",
+              "serving_unit": "cup",
+              "serving_amount": "1",
+              "calories": "300",
+              "protein": "11",
+              "carbohydrates": "50",
+              "fat": "6"
+            }
+          ]
         `;
 
         const result = await model.generateContent(prompt);

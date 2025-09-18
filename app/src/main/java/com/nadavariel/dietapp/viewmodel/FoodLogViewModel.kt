@@ -15,6 +15,8 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,21 +29,22 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-// Data class for Gemini's nutritional information. No date or time fields as they are handled manually.
+// Data class for Gemini's nutritional information. It needs to handle the new fields.
 data class FoodNutritionalInfo(
-    val food_name: String?,
-    val serving_unit: String?,
-    val serving_amount: String?,
-    val calories: String?,
-    val protein: String?,
-    val carbohydrates: String?,
-    val fat: String?
+    @SerializedName("food_name") val food_name: String?,
+    @SerializedName("serving_unit") val serving_unit: String?,
+    @SerializedName("serving_amount") val serving_amount: String?,
+    @SerializedName("calories") val calories: String?,
+    @SerializedName("protein") val protein: String?,
+    @SerializedName("carbohydrates") val carbohydrates: String?,
+    @SerializedName("fat") val fat: String?
 )
 
 sealed class GeminiResult {
     object Idle : GeminiResult()
     object Loading : GeminiResult()
-    data class Success(val foodInfo: FoodNutritionalInfo) : GeminiResult()
+    // Changed to a list to match the function's return type
+    data class Success(val foodInfoList: List<FoodNutritionalInfo>) : GeminiResult()
     data class Error(val message: String) : GeminiResult()
 }
 
@@ -49,6 +52,8 @@ sealed class GeminiResult {
 class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
+    // Initialize the Firebase functions instance here, it's better practice
+    private val functions = Firebase.functions("me-west1")
 
     // Replaced mutableStateOf with StateFlow for proper observation by Compose UI
     private val _selectedDateState = MutableStateFlow(LocalDate.now())
@@ -94,10 +99,8 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // Now correctly calculates the Sunday of the week for any given date.
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
-        // If the day is not Sunday (i.e. not 7), subtract the value. If it is Sunday, subtract 7.
         if (daysToSubtract == 7) {
             daysToSubtract = 0
         }
@@ -161,7 +164,11 @@ class FoodLogViewModel : ViewModel() {
         calories: Int,
         servingAmount: String?,
         servingUnit: String?,
-        mealTime: Timestamp
+        mealTime: Timestamp,
+        // New parameters for nutritional values
+        protein: Double?,
+        carbohydrates: Double?,
+        fat: Double?
     ) {
         val userId = auth.currentUser?.uid ?: return
         val meal = Meal(
@@ -169,12 +176,15 @@ class FoodLogViewModel : ViewModel() {
             calories = calories,
             servingAmount = servingAmount,
             servingUnit = servingUnit,
-            timestamp = mealTime
+            timestamp = mealTime,
+            protein = protein,
+            carbohydrates = carbohydrates,
+            fat = fat
         )
         viewModelScope.launch {
             try {
-                val docRef = firestore.collection("users").document(userId).collection("meals").add(meal).await()
-                firestore.collection("users").document(userId).collection("meals").document(docRef.id).update("id", docRef.id).await()
+                // Remove the extra Firestore update call. It's not necessary.
+                firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 fetchMealsForLastSevenDays()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
@@ -188,7 +198,11 @@ class FoodLogViewModel : ViewModel() {
         newCalories: Int,
         newServingAmount: String?,
         newServingUnit: String?,
-        newTimestamp: Timestamp
+        newTimestamp: Timestamp,
+        // New parameters for nutritional values
+        newProtein: Double?,
+        newCarbohydrates: Double?,
+        newFat: Double?
     ) {
         val userId = auth.currentUser?.uid ?: return
         val now = Date()
@@ -201,7 +215,11 @@ class FoodLogViewModel : ViewModel() {
             "calories" to newCalories,
             "servingAmount" to newServingAmount,
             "servingUnit" to newServingUnit,
-            "timestamp" to newTimestamp
+            "timestamp" to newTimestamp,
+            // Add new nutritional fields to the update map
+            "protein" to newProtein,
+            "carbohydrates" to newCarbohydrates,
+            "fat" to newFat
         )
         viewModelScope.launch {
             try {
@@ -291,7 +309,6 @@ class FoodLogViewModel : ViewModel() {
 
     fun analyzeImageWithGemini(foodName: String) {
         _geminiResult.value = GeminiResult.Loading
-        val functions = Firebase.functions("me-west1")
         viewModelScope.launch {
             try {
                 val data = hashMapOf("foodName" to foodName)
@@ -303,22 +320,20 @@ class FoodLogViewModel : ViewModel() {
 
                 if (responseData != null) {
                     val success = responseData["success"] as? Boolean
-                    val geminiData = responseData["data"] as? Map<String, Any>
+                    val geminiData = responseData["data"]
 
                     if (success == true && geminiData != null) {
                         val gson = Gson()
                         val jsonString = gson.toJson(geminiData)
-                        val parsedInfo = gson.fromJson(jsonString, FoodNutritionalInfo::class.java)
+                        // This line is the key change: parse to a List of objects
+                        val listType = object : TypeToken<List<FoodNutritionalInfo>>() {}.type
+                        val parsedList: List<FoodNutritionalInfo> = gson.fromJson(jsonString, listType)
 
-                        Log.d("ViewModel", "Food Name: ${parsedInfo.food_name}")
-                        Log.d("ViewModel", "Serving Amount: ${parsedInfo.serving_amount}")
-                        Log.d("ViewModel", "Serving Unit: ${parsedInfo.serving_unit}")
-                        Log.d("ViewModel", "Calories: ${parsedInfo.calories}")
-                        Log.d("ViewModel", "Protein: ${parsedInfo.protein}")
-                        Log.d("ViewModel", "Carbohydrates: ${parsedInfo.carbohydrates}")
-                        Log.d("ViewModel", "Fat: ${parsedInfo.fat}")
-
-                        _geminiResult.value = GeminiResult.Success(parsedInfo)
+                        if (parsedList.isNotEmpty()) {
+                            _geminiResult.value = GeminiResult.Success(parsedList)
+                        } else {
+                            _geminiResult.value = GeminiResult.Error("No food information found.")
+                        }
                     } else {
                         val errorMsg = responseData["error"] as? String
                         _geminiResult.value = GeminiResult.Error(errorMsg ?: "Unknown API error")

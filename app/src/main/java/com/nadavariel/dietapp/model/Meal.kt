@@ -8,6 +8,9 @@ data class Meal(
     val id: String = "", // Document ID from Firestore
     val foodName: String = "",
     val calories: Int = 0,
+    val protein: Double? = null,
+    val carbohydrates: Double? = null,
+    val fat: Double? = null,
     val servingAmount: String? = null,
     val servingUnit: String? = null,
     val timestamp: Timestamp = Timestamp(Date()) // The time the meal was logged

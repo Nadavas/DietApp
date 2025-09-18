@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.os.Build
 import android.widget.DatePicker
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,7 +40,6 @@ import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Image
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -365,68 +365,114 @@ fun MealItem(
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        // This is the new change: The meal item content is now a column
+        // to accommodate the collapsible sub-table.
+        Column(
+            modifier = Modifier.padding(12.dp)
         ) {
-            // Meal details
-            Column(
-                modifier = Modifier.weight(1f)
+            // First Row: Meal Name, Time, and Actions/Calories
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Construct the display string with serving information if available
-                val servingInfo = if (!meal.servingAmount.isNullOrBlank() && !meal.servingUnit.isNullOrBlank()) {
-                    " (${meal.servingAmount} ${meal.servingUnit})"
-                } else {
-                    ""
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    val servingInfo = if (!meal.servingAmount.isNullOrBlank() && !meal.servingUnit.isNullOrBlank()) {
+                        " (${meal.servingAmount} ${meal.servingUnit})"
+                    } else {
+                        ""
+                    }
+                    Text(
+                        text = "${meal.foodName}$servingInfo",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = sectionColor
+                    )
+                    Text(
+                        text = meal.timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = sectionColor.copy(alpha = 0.7f)
+                    )
                 }
-                Text(
-                    text = "${meal.foodName}$servingInfo",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = sectionColor
-                )
-                Text(
-                    text = meal.timestamp.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = sectionColor.copy(alpha = 0.7f)
-                )
+
+                if (showActions) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        IconButton(onClick = { onEdit(meal) }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Meal", tint = MaterialTheme.colorScheme.primary)
+                        }
+                        IconButton(onClick = { onDelete(meal) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Meal", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "${meal.calories} kcal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = sectionColor,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
 
-            // Edit/delete icons or calories
-            if (showActions) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.padding(start = 8.dp)
+            // This is the new collapsible sub-table for nutritional information.
+            AnimatedVisibility(
+                visible = showActions,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
                 ) {
-                    IconButton(
-                        onClick = {
-                            onEdit(meal)
-                        }
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Meal", tint = MaterialTheme.colorScheme.primary)
-                    }
-
-                    IconButton(
-                        onClick = {
-                            onDelete(meal)
-                        }
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Meal", tint = MaterialTheme.colorScheme.error)
-                    }
+                    Divider(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                    NutritionDetailsTable(meal)
                 }
-            } else {
-                Text(
-                    text = "${meal.calories} kcal",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = sectionColor,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
             }
         }
+    }
+}
+
+// New composable function for displaying the nutritional table.
+@Composable
+fun NutritionDetailsTable(meal: Meal) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            NutritionDetailItem("Protein", meal.protein)
+            NutritionDetailItem("Carbs", meal.carbohydrates)
+            NutritionDetailItem("Fat", meal.fat)
+        }
+    }
+}
+
+// New composable function for each individual nutrition detail.
+@Composable
+fun NutritionDetailItem(label: String, value: Double?) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = if (value != null) "${String.format("%.1f", value)}g" else "N/A",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
