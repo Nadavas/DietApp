@@ -201,6 +201,28 @@ fun AccountScreen(
                     .clickable { navController.navigate(NavRoutes.GOALS) }
             )
             HorizontalDivider()
+            // Threads
+            ListItem(
+                headlineContent = { Text("Threads") },
+                leadingContent = {
+                    val currentIconColor = LocalContentColor.current
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_forum),
+                        contentDescription = "Threads",
+                        colorFilter = ColorFilter.tint(currentIconColor)
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Go to Threads"
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate(NavRoutes.THREADS) }
+            )
+            HorizontalDivider()
             // Settings
             ListItem(
                 headlineContent = { Text("Settings") },

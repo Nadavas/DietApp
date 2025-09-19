@@ -10,6 +10,7 @@ object NavRoutes {
     const val SETTINGS = "settings"
     const val CHANGE_PASSWORD = "change_password"
     const val QUESTIONS = "questions"
+    const val THREADS = "threads"
     const val GOALS = "goals"
     const val UPDATE_PROFILE_BASE = "update_profile"
     const val IS_NEW_USER_ARG = "isNewUser"
