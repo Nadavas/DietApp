@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.foundation.layout.offset
+import com.nadavariel.dietapp.screens.CreateThreadScreen
 import com.nadavariel.dietapp.screens.GoalsScreen
 import com.nadavariel.dietapp.screens.ThreadsScreen
 
@@ -330,6 +331,15 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     onBack = { navController.popBackStack() },
                                     isNewUser = isNewUser
+                                )
+                            }
+
+                            composable("create_thread") {
+                                CreateThreadScreen(
+                                    navController = navController,
+                                    onThreadCreated = { title: String, topic: String, author: String ->
+                                        println("New thread created: $title in $topic by $author")
+                                    }
                                 )
                             }
 

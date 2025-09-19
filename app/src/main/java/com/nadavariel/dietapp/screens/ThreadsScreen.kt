@@ -18,12 +18,27 @@ import androidx.navigation.NavController
 fun ThreadsScreen(
     navController: NavController
 ) {
-    // Sample threads (later will come from Firebase or ViewModel)
-    val threads = listOf(
-        ThreadItem(title = "Best high-protein breakfast ideas?", author = "Alice"),
-        ThreadItem(title = "How do you stay consistent with workouts?", author = "Bob"),
-        ThreadItem(title = "Healthy snacks for late-night cravings?", author = "Charlie")
+    // Closed list of topics
+    val topics = listOf("Training", "Diet", "Recipes")
+
+    // Temporary local threads (later will come from Firebase)
+    val allThreads = mapOf(
+        "Training" to listOf(
+            ThreadItem(title = "Best strength program for beginners?", author = "Alice"),
+            ThreadItem(title = "How many rest days per week?", author = "John")
+        ),
+        "Diet" to listOf(
+            ThreadItem(title = "High-protein breakfast ideas?", author = "Bob"),
+            ThreadItem(title = "Is intermittent fasting healthy?", author = "Nina")
+        ),
+        "Recipes" to listOf(
+            ThreadItem(title = "Quick healthy snack recipes?", author = "Charlie"),
+            ThreadItem(title = "Best chicken meal prep ideas", author = "Eve")
+        )
     )
+
+    // State: which topic is currently opened
+    var selectedTopic by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -43,32 +58,69 @@ fun ThreadsScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-            Text("Latest Threads", fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
+            if (selectedTopic == null) {
+                // Show list of topics
+                Text("Choose a Topic", fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
 
-            threads.forEach { thread ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .clickable {
-                            // Later: navController.navigate("${NavRoutes.THREAD_DETAIL}/${thread.id}")
-                        },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(thread.title, fontSize = 16.sp, style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("by ${thread.author}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                topics.forEach { topic ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { selectedTopic = topic },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Text(
+                            text = topic,
+                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
                     }
+                }
+            } else {
+                // Show threads inside selected topic
+                Text(
+                    "$selectedTopic Threads",
+                    fontSize = 20.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                allThreads[selectedTopic].orEmpty().forEach { thread ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable {
+                                // Later: navController.navigate("${NavRoutes.THREAD_DETAIL}/${thread.id}")
+                            },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(thread.title, fontSize = 16.sp, style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("by ${thread.author}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Back to topics
+                OutlinedButton(
+                    onClick = { selectedTopic = null },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Back to Topics")
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Create new thread button
+            // Create new thread button (always visible at bottom)
             Button(
                 onClick = {
-                    // Later: navController.navigate(NavRoutes.CREATE_THREAD)
+                    navController.navigate("create_thread")
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
