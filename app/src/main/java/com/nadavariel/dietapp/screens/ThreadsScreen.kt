@@ -10,34 +10,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 
 @SuppressLint("MutableCollectionMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThreadsScreen(
-    navController: NavController
+    navController: NavController,
+    threadViewModel: ThreadViewModel = viewModel()
 ) {
-    // Closed list of topics
     val topics = listOf("Training", "Diet", "Recipes")
 
-    // Temporary local threads (later will come from Firebase)
-    val allThreads = mapOf(
-        "Training" to listOf(
-            ThreadItem(title = "Best strength program for beginners?", author = "Alice"),
-            ThreadItem(title = "How many rest days per week?", author = "John")
-        ),
-        "Diet" to listOf(
-            ThreadItem(title = "High-protein breakfast ideas?", author = "Bob"),
-            ThreadItem(title = "Is intermittent fasting healthy?", author = "Nina")
-        ),
-        "Recipes" to listOf(
-            ThreadItem(title = "Quick healthy snack recipes?", author = "Charlie"),
-            ThreadItem(title = "Best chicken meal prep ideas", author = "Eve")
-        )
-    )
+    // Observe threads from Firestore
+    val threads by threadViewModel.threads.collectAsState()
 
-    // State: which topic is currently opened
     var selectedTopic by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -86,7 +74,7 @@ fun ThreadsScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                allThreads[selectedTopic].orEmpty().forEach { thread ->
+                threads.filter { it.topic == selectedTopic }.forEach { thread ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -99,7 +87,7 @@ fun ThreadsScreen(
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(thread.title, fontSize = 16.sp, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("by ${thread.author}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("by ${thread.authorName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -129,9 +117,3 @@ fun ThreadsScreen(
         }
     }
 }
-
-data class ThreadItem(
-    val id: String = "",
-    val title: String,
-    val author: String
-)

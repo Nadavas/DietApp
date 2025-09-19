@@ -8,15 +8,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
+import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateThreadScreen(
     navController: NavController,
-    onThreadCreated: (title: String, topic: String, author: String) -> Unit
+    onThreadCreated: (title: String, topic: String, author: String) -> Unit,
+    threadViewModel: ThreadViewModel = viewModel()
 ) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
@@ -90,7 +93,7 @@ fun CreateThreadScreen(
             Button(
                 onClick = {
                     if (title.isNotBlank() && selectedTopic.isNotBlank()) {
-                        onThreadCreated(title, selectedTopic, authorName)
+                        threadViewModel.createThread(title, selectedTopic, authorName)
                         navController.popBackStack()
                     }
                 },
