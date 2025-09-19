@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
+import com.nadavariel.dietapp.NavRoutes
 
 @SuppressLint("MutableCollectionMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +87,8 @@ fun ThreadsScreen(
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
                             .clickable {
-                                // Later: navController.navigate("${NavRoutes.THREAD_DETAIL}/${thread.id}")
+                                // Navigate to ThreadDetailScreen, passing the thread's ID
+                                navController.navigate(NavRoutes.threadDetail(thread.id))
                             },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
