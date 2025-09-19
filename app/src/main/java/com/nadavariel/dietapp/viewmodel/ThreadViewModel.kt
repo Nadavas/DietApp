@@ -3,23 +3,22 @@ package com.nadavariel.dietapp.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-// Import your Thread model
-import com.nadavariel.dietapp.model.Thread // <<<< CORRECT IMPORT
+import com.nadavariel.dietapp.model.Thread
+import com.nadavariel.dietapp.data.Comment
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.Query // Keep for ordering
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.data.Comment // Assuming Comment class path is correct
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-// No need for com.google.firebase.Timestamp or java.util.Date here if Thread uses Long for timestamp
-// No need for com.google.firebase.firestore.FieldValue for commentCount
 
 class ThreadViewModel : ViewModel() {
+
     private val firestore = Firebase.firestore
     private val auth = Firebase.auth
 
@@ -40,7 +39,7 @@ class ThreadViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 firestore.collection("threads")
-                    .orderBy("timestamp", Query.Direction.DESCENDING) // Order by your 'timestamp' field
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
                     .addSnapshotListener { snapshots, e ->
                         if (e != null) {
                             Log.w("ThreadViewModel", "Listen failed for all threads.", e)
@@ -80,8 +79,9 @@ class ThreadViewModel : ViewModel() {
     private fun fetchCommentsForThread(threadId: String) {
         viewModelScope.launch {
             try {
-                // Assuming Comment class has 'createdAt' as Firestore Timestamp or similar for ordering
-                firestore.collection("threads").document(threadId).collection("comments")
+                firestore.collection("threads")
+                    .document(threadId)
+                    .collection("comments")
                     .orderBy("createdAt", Query.Direction.ASCENDING)
                     .addSnapshotListener { snapshots, e ->
                         if (e != null) {
@@ -112,23 +112,25 @@ class ThreadViewModel : ViewModel() {
             return
         }
 
-        val newCommentRef = firestore.collection("threads").document(threadId)
-            .collection("comments").document()
+        val newCommentRef = firestore.collection("threads")
+            .document(threadId)
+            .collection("comments")
+            .document()
 
-        val comment = Comment( // Assuming Comment class is structured appropriately
+        val comment = Comment(
             id = newCommentRef.id,
             threadId = threadId,
             authorId = userId,
             authorName = authorName,
-            text = commentText
-            // createdAt will be set by default in Comment data class (e.g. Timestamp(Date()))
+            text = commentText,
+            createdAt = Timestamp.now()
         )
 
         viewModelScope.launch {
             try {
                 newCommentRef.set(comment).await()
                 Log.d("ThreadViewModel", "Comment added successfully to thread $threadId")
-                // Comment count logic removed as it's not in your Thread model
+                // No need to manually refresh; snapshot listener will update _comments
             } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error adding comment to thread $threadId", e)
             }
@@ -144,14 +146,14 @@ class ThreadViewModel : ViewModel() {
 
         val newThreadRef = firestore.collection("threads").document()
 
-        val thread = Thread( // Uses your model.Thread class
+        val thread = Thread(
             id = newThreadRef.id,
             authorId = userId,
             authorName = authorName,
             header = header,
             paragraph = paragraph,
             topic = topic,
-            timestamp = System.currentTimeMillis() // Uses Long for timestamp
+            timestamp = System.currentTimeMillis()
         )
 
         viewModelScope.launch {
