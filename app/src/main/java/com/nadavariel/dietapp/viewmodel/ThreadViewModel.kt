@@ -21,12 +21,13 @@ class ThreadViewModel : ViewModel() {
         fetchThreads()
     }
 
-    fun createThread(title: String, topic: String, authorName: String) {
+    fun createThread(header: String, paragraph: String, topic: String, authorName: String) {
         val uid = auth.currentUser?.uid ?: return
         val newThreadRef = firestore.collection("threads").document()
         val thread = Thread(
             id = newThreadRef.id,
-            title = title,
+            header = header,
+            paragraph = paragraph,
             topic = topic,
             authorId = uid,
             authorName = authorName,

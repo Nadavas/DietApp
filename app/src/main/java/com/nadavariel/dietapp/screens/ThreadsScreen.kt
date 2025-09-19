@@ -48,7 +48,11 @@ fun ThreadsScreen(
         ) {
             if (selectedTopic == null) {
                 // Show list of topics
-                Text("Choose a Topic", fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
+                Text(
+                    "Choose a Topic",
+                    fontSize = 20.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
                 topics.forEach { topic ->
                     Card(
@@ -56,7 +60,9 @@ fun ThreadsScreen(
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
                             .clickable { selectedTopic = topic },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
                         Text(
                             text = topic,
@@ -82,12 +88,28 @@ fun ThreadsScreen(
                             .clickable {
                                 // Later: navController.navigate("${NavRoutes.THREAD_DETAIL}/${thread.id}")
                             },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(thread.title, fontSize = 16.sp, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                thread.header,
+                                fontSize = 16.sp,
+                                style = MaterialTheme.typography.titleMedium
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("by ${thread.authorName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                thread.paragraph,
+                                fontSize = 14.sp,
+                                maxLines = 5 // preview only
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "by ${thread.authorName}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

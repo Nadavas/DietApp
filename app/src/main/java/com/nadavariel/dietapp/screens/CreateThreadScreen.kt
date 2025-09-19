@@ -21,18 +21,16 @@ fun CreateThreadScreen(
     onThreadCreated: (title: String, topic: String, author: String) -> Unit,
     threadViewModel: ThreadViewModel = viewModel()
 ) {
-    val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-    val authorName = currentUser?.displayName ?: currentUser?.email ?: "Anonymous"
+    var header by remember { mutableStateOf("") }
+    var paragraph by remember { mutableStateOf("") }
+    var topic by remember { mutableStateOf("Training") }
 
-    var title by remember { mutableStateOf("") }
-    var selectedTopic by remember { mutableStateOf("") }
     val topics = listOf("Training", "Diet", "Recipes")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create New Thread") },
+                title = { Text("Create Thread") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -46,41 +44,49 @@ fun CreateThreadScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Thread Title") },
+                value = header,
+                onValueChange = { header = it },
+                label = { Text("Thread Header") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Topic Dropdown
-            var expanded by remember { mutableStateOf(false) }
+            OutlinedTextField(
+                value = paragraph,
+                onValueChange = { paragraph = it },
+                label = { Text("Thread Paragraph") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp), // ensures the box has some initial height
+                maxLines = Int.MAX_VALUE,     // allows multiple lines
+                singleLine = false,           // ensures it's not forced into a single line
+            )
 
+            // Dropdown for topic
+            var expanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded }
             ) {
                 OutlinedTextField(
-                    value = selectedTopic,
+                    value = topic,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Select Topic") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    topics.forEach { topic ->
+                    topics.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(topic) },
+                            text = { Text(option) },
                             onClick = {
-                                selectedTopic = topic
+                                topic = option
                                 expanded = false
                             }
                         )
@@ -92,13 +98,12 @@ fun CreateThreadScreen(
 
             Button(
                 onClick = {
-                    if (title.isNotBlank() && selectedTopic.isNotBlank()) {
-                        threadViewModel.createThread(title, selectedTopic, authorName)
-                        navController.popBackStack()
-                    }
+                    val user = FirebaseAuth.getInstance().currentUser
+                    val name = user?.displayName ?: user?.email ?: "Anonymous"
+                    threadViewModel.createThread(header, paragraph, topic, name)
+                    navController.popBackStack()
                 },
-                enabled = title.isNotBlank() && selectedTopic.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
+                enabled = header.isNotBlank() && paragraph.isNotBlank()
             ) {
                 Text("Post Thread")
             }
