@@ -6,18 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.nadavariel.dietapp.data.Goal
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-
-// ✅ Represents a Goal
-data class Goal(
-    val text: String = "",
-    val options: List<String> = emptyList(),
-    val id: String = java.util.UUID.randomUUID().toString(),
-    val selectedAnswer: String? = null // <-- pre-marking support
-)
 
 class GoalsViewModel : ViewModel() {
 
@@ -38,15 +31,10 @@ class GoalsViewModel : ViewModel() {
             return
         }
 
-        // 1. Define your static list of all possible goals
         val allGoals = listOf(
-            Goal(text = "How often do you eat breakfast?", options = listOf("Never", "Sometimes", "Always")),
-            Goal(text = "Do you drink soda?", options = listOf("Never", "Occasionally", "Daily")),
-            Goal(text = "How many fruits do you eat per day?", options = listOf("0", "1–2", "3+")),
-            Goal(text = "How many calories a day is your target?", options = listOf("1000", "1500", "2000"))
+            Goal(text = "How many calories a day is your target?"),
         )
 
-        // 2. Attach a snapshot listener for live updates
         firestore.collection("users").document(userId)
             .collection("user_answers").document("diet_habits")
             .addSnapshotListener { snapshot, e ->
@@ -63,15 +51,13 @@ class GoalsViewModel : ViewModel() {
                         it["question"] to it["answer"]
                     }?.toMap() ?: emptyMap()
 
-                    // 3. Merge answers into goals
                     val mergedGoals = allGoals.map { goal ->
-                        goal.copy(selectedAnswer = userAnswers[goal.text])
+                        goal.copy(value = userAnswers[goal.text])
                     }
 
                     _goals.value = mergedGoals
                     Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items")
                 } else {
-                    // If no answers yet, just load the base goals
                     _goals.value = allGoals
                     Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
                 }
@@ -89,7 +75,7 @@ class GoalsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val userAnswersToSave = _goals.value.map { goal ->
-                    mapOf("question" to goal.text, "answer" to (goal.selectedAnswer ?: ""))
+                    mapOf("question" to goal.text, "answer" to (goal.value ?: ""))
                 }
 
                 val userAnswersRef = firestore.collection("users").document(userId)
@@ -105,12 +91,7 @@ class GoalsViewModel : ViewModel() {
 
     fun updateAnswer(goalId: String, answer: String) {
         _goals.value = _goals.value.map { goal ->
-            if (goal.id == goalId) goal.copy(selectedAnswer = answer) else goal
+            if (goal.id == goalId) goal.copy(value = answer) else goal
         }
-    }
-
-    fun getCalorieTarget(): Int? {
-        val goal = _goals.value.find { it.text.contains("calories", ignoreCase = true) }
-        return goal?.selectedAnswer?.toIntOrNull()
     }
 }

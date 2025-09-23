@@ -1,17 +1,19 @@
-// screens/GoalsScreen.kt
 package com.nadavariel.dietapp.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,42 +45,32 @@ fun GoalsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // List all goals
             Column(modifier = Modifier.weight(1f, fill = true)) {
-                goals.forEach { goal ->
-                    Text(
-                        text = goal.text,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 12.dp)
-                    )
+                Text(
+                    text = goals.firstOrNull()?.text ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
 
-                    goal.options.forEach { option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = (option == goal.selectedAnswer),
-                                    onClick = { goalsViewModel.updateAnswer(goal.id, option) },
-                                    role = Role.RadioButton
-                                )
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = (option == goal.selectedAnswer),
-                                onClick = null
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(text = option, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
+                goals.firstOrNull()?.let { goal ->
+                    var textValue by remember { mutableStateOf(goal.value ?: "") }
+                    OutlinedTextField(
+                        value = textValue,
+                        onValueChange = { newValue ->
+                            textValue = newValue
+                            goalsViewModel.updateAnswer(goal.id, newValue)
+                        },
+                        label = { Text("Enter your goal") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
-            // Finish button
             Button(
                 onClick = {
                     goalsViewModel.saveUserAnswers()
@@ -87,9 +79,9 @@ fun GoalsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp),
-                enabled = goals.all { it.selectedAnswer != null }
+                enabled = true
             ) {
-                Text("Finish")
+                Text("Set Goals")
             }
         }
     }

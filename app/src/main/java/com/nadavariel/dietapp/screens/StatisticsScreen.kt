@@ -45,7 +45,8 @@ fun StatisticsScreen(
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
-    val calorieTarget = goalviewModel.getCalorieTarget()
+    val goals by goalviewModel.goals.collectAsState()
+    val calorieTarget = goals.firstOrNull()?.value?.toIntOrNull()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -68,7 +69,6 @@ fun StatisticsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Bar chart
             Text(
                 text = "Your weekly calorie intake",
                 style = MaterialTheme.typography.headlineSmall,
@@ -108,7 +108,6 @@ fun StatisticsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Pie chart
             Text(
                 text = "Calorie distribution by time of day",
                 style = MaterialTheme.typography.headlineSmall,
@@ -204,10 +203,9 @@ fun BeautifulBarChart(
                     textColor = Color.GRAY
                     textSize = 11f
 
-                    // 👇 ensure target line is visible
                     val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
                     val target = calorieTarget?.toFloat() ?: 0f
-                    axisMaximum = maxOf(maxBar, target) * 1.1f  // add 10% headroom
+                    axisMaximum = maxOf(maxBar, target) * 1.1f
 
                     calorieTarget?.let {
                         val targetLine = LimitLine(it.toFloat(), "Target $it kcal").apply {
