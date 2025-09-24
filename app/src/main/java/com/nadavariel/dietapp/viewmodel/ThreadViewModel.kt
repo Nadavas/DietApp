@@ -189,7 +189,13 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-    fun createThread(header: String, paragraph: String, topic: String, authorName: String) {
+    fun createThread(
+        header: String,
+        paragraph: String,
+        topic: String,
+        type: String,
+        authorName: String
+    ) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("ThreadViewModel", "User not logged in. Cannot create thread.")
@@ -204,6 +210,7 @@ class ThreadViewModel : ViewModel() {
             header = header,
             paragraph = paragraph,
             topic = topic,
+            type = type, // ✅ now included
             timestamp = System.currentTimeMillis()
         )
 
@@ -239,6 +246,42 @@ class ThreadViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error fetching likes for thread $threadId", e)
                 onResult(emptyList())
+            }
+        }
+    }
+
+    // ✅ NEW: Fetch like count (one-shot)
+    fun getLikeCountForThread(threadId: String, onResult: (Int) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("threads")
+                    .document(threadId)
+                    .collection("likes")
+                    .get()
+                    .await()
+
+                onResult(snapshot.documents.size)
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error fetching like count for thread $threadId", e)
+                onResult(0)
+            }
+        }
+    }
+
+    // ✅ NEW: Fetch comment count (one-shot)
+    fun getCommentCountForThread(threadId: String, onResult: (Int) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("threads")
+                    .document(threadId)
+                    .collection("comments")
+                    .get()
+                    .await()
+
+                onResult(snapshot.documents.size)
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error fetching comment count for thread $threadId", e)
+                onResult(0)
             }
         }
     }

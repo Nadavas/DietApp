@@ -5,6 +5,7 @@ data class Thread(
     val header: String = "",
     val paragraph: String = "",
     val topic: String = "",
+    val type: String = "",
     val authorId: String = "",
     val authorName: String = "",
     val timestamp: Long = System.currentTimeMillis()

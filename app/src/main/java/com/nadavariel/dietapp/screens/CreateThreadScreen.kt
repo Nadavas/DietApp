@@ -24,8 +24,10 @@ fun CreateThreadScreen(
     var header by remember { mutableStateOf("") }
     var paragraph by remember { mutableStateOf("") }
     var topic by remember { mutableStateOf("Training") }
+    var type by remember { mutableStateOf("Question") }
 
     val topics = listOf("Training", "Diet", "Recipes")
+    val types = listOf("Question", "Guide", "Help", "Discussion")
 
     Scaffold(
         topBar = {
@@ -60,34 +62,64 @@ fun CreateThreadScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 100.dp), // ensures the box has some initial height
-                maxLines = Int.MAX_VALUE,     // allows multiple lines
-                singleLine = false,           // ensures it's not forced into a single line
+                maxLines = Int.MAX_VALUE,
+                singleLine = false,
             )
 
             // Dropdown for topic
-            var expanded by remember { mutableStateOf(false) }
+            var topicExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+                expanded = topicExpanded,
+                onExpandedChange = { topicExpanded = !topicExpanded }
             ) {
                 OutlinedTextField(
                     value = topic,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Select Topic") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = topicExpanded) },
                     modifier = Modifier.menuAnchor().fillMaxWidth()
                 )
                 ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    expanded = topicExpanded,
+                    onDismissRequest = { topicExpanded = false }
                 ) {
                     topics.forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option) },
                             onClick = {
                                 topic = option
-                                expanded = false
+                                topicExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Dropdown for type
+            var typeExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = typeExpanded,
+                onExpandedChange = { typeExpanded = !typeExpanded }
+            ) {
+                OutlinedTextField(
+                    value = type,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Select Type") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = typeExpanded,
+                    onDismissRequest = { typeExpanded = false }
+                ) {
+                    types.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                type = option
+                                typeExpanded = false
                             }
                         )
                     }
@@ -100,7 +132,7 @@ fun CreateThreadScreen(
                 onClick = {
                     val user = FirebaseAuth.getInstance().currentUser
                     val name = user?.displayName ?: user?.email ?: "Anonymous"
-                    threadViewModel.createThread(header, paragraph, topic, name)
+                    threadViewModel.createThread(header, paragraph, topic, type, name)
                     navController.popBackStack()
                 },
                 enabled = header.isNotBlank() && paragraph.isNotBlank()

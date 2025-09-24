@@ -82,6 +82,16 @@ fun ThreadsScreen(
                 )
 
                 threads.filter { it.topic == selectedTopic }.forEach { thread ->
+                    // Local state for counts
+                    var likeCount by remember(thread.id) { mutableStateOf(0) }
+                    var commentCount by remember(thread.id) { mutableStateOf(0) }
+
+                    // Fetch counts once for this card
+                    LaunchedEffect(thread.id) {
+                        threadViewModel.getLikeCountForThread(thread.id) { likeCount = it }
+                        threadViewModel.getCommentCountForThread(thread.id) { commentCount = it }
+                    }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -95,18 +105,40 @@ fun ThreadsScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                thread.header,
-                                fontSize = 16.sp,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                thread.paragraph,
-                                fontSize = 14.sp,
-                                maxLines = 5 // preview only
-                            )
+                            Row {
+                                Text(
+                                    thread.header,
+                                    fontSize = 16.sp,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
                             Spacer(modifier = Modifier.height(6.dp))
+                            Row {
+                                Text(
+                                    thread.type,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Row {
+                                Text(
+                                    "$likeCount Likes",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "$commentCount Comments",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
                             Text(
                                 "by ${thread.authorName}",
                                 fontSize = 12.sp,
