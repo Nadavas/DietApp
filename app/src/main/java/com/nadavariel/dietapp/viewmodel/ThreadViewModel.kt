@@ -223,4 +223,23 @@ class ThreadViewModel : ViewModel() {
         _likeCount.value = 0
         _hasUserLiked.value = false
     }
+
+    // ✅ NEW: Fetch usernames of users who liked the thread
+    fun getLikesForThread(threadId: String, onResult: (List<String>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("threads")
+                    .document(threadId)
+                    .collection("likes")
+                    .get()
+                    .await()
+
+                val usernames = snapshot.documents.mapNotNull { it.getString("authorName") }
+                onResult(usernames)
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error fetching likes for thread $threadId", e)
+                onResult(emptyList())
+            }
+        }
+    }
 }

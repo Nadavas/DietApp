@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,6 +40,10 @@ fun ThreadDetailScreen(
 
     val currentUser: FirebaseUser? = authViewModel.currentUser
     var newCommentText by remember { mutableStateOf("") }
+
+    // ✅ State for showing likes dialog
+    var showLikesDialog by remember { mutableStateOf(false) }
+    var likedUsers by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(threadId) {
         threadViewModel.fetchThreadById(threadId)
@@ -128,6 +133,12 @@ fun ThreadDetailScreen(
                                     ?: "Anonymous"
                                 threadViewModel.toggleLike(threadId, currentUser.uid, authorName)
                             }
+                        },
+                        onLikesCountClicked = {
+                            threadViewModel.getLikesForThread(threadId) { users ->
+                                likedUsers = users
+                                showLikesDialog = true
+                            }
                         }
                     )
                 }
@@ -159,6 +170,30 @@ fun ThreadDetailScreen(
             }
         }
     }
+
+    // ✅ Dialog to show liked users
+    if (showLikesDialog) {
+        AlertDialog(
+            onDismissRequest = { showLikesDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showLikesDialog = false }) {
+                    Text("Close")
+                }
+            },
+            title = { Text("Liked by") },
+            text = {
+                if (likedUsers.isEmpty()) {
+                    Text("No likes yet.")
+                } else {
+                    Column {
+                        likedUsers.forEach { name ->
+                            Text(text = name)
+                        }
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -166,7 +201,8 @@ fun ThreadContentView(
     thread: com.nadavariel.dietapp.model.Thread,
     likeCount: Int,
     hasUserLiked: Boolean,
-    onLikeClicked: () -> Unit
+    onLikeClicked: () -> Unit,
+    onLikesCountClicked: () -> Unit
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy 'at' hh:mma", Locale.getDefault()) }
     Column(modifier = Modifier.padding(16.dp)) {
@@ -190,7 +226,11 @@ fun ThreadContentView(
                     Icon(Icons.Outlined.FavoriteBorder, contentDescription = "Like")
                 }
             }
-            Text("$likeCount likes", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "$likeCount likes",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.clickable { onLikesCountClicked() }
+            )
         }
     }
 }
