@@ -181,7 +181,7 @@ fun AccountScreen(
             HorizontalDivider()
             // Goals
             ListItem(
-                headlineContent = { Text("Set Goals") },
+                headlineContent = { Text("Goals") },
                 leadingContent = {
                     val currentIconColor = LocalContentColor.current
                     Image(

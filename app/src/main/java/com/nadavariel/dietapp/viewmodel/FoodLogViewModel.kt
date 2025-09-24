@@ -21,6 +21,7 @@ import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.DayOfWeek
@@ -81,6 +82,11 @@ class FoodLogViewModel : ViewModel() {
 
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
+
+    // 🌟 Key Change: A state flag to control date resetting on resume
+    private val _shouldResetDateOnResume = MutableStateFlow(true)
+    val shouldResetDateOnResume = _shouldResetDateOnResume.asStateFlow()
+
 
     init {
         val today = LocalDate.now()
@@ -319,6 +325,19 @@ class FoodLogViewModel : ViewModel() {
 
     fun goToToday() {
         selectDate(LocalDate.now())
+    }
+
+    // 🌟 Key Change: A new function to safely reset the date only once.
+    fun resetDateToTodayIfNeeded() {
+        if (_shouldResetDateOnResume.value) {
+            selectDate(LocalDate.now())
+            _shouldResetDateOnResume.value = false
+        }
+    }
+
+    // A function to be called by a navigation event, like a bottom nav bar click
+    fun setShouldResetDateOnResume() {
+        _shouldResetDateOnResume.value = true
     }
 
     fun getMealById(mealId: String): Meal? {

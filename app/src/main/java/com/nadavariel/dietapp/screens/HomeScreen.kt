@@ -72,10 +72,11 @@ fun HomeScreen(
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    // Ensure the log starts on the current day
+    // 🌟 Key Change: The old LaunchedEffect is gone. This new one
+    // calls the ViewModel's safe reset function.
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            foodLogViewModel.selectDate(LocalDate.now())
+            foodLogViewModel.resetDateToTodayIfNeeded()
         }
     }
 
