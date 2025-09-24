@@ -3,54 +3,32 @@ package com.nadavariel.dietapp.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.ui.graphics.ColorFilter
+import com.nadavariel.dietapp.NavRoutes
+import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.NavRoutes
-import androidx.compose.ui.res.painterResource
-import com.nadavariel.dietapp.R
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.automirrored.filled.Logout
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,19 +36,16 @@ fun AccountScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-    // Get data from the viewmodel
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
-    // State variables
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
-    // Handle authentication results
     LaunchedEffect(authResult) {
         when (authResult) {
             AuthResult.Success -> {
@@ -93,186 +68,131 @@ fun AccountScreen(
                     errorMessage = error
                 }
             }
-            AuthResult.Loading -> {
-                errorMessage = null
-            }
-            AuthResult.Idle -> {
-                errorMessage = null
-            }
+            else -> errorMessage = null
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Account") }
-            )
+            TopAppBar(title = { Text("Account") })
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Email
-            ListItem(
-                headlineContent = { Text("Email Address") },
-                supportingContent = { Text(currentUser?.email ?: "N/A") },
-                leadingContent = {
-                    Icon(Icons.Filled.Email, contentDescription = "Email")
-                },
-                modifier = Modifier.fillMaxWidth()
+            // Email card
+            AccountCard(
+                title = "Email Address",
+                subtitle = currentUser?.email ?: "N/A",
+                leading = { Icon(Icons.Filled.Email, contentDescription = "Email") }
             )
-            HorizontalDivider()
 
             // Profile
-            ListItem(
-                headlineContent = { Text("Profile") },
-                leadingContent = {
-                    Icon(Icons.Filled.Person, contentDescription = "My Profile")
-                },
-                trailingContent = {
+            AccountCard(
+                title = "Profile",
+                leading = { Icon(Icons.Filled.Person, contentDescription = "My Profile") },
+                trailing = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Red dot for incomplete profile
                         if (hasMissingDetails) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .background(Color.Red, CircleShape)
-                                    .align(Alignment.CenterVertically)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to My Profile")
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(NavRoutes.MY_PROFILE) }
+                onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
             )
-            HorizontalDivider()
 
             // Questions
-            ListItem(
-                headlineContent = { Text("Questions") },
-                leadingContent = {
-                    val currentIconColor = LocalContentColor.current
+            AccountCard(
+                title = "Questions",
+                leading = {
                     Image(
                         painter = painterResource(id = R.drawable.ic_query_filled),
                         contentDescription = "Questions",
-                        colorFilter = ColorFilter.tint(currentIconColor)
+                        colorFilter = ColorFilter.tint(LocalContentColor.current)
                     )
                 },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Go to Questions"
-                    )
+                trailing = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Questions")
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(NavRoutes.QUESTIONS) }
+                onClick = { navController.navigate(NavRoutes.QUESTIONS) }
             )
-            HorizontalDivider()
+
             // Goals
-            ListItem(
-                headlineContent = { Text("Goals") },
-                leadingContent = {
-                    val currentIconColor = LocalContentColor.current
+            AccountCard(
+                title = "Goals",
+                leading = {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_goals), // your drawable here
-                        contentDescription = "Set Goals",
-                        colorFilter = ColorFilter.tint(currentIconColor)
+                        painter = painterResource(id = R.drawable.ic_goals),
+                        contentDescription = "Goals",
+                        colorFilter = ColorFilter.tint(LocalContentColor.current)
                     )
                 },
-                trailingContent = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Go to Goals"
-                    )
+                trailing = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Goals")
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(NavRoutes.GOALS) }
+                onClick = { navController.navigate(NavRoutes.GOALS) }
             )
-            HorizontalDivider()
+
             // Threads
-            ListItem(
-                headlineContent = { Text("Threads") },
-                leadingContent = {
-                    val currentIconColor = LocalContentColor.current
+            AccountCard(
+                title = "Threads",
+                leading = {
                     Image(
                         painter = painterResource(id = R.drawable.ic_forum),
                         contentDescription = "Threads",
-                        colorFilter = ColorFilter.tint(currentIconColor)
+                        colorFilter = ColorFilter.tint(LocalContentColor.current)
                     )
                 },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Go to Threads"
-                    )
+                trailing = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Threads")
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(NavRoutes.THREADS) }
+                onClick = { navController.navigate(NavRoutes.THREADS) }
             )
-            HorizontalDivider()
+
             // Settings
-            ListItem(
-                headlineContent = { Text("Settings") },
-                leadingContent = {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                },
-                trailingContent = {
+            AccountCard(
+                title = "Settings",
+                leading = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                trailing = {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Settings")
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(NavRoutes.SETTINGS) }
+                onClick = { navController.navigate(NavRoutes.SETTINGS) }
             )
-            HorizontalDivider()
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Sign out button
+            // Sign Out button
             Button(
                 onClick = { showSignOutDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Sign Out",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign Out", tint = MaterialTheme.colorScheme.onPrimary)
                 Spacer(Modifier.width(8.dp))
                 Text("Sign Out")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Delete account button (in red)
+            // Delete Account button
             Button(
                 onClick = { showDeleteConfirmationDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("Delete Account")
+                Text("Delete Account", color = MaterialTheme.colorScheme.onError)
             }
 
-            // Display error messages
+            // Error message
             errorMessage?.let { msg ->
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = msg,
                     color = MaterialTheme.colorScheme.error,
@@ -285,125 +205,143 @@ fun AccountScreen(
 
     // Dialogs
     if (showDeleteConfirmationDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        DeleteAccountDialog(
+            onConfirm = {
+                showDeleteConfirmationDialog = false
+                errorMessage = null
+                authViewModel.deleteCurrentUser(
+                    onSuccess = {},
+                    onError = {}
+                )
+            },
+            onDismiss = {
                 showDeleteConfirmationDialog = false
                 authViewModel.resetAuthResult()
-            },
-            title = { Text("Confirm Account Deletion") },
-            text = { Text("Are you sure you want to permanently delete your account and all associated data? This action cannot be undone.") },
-            confirmButton = {
-                Button(onClick = {
-                    showDeleteConfirmationDialog = false
-                    errorMessage = null
-                    authViewModel.deleteCurrentUser(
-                        onSuccess = { /* Handled by LaunchedEffect */ },
-                        onError = { /* Handled by LaunchedEffect */ }
-                    )
-                }) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showDeleteConfirmationDialog = false }) {
-                    Text("Cancel")
-                }
             }
         )
     }
 
     if (showReauthDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        ReauthDialog(
+            errorMessage = errorMessage,
+            password = reauthPassword,
+            onPasswordChange = { reauthPassword = it },
+            onConfirm = {
+                val currentEmail = currentUser?.email
+                if (currentEmail != null && reauthPassword.isNotBlank()) {
+                    errorMessage = null
+                    authViewModel.signIn(currentEmail, reauthPassword) {
+                        showReauthDialog = false
+                        reauthPassword = ""
+                        authViewModel.deleteCurrentUser(
+                            onSuccess = {},
+                            onError = {}
+                        )
+                    }
+                } else {
+                    errorMessage = "Please enter your password."
+                }
+            },
+            onDismiss = {
                 showReauthDialog = false
                 reauthPassword = ""
                 authViewModel.resetAuthResult()
-            },
-            title = { Text("Re-authentication Required") },
-            text = {
-                Column {
-                    Text(errorMessage ?: "Please re-enter your password.")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = reauthPassword,
-                        onValueChange = { reauthPassword = it },
-                        label = { Text("Password") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val currentEmail = currentUser?.email
-                        if (currentEmail != null && reauthPassword.isNotBlank()) {
-                            errorMessage = null
-                            authViewModel.signIn(currentEmail, reauthPassword) {
-                                showReauthDialog = false
-                                reauthPassword = ""
-                                authViewModel.deleteCurrentUser(
-                                    onSuccess = { /* Handled by LaunchedEffect */ },
-                                    onError = { /* Handled by LaunchedEffect */ }
-                                )
-                            }
-                        } else {
-                            errorMessage = "Please enter your password."
-                        }
-                    },
-                    enabled = reauthPassword.isNotBlank()
-                ) {
-                    Text("Confirm & Delete")
-                }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showReauthDialog = false
-                    reauthPassword = ""
-                    authViewModel.resetAuthResult()
-                }) {
-                    Text("Cancel")
-                }
             }
         )
     }
 
     if (showSignOutDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        ConfirmDialog(
+            title = "Confirm Sign Out",
+            text = "Are you sure you want to sign out?",
+            onConfirm = {
                 showSignOutDialog = false
-            },
-            title = {
-                Text(text = "Confirm Sign Out")
-            },
-            text = {
-                Text(text = "Are you sure you want to sign out?")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSignOutDialog = false
-                        authViewModel.signOut()
-                        navController.navigate(NavRoutes.LANDING) {
-                            popUpTo(NavRoutes.HOME) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                ) {
-                    Text("Yes")
+                authViewModel.signOut()
+                navController.navigate(NavRoutes.LANDING) {
+                    popUpTo(NavRoutes.HOME) { inclusive = true }
+                    launchSingleTop = true
                 }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSignOutDialog = false
-                    }
-                ) {
-                    Text("No")
-                }
-            }
+            onDismiss = { showSignOutDialog = false }
         )
     }
+}
 
+@Composable
+fun AccountCard(
+    title: String,
+    subtitle: String? = null,
+    leading: @Composable () -> Unit,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = onClick != null) { onClick?.invoke() },
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        ListItem(
+            headlineContent = { Text(title) },
+            supportingContent = { subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall) } },
+            leadingContent = { leading() },
+            trailingContent = { trailing?.invoke() }
+        )
+    }
+}
+
+@Composable
+fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Confirm Account Deletion") },
+        text = { Text("Are you sure you want to permanently delete your account and all associated data? This action cannot be undone.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Delete") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun ReauthDialog(
+    errorMessage: String?,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Re-authentication Required") },
+        text = {
+            Column {
+                Text(errorMessage ?: "Please re-enter your password.")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Password") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Confirm & Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun ConfirmDialog(title: String, text: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(text) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Yes") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("No") } }
+    )
 }
