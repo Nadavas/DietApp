@@ -1,13 +1,22 @@
 package com.nadavariel.dietapp.screens
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,6 +48,14 @@ fun ThreadsScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("create_thread") },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Create Thread")
+            }
         }
     ) { paddingValues ->
         Column(
@@ -52,24 +69,32 @@ fun ThreadsScreen(
                 Text(
                     "Choose a Topic",
                     fontSize = 20.sp,
+                    style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                topics.forEach { topic ->
-                    Card(
+                topics.forEachIndexed { index, topic ->
+                    // Fun gradient colors per topic
+                    val gradient = when (index) {
+                        0 -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                        1 -> listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primaryContainer)
+                        else -> listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.secondaryContainer)
+                    }
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable { selectedTopic = topic },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                            .padding(vertical = 6.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Brush.horizontalGradient(gradient))
+                            .clickable { selectedTopic = topic }
+                            .padding(20.dp)
                     ) {
                         Text(
                             text = topic,
                             fontSize = 16.sp,
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(16.dp)
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }
@@ -78,6 +103,7 @@ fun ThreadsScreen(
                 Text(
                     "$selectedTopic Threads",
                     fontSize = 20.sp,
+                    style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
@@ -92,53 +118,85 @@ fun ThreadsScreen(
                         threadViewModel.getCommentCountForThread(thread.id) { commentCount = it }
                     }
 
-                    Card(
+                    // Gradient background per thread card
+                    val cardBrush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 6.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(cardBrush)
                             .clickable {
                                 // Navigate to ThreadDetailScreen, passing the thread's ID
                                 navController.navigate(NavRoutes.threadDetail(thread.id))
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                            }
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row {
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .animateContentSize()
+                        ) {
+                            // Header + Type row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    thread.header,
+                                    text = thread.header,
                                     fontSize = 16.sp,
-                                    style = MaterialTheme.typography.titleMedium
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row {
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    thread.type,
+                                    text = thread.type,
                                     fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelMedium
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                            Row {
+                            // Likes and Comments row with icons
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Likes",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    "$likeCount Likes",
+                                    "$likeCount",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Comment,
+                                    contentDescription = "Comments",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    "$commentCount Comments",
+                                    "$commentCount",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
+                            // Author
                             Text(
                                 "by ${thread.authorName}",
                                 fontSize = 12.sp,
@@ -153,22 +211,11 @@ fun ThreadsScreen(
                 // Back to topics
                 OutlinedButton(
                     onClick = { selectedTopic = null },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Back to Topics")
                 }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Create new thread button (always visible at bottom)
-            Button(
-                onClick = {
-                    navController.navigate("create_thread")
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Create New Thread")
             }
         }
     }
