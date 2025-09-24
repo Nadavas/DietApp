@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
@@ -47,6 +48,7 @@ import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -58,6 +60,7 @@ import java.util.*
 fun HomeScreen(
     authViewModel: AuthViewModel,
     foodLogViewModel: FoodLogViewModel,
+    goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController,
 ) {
     // --- STATE AND DATA (LOGIC UNCHANGED) ---
@@ -65,7 +68,7 @@ fun HomeScreen(
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
-
+    val goals by goalViewModel.goals.collectAsState()
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
@@ -135,7 +138,7 @@ fun HomeScreen(
                     totalCalories = totalCaloriesForSelectedDate,
                     // A goal is assumed for the progress bar.
                     // This could be fetched from userProfile in a real app.
-                    goalCalories = 2000
+                    goalCalories = goals.firstOrNull()?.value?.toIntOrNull() ?: 2000
                 )
             }
 
