@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.data.Comment
+import com.nadavariel.dietapp.data.Like
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
@@ -18,7 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class ThreadViewModel : ViewModel() {
-
     private val firestore = Firebase.firestore
     private val auth = Firebase.auth
 
@@ -30,6 +30,12 @@ class ThreadViewModel : ViewModel() {
 
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
     val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
+
+    private val _likeCount = MutableStateFlow(0)
+    val likeCount: StateFlow<Int> = _likeCount.asStateFlow()
+
+    private val _hasUserLiked = MutableStateFlow(false)
+    val hasUserLiked: StateFlow<Boolean> = _hasUserLiked.asStateFlow()
 
     init {
         fetchAllThreads()
@@ -65,6 +71,7 @@ class ThreadViewModel : ViewModel() {
             try {
                 val docSnapshot = firestore.collection("threads").document(threadId).get().await()
                 _selectedThread.value = docSnapshot.toObject<Thread>()?.copy(id = docSnapshot.id)
+
                 if (_selectedThread.value != null) {
                     fetchCommentsForThread(threadId)
                 } else {
@@ -130,9 +137,54 @@ class ThreadViewModel : ViewModel() {
             try {
                 newCommentRef.set(comment).await()
                 Log.d("ThreadViewModel", "Comment added successfully to thread $threadId")
-                // No need to manually refresh; snapshot listener will update _comments
             } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error adding comment to thread $threadId", e)
+            }
+        }
+    }
+
+    fun listenForLikes(threadId: String) {
+        val currentUserId = auth.currentUser?.uid
+        firestore.collection("threads")
+            .document(threadId)
+            .collection("likes")
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    Log.w("ThreadViewModel", "Listen failed for likes on thread $threadId.", e)
+                    _likeCount.value = 0
+                    _hasUserLiked.value = false
+                    return@addSnapshotListener
+                }
+
+                val likes = snapshots?.mapNotNull { it.toObject<Like>() } ?: emptyList()
+                _likeCount.value = likes.size
+                _hasUserLiked.value = likes.any { it.userId == currentUserId }
+            }
+    }
+
+    fun toggleLike(threadId: String, userId: String, authorName: String) {
+        val likeDocRef = firestore.collection("threads")
+            .document(threadId)
+            .collection("likes")
+            .document(userId)
+
+        viewModelScope.launch {
+            try {
+                val snapshot = likeDocRef.get().await()
+                if (snapshot.exists()) {
+                    likeDocRef.delete().await()
+                    Log.d("ThreadViewModel", "Removed like from user $userId on thread $threadId")
+                } else {
+                    val like = Like(
+                        userId = userId,
+                        authorName = authorName,
+                        timestamp = Timestamp.now()
+                    )
+                    likeDocRef.set(like).await()
+                    Log.d("ThreadViewModel", "Added like from user $userId on thread $threadId")
+                }
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error toggling like on thread $threadId", e)
             }
         }
     }
@@ -145,7 +197,6 @@ class ThreadViewModel : ViewModel() {
         }
 
         val newThreadRef = firestore.collection("threads").document()
-
         val thread = Thread(
             id = newThreadRef.id,
             authorId = userId,
@@ -169,5 +220,7 @@ class ThreadViewModel : ViewModel() {
     fun clearSelectedThreadAndComments() {
         _selectedThread.value = null
         _comments.value = emptyList()
+        _likeCount.value = 0
+        _hasUserLiked.value = false
     }
 }

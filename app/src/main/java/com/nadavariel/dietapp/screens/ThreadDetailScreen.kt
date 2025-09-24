@@ -2,55 +2,47 @@ package com.nadavariel.dietapp.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items // Keep this import
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState // Ensure this is the correct one
-import androidx.compose.runtime.getValue // For the 'by' delegate
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.getOrNull
-// import androidx.compose.ui.text.font.FontWeight // Only if explicitly used outside MaterialTheme styles
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
-import com.nadavariel.dietapp.data.Comment // Assuming Comment class is correct
-import com.nadavariel.dietapp.model.Thread // Correct import for your Thread class
+import com.nadavariel.dietapp.data.Comment
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import java.text.SimpleDateFormat
-import java.util.Date // Import Date for converting Long to Date
+import java.util.Date
 import java.util.Locale
-import kotlin.text.isNotBlank
-import kotlin.text.split
-
-// Removed: import kotlin.text.split // This was unused
-// Removed: import androidx.slice.builders.header // This was unused
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThreadDetailScreen(
     navController: NavController,
-    threadId: String, // Received from navigation
+    threadId: String,
     threadViewModel: ThreadViewModel = viewModel(),
-    authViewModel: AuthViewModel = viewModel() // To get current user's name
+    authViewModel: AuthViewModel = viewModel()
 ) {
-    // Ensure authViewModel.currentUser is a StateFlow<YourUserType?>
-    // and threadViewModel.selectedThread is StateFlow<Thread?>
-    // and threadViewModel.comments is StateFlow<List<Comment>>
     val selectedThread by threadViewModel.selectedThread.collectAsState()
     val comments by threadViewModel.comments.collectAsState()
-    val currentUser: FirebaseUser? = authViewModel.currentUser // <<<< CORRECT WAY TO ACCESS
+    val likeCount by threadViewModel.likeCount.collectAsState()
+    val hasUserLiked by threadViewModel.hasUserLiked.collectAsState()
 
+    val currentUser: FirebaseUser? = authViewModel.currentUser
     var newCommentText by remember { mutableStateOf("") }
 
     LaunchedEffect(threadId) {
         threadViewModel.fetchThreadById(threadId)
+        threadViewModel.listenForLikes(threadId)
     }
 
     DisposableEffect(Unit) {
@@ -64,9 +56,7 @@ fun ThreadDetailScreen(
             TopAppBar(
                 title = { Text(selectedThread?.header ?: "Thread Details") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.popBackStack()
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
@@ -91,11 +81,9 @@ fun ThreadDetailScreen(
                     IconButton(
                         onClick = {
                             if (newCommentText.isNotBlank() && selectedThread != null) {
-                                // Corrected authorNameToUse logic
-                                val authorNameToUse = currentUser?.displayName?.takeIf { displayName ->
-                                    displayName.isNotBlank() // 'it' refers to displayName here
-                                } ?: currentUser?.email?.split("@")?.getOrNull(0) // Use getOrNull for safety
-                                ?: "Anonymous"
+                                val authorNameToUse = currentUser?.displayName?.takeIf { it.isNotBlank() }
+                                    ?: currentUser?.email?.substringBefore("@")
+                                    ?: "Anonymous"
 
                                 threadViewModel.addComment(
                                     threadId = selectedThread!!.id,
@@ -126,11 +114,24 @@ fun ThreadDetailScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues) // Apply padding from Scaffold
+                    .padding(paddingValues)
             ) {
                 item {
-                    ThreadContentView(thread = selectedThread!!)
+                    ThreadContentView(
+                        thread = selectedThread!!,
+                        likeCount = likeCount,
+                        hasUserLiked = hasUserLiked,
+                        onLikeClicked = {
+                            if (currentUser != null) {
+                                val authorName = currentUser.displayName?.takeIf { it.isNotBlank() }
+                                    ?: currentUser.email?.substringBefore("@")
+                                    ?: "Anonymous"
+                                threadViewModel.toggleLike(threadId, currentUser.uid, authorName)
+                            }
+                        }
+                    )
                 }
+
                 item {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     if (comments.isNotEmpty()) {
@@ -147,11 +148,13 @@ fun ThreadDetailScreen(
                         )
                     }
                 }
-                items(comments, key = { it.id }) { comment -> // 'it' here is a Comment object
+
+                items(comments, key = { it.id }) { comment ->
                     CommentItemView(comment = comment)
                 }
+
                 item {
-                    Spacer(modifier = Modifier.height(72.dp)) // For bottom bar overlap
+                    Spacer(modifier = Modifier.height(72.dp))
                 }
             }
         }
@@ -159,9 +162,13 @@ fun ThreadDetailScreen(
 }
 
 @Composable
-fun ThreadContentView(thread: Thread) {
+fun ThreadContentView(
+    thread: com.nadavariel.dietapp.model.Thread,
+    likeCount: Int,
+    hasUserLiked: Boolean,
+    onLikeClicked: () -> Unit
+) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy 'at' hh:mma", Locale.getDefault()) }
-
     Column(modifier = Modifier.padding(16.dp)) {
         Text(thread.header, style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(4.dp))
@@ -172,6 +179,19 @@ fun ThreadContentView(thread: Thread) {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(thread.paragraph, style = MaterialTheme.typography.bodyLarge)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onLikeClicked) {
+                if (hasUserLiked) {
+                    Icon(Icons.Filled.Favorite, contentDescription = "Unlike")
+                } else {
+                    Icon(Icons.Outlined.FavoriteBorder, contentDescription = "Like")
+                }
+            }
+            Text("$likeCount likes", style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 
@@ -185,14 +205,8 @@ fun CommentItemView(comment: Comment) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            Text(comment.authorName, style = MaterialTheme.typography.titleSmall)
             Text(
-                comment.authorName,
-                style = MaterialTheme.typography.titleSmall
-                // fontWeight = MaterialTheme.typography.titleSmall.fontWeight // Usually inherited from style
-            )
-            Text(
-                // Assuming comment.createdAt is a com.google.firebase.Timestamp
-                // If comment.createdAt is a Long, use: dateFormatter.format(Date(comment.createdAt))
                 dateFormatter.format(comment.createdAt.toDate()),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
