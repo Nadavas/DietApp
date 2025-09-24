@@ -5,6 +5,8 @@ import android.os.Build
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,8 +47,11 @@ fun StatisticsScreen(
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
+    val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
     val goals by goalviewModel.goals.collectAsState()
+
     val calorieTarget = goals.firstOrNull()?.value?.toIntOrNull()
+    val proteinTarget = goals.getOrNull(1)?.value?.toIntOrNull()
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -62,13 +67,16 @@ fun StatisticsScreen(
             )
         }
     ) { padding ->
+        // 🟤 Key Change: The main Column is now scrollable
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Calories Graph
             Text(
                 text = "Your weekly calorie intake",
                 style = MaterialTheme.typography.headlineSmall,
@@ -99,15 +107,58 @@ fun StatisticsScreen(
                     }
                 } else {
                     BeautifulBarChart(
-                        weeklyCalories = weeklyCalories,
+                        weeklyData = weeklyCalories,
                         primaryColor = primaryColor.toArgb(),
-                        calorieTarget = calorieTarget
+                        target = calorieTarget,
+                        label = "Target kcal"
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Protein Graph
+            Text(
+                text = "Your weekly protein intake",
+                style = MaterialTheme.typography.headlineSmall,
+                fontSize = 16.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                if (weeklyProtein.isEmpty() || weeklyProtein.values.all { it == 0 }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Log your meals to see your weekly progress here!",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                            color = onSurfaceColor
+                        )
+                    }
+                } else {
+                    BeautifulBarChart(
+                        weeklyData = weeklyProtein,
+                        primaryColor = primaryColor.toArgb(),
+                        target = proteinTarget,
+                        label = "Target g"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Pie Chart (unchanged)
             Text(
                 text = "Calorie distribution by time of day",
                 style = MaterialTheme.typography.headlineSmall,
@@ -141,18 +192,19 @@ fun StatisticsScreen(
         }
     }
 }
-
+//----------------------------------------------------------------------------------------------------
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BeautifulBarChart(
-    weeklyCalories: Map<LocalDate, Int>,
+    weeklyData: Map<LocalDate, Int>,
     primaryColor: Int,
-    calorieTarget: Int?
+    target: Int?,
+    label: String
 ) {
-    val sortedDates = weeklyCalories.keys.sorted()
+    val sortedDates = weeklyData.keys.sorted()
     val dayLabels = sortedDates.map { it.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
     val barEntries = sortedDates.mapIndexed { index, date ->
-        BarEntry(index.toFloat(), weeklyCalories[date]?.toFloat() ?: 0f)
+        BarEntry(index.toFloat(), weeklyData[date]?.toFloat() ?: 0f)
     }
 
     AndroidView(
@@ -204,11 +256,11 @@ fun BeautifulBarChart(
                     textSize = 11f
 
                     val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
-                    val target = calorieTarget?.toFloat() ?: 0f
-                    axisMaximum = maxOf(maxBar, target) * 1.1f
+                    val targetValue = target?.toFloat() ?: 0f
+                    axisMaximum = maxOf(maxBar, targetValue) * 1.1f
 
-                    calorieTarget?.let {
-                        val targetLine = LimitLine(it.toFloat(), "Target $it kcal").apply {
+                    target?.let {
+                        val targetLine = LimitLine(it.toFloat(), "$label $it").apply {
                             lineWidth = 2f
                             lineColor = Color.RED
                             textColor = Color.RED
@@ -227,7 +279,7 @@ fun BeautifulBarChart(
         update = { chart ->
             val todayIndex = sortedDates.indexOf(LocalDate.now())
 
-            val dataSet = BarDataSet(barEntries, "Weekly Calories").apply {
+            val dataSet = BarDataSet(barEntries, "Weekly $label").apply {
                 colors = List(barEntries.size) { i ->
                     if (i == todayIndex) Color.argb(255, 255, 127, 80)
                     else primaryColor
@@ -253,6 +305,7 @@ fun BeautifulBarChart(
     )
 }
 
+//----------------------------------------------------------------------------------------------------
 @Composable
 fun BeautifulPieChart(
     data: Map<String, Float>,

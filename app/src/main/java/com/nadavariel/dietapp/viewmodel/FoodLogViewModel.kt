@@ -75,6 +75,10 @@ class FoodLogViewModel : ViewModel() {
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
 
+    // 🟤 New: StateFlow for weekly protein intake
+    private val _weeklyProtein = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyProtein = _weeklyProtein.asStateFlow()
+
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
 
@@ -94,6 +98,7 @@ class FoodLogViewModel : ViewModel() {
                     mealsListenerRegistration = null
                     _mealsForSelectedDateState.value = emptyList()
                     _weeklyCalories.value = emptyMap()
+                    _weeklyProtein.value = emptyMap() // 🟤 New: Clear protein data on log out
                 }
             }
         }
@@ -120,6 +125,7 @@ class FoodLogViewModel : ViewModel() {
                 val meals = querySnapshot.toObjects(Meal::class.java)
                 processWeeklyCalories(meals)
                 processCaloriesByTimeOfDay(meals)
+                processWeeklyProtein(meals) // 🟤 New: Call the protein processing function
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
             }
@@ -138,6 +144,22 @@ class FoodLogViewModel : ViewModel() {
             }
         }
         _weeklyCalories.value = caloriesByDay
+    }
+
+    // 🟤 New: Function to process weekly protein data
+    private fun processWeeklyProtein(meals: List<Meal>) {
+        val today = LocalDate.now()
+        val proteinByDay = (0..6).associate {
+            today.minusDays(it.toLong()) to 0
+        }.toMutableMap()
+        for (meal in meals) {
+            val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            val proteinValue = meal.protein?.toInt() ?: 0 // Use a safe call and default to 0
+            if (proteinByDay.containsKey(mealDate)) {
+                proteinByDay[mealDate] = (proteinByDay[mealDate] ?: 0) + proteinValue
+            }
+        }
+        _weeklyProtein.value = proteinByDay
     }
 
     private fun processCaloriesByTimeOfDay(meals: List<Meal>) {

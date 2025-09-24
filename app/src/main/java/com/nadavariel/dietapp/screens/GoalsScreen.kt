@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +28,7 @@ fun GoalsScreen(
     goalsViewModel: GoalsViewModel = viewModel()
 ) {
     val goals by goalsViewModel.goals.collectAsStateWithLifecycle()
+    val userWeight by goalsViewModel.userWeight.collectAsState()
 
     Scaffold(
         topBar = {
@@ -49,14 +51,41 @@ fun GoalsScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(modifier = Modifier.weight(1f, fill = true)) {
-                Text(
-                    text = goals.firstOrNull()?.text ?: "",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
+                val weightKg = userWeight.toInt()
 
-                goals.firstOrNull()?.let { goal ->
+                // If the user's weight is not set, display a prompt
+                if (weightKg == 0) {
+                    Text(
+                        text = "To get a personalized protein recommendation, please enter your weight in the profile screen.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                goals.forEach { goal ->
+                    Text(
+                        text = goal.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+
+                    if (goal.text.contains("protein", ignoreCase = true)) {
+                        val nonActiveMin = (weightKg * 0.8).toInt()
+                        val nonActiveMax = (weightKg * 1).toInt()
+                        val activeMin = (weightKg * 1.2).toInt()
+                        val activeMax = (weightKg * 2).toInt()
+
+                        Text(
+                            text = "Based on your weight, your daily protein target should be approximately:\n" +
+                                   "$nonActiveMin–$nonActiveMax g if you're a non-active person.\n" +
+                                   "$activeMin–$activeMax g if you're an active person.",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
                     var textValue by remember { mutableStateOf(goal.value ?: "") }
                     OutlinedTextField(
                         value = textValue,
@@ -68,6 +97,7 @@ fun GoalsScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 

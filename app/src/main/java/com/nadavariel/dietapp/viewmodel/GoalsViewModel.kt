@@ -7,6 +7,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.data.Goal
+import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -20,8 +21,12 @@ class GoalsViewModel : ViewModel() {
     private val _goals = MutableStateFlow<List<Goal>>(emptyList())
     val goals = _goals.asStateFlow()
 
+    private val _userWeight = MutableStateFlow(0f)
+    val userWeight = _userWeight.asStateFlow()
+
     init {
         fetchUserGoals()
+        fetchUserProfile()
     }
 
     private fun fetchUserGoals() {
@@ -33,6 +38,7 @@ class GoalsViewModel : ViewModel() {
 
         val allGoals = listOf(
             Goal(text = "How many calories a day is your target?"),
+            Goal(text = "How many grams of protein a day is your target?"),
         )
 
         firestore.collection("users").document(userId)
@@ -60,6 +66,29 @@ class GoalsViewModel : ViewModel() {
                 } else {
                     _goals.value = allGoals
                     Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
+                }
+            }
+    }
+
+    private fun fetchUserProfile() {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.e("GoalsViewModel", "Cannot fetch profile: User not logged in.")
+            return
+        }
+
+        firestore.collection("users").document(userId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.e("GoalsViewModel", "Error listening to user profile", e)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    val profile = snapshot.toObject(UserProfile::class.java)
+                    _userWeight.value = profile?.weight ?: 0f
+                } else {
+                    Log.d("GoalsViewModel", "User profile does not exist.")
                 }
             }
     }
