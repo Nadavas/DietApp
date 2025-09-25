@@ -101,7 +101,7 @@ fun StatisticsScreen(
                             weeklyData = weeklyCalories,
                             primaryColor = primaryColor.toArgb(),
                             target = calorieTarget,
-                            label = "Target kcal"
+                            label = "kcal"
                         )
                     }
                 }
@@ -120,7 +120,7 @@ fun StatisticsScreen(
                             weeklyData = weeklyProtein,
                             primaryColor = primaryColor.toArgb(),
                             target = proteinTarget,
-                            label = "Target g"
+                            label = "g"
                         )
                     }
                 }
@@ -303,7 +303,7 @@ fun BeautifulBarChart(
                     axisMaximum = maxOf(maxBar, targetValue) * 1.15f
 
                     target?.let {
-                        val targetLine = LimitLine(it.toFloat(), label).apply {
+                        val targetLine = LimitLine(it.toFloat(), "Target: $it $label").apply {
                             lineWidth = 2f
                             lineColor = limitLineColor
                             textColor = limitLineColor
