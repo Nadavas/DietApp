@@ -1,6 +1,7 @@
 package com.nadavariel.dietapp.screens
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Build
 import android.view.View
 import androidx.annotation.RequiresApi
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -33,6 +35,8 @@ import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.components.Legend // 🌟 NEW IMPORT
+import com.github.mikephil.charting.components.LegendEntry
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.nadavariel.dietapp.util.RoundedBarChartRenderer
@@ -50,10 +54,10 @@ fun StatisticsScreen(
     goalViewModel: GoalsViewModel = viewModel(),
     @Suppress("UNUSED_PARAMETER") navController: NavController
 ) {
-    // --- STATE AND DATA (LOGIC UNCHANGED) ---
+    // --- STATE AND DATA ---
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
-    val caloriesByTimeOfDay by foodLogViewModel.caloriesByTimeOfDay.collectAsState()
     val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
+    val yesterdayMacroPercentages by foodLogViewModel.yesterdayMacroPercentages.collectAsState()
     val goals by goalViewModel.goals.collectAsState()
 
     val calorieTarget = goals.firstOrNull()?.value?.toIntOrNull()
@@ -126,17 +130,18 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- PIE CHART CARD ---
+            // --- PIE CHART CARD (Updated for Macronutrients) ---
             item {
                 StatisticCard(
-                    title = "Calorie Distribution",
+                    title = "Yesterday's Macronutrient Distribution", // Changed title
                     icon = Icons.Default.PieChart
                 ) {
-                    if (caloriesByTimeOfDay.isEmpty() || caloriesByTimeOfDay.values.all { it == 0f }) {
-                        EmptyChartState(message = "Log meals throughout the day to see your habits!")
+                    val hasMacroData = yesterdayMacroPercentages.values.any { it > 0f }
+                    if (!hasMacroData) {
+                        EmptyChartState(message = "Log meals with nutritional data from yesterday to see your macro distribution!") // Changed message
                     } else {
                         BeautifulPieChart(
-                            data = caloriesByTimeOfDay,
+                            data = yesterdayMacroPercentages, // Use new macro data
                             primaryColor = primaryColor.toArgb(),
                             onSurfaceColor = onSurfaceColor.toArgb()
                         )
@@ -148,7 +153,7 @@ fun StatisticsScreen(
 }
 
 // --------------------------------------------------------------------------------
-// |                       NEW HELPER COMPOSABLES FOR CLEAN UI                    |
+// |                       HELPER COMPOSABLES                                     |
 // --------------------------------------------------------------------------------
 
 @Composable
@@ -229,7 +234,7 @@ fun EmptyChartState(message: String) {
 }
 
 // --------------------------------------------------------------------------------
-// |                CHART COMPOSABLES (FIXED COLOR ACCESS)                        |
+// |                CHART COMPOSABLES                                             |
 // --------------------------------------------------------------------------------
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -243,7 +248,7 @@ fun BeautifulBarChart(
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
     val limitLineColor = MaterialTheme.colorScheme.error.toArgb()
-    val accentColor = MaterialTheme.colorScheme.tertiary.toArgb() // ✅ moved here at top-level
+    val accentColor = MaterialTheme.colorScheme.tertiary.toArgb()
 
     val sortedDates = weeklyData.keys.sorted()
     val dayLabels = sortedDates.map { it.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
@@ -353,6 +358,30 @@ fun BeautifulPieChart(
     primaryColor: Int,
     onSurfaceColor: Int
 ) {
+    // Macro colors definition
+    val macroColors = remember {
+        listOf(
+            androidx.compose.ui.graphics.Color(0xFF4CAF50).toArgb(), // Protein (Green)
+            androidx.compose.ui.graphics.Color(0xFF2196F3).toArgb(), // Carbs (Blue)
+            androidx.compose.ui.graphics.Color(0xFFFF9800).toArgb(), // Fat (Orange)
+        )
+    }
+
+    // Map entries for easy use in chart and legend
+    val entries = data.entries
+        .filter { it.value > 0 }
+        .map { PieEntry(it.value, it.key) }
+
+    // Map entry labels to the defined macro color for the chart and legend
+    val entryColors = entries.map { entry ->
+        when (entry.label) {
+            "Protein" -> macroColors[0]
+            "Carbs" -> macroColors[1]
+            "Fat" -> macroColors[2]
+            else -> primaryColor // Fallback
+        }
+    }
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
@@ -361,66 +390,85 @@ fun BeautifulPieChart(
                 description.isEnabled = false
                 setBackgroundColor(Color.TRANSPARENT)
 
-                setExtraOffsets(5f, 5f, 5f, 5f)
+                // Re-introducing a larger right offset to make space for the vertical legend.
+                // Left offset remains small, as labels are now gone from the left.
+                setExtraOffsets(0f, 0f, 35f, 0f)
+
                 setUsePercentValues(true)
 
-                legend.isEnabled = false
+                // 🌟 FIX: Enable Legend
+                legend.isEnabled = true
+                legend.apply {
+                    verticalAlignment = Legend.LegendVerticalAlignment.TOP
+                    horizontalAlignment = Legend.LegendHorizontalAlignment.RIGHT
+                    orientation = Legend.LegendOrientation.VERTICAL
+                    setDrawInside(false)
+                    yEntrySpace = 5f
+                    xOffset = 10f
+                    textColor = onSurfaceColor
+                    textSize = 14f
+                }
+
                 isDrawHoleEnabled = true
                 setHoleColor(Color.TRANSPARENT)
                 holeRadius = 60f
                 transparentCircleRadius = 65f
                 setDrawCenterText(true)
-                centerText = "Meal Habits"
+                centerText = "Macros"
                 setCenterTextSize(14f)
                 setCenterTextColor(primaryColor)
 
                 isRotationEnabled = false
                 isHighlightPerTapEnabled = false
+                // Disable drawing labels and lines outside the pie
                 setDrawEntryLabels(false)
             }
         },
         update = { chart ->
-            val entries = data.entries
-                .filter { it.value > 0 }
-                .map { PieEntry(it.value, it.key) }
-
-            val alpha = (0.9f * 255).toInt()
-            val baseColor = Color.argb(
-                alpha,
-                Color.red(primaryColor),
-                Color.green(primaryColor),
-                Color.blue(primaryColor)
-            )
-            val colorsList = listOf(
-                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.01f),
-                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.3f),
-                ColorUtils.blendARGB(baseColor, Color.BLACK, 0.6f)
-            )
-
-            val dataSet = PieDataSet(entries, "Time of Day").apply {
-                this.colors = colorsList
+            val dataSet = PieDataSet(entries, "Macronutrients").apply {
+                this.colors = entryColors
                 sliceSpace = 3f
                 valueTextColor = onSurfaceColor
                 valueTextSize = 12f
-                yValuePosition = PieDataSet.ValuePosition.OUTSIDE_SLICE
-                xValuePosition = PieDataSet.ValuePosition.OUTSIDE_SLICE
-                valueLinePart1Length = 0.5f
-                valueLinePart2Length = 0.5f
-                valueLineColor = onSurfaceColor
+                valueTypeface = Typeface.DEFAULT_BOLD
+
+                // 🌟 FIX: Do not draw external value lines or labels
+                yValuePosition = PieDataSet.ValuePosition.INSIDE_SLICE
+                xValuePosition = PieDataSet.ValuePosition.INSIDE_SLICE
+                valueLinePart1Length = 0f
+                valueLinePart2Length = 0f
             }
 
             val pieData = PieData(dataSet).apply {
+                // 🌟 FIX: New ValueFormatter to show ONLY the percentage inside the slice.
+                // The Legend will display the Macro Name.
                 setValueFormatter(object : ValueFormatter() {
                     private val format = DecimalFormat("###,##0.0")
-                    override fun getPieLabel(value: Float, pieEntry: PieEntry?): String {
-                        val label = pieEntry?.label ?: ""
-                        return "$label ${format.format(value)}%"
-                    }
+
+                    // We only want the percentage value, without the label, inside the slice
                     override fun getFormattedValue(value: Float): String {
                         return "${format.format(value)}%"
                     }
+
+                    // The macro name is handled by the Legend, so this is now irrelevant
+                    override fun getPieLabel(value: Float, pieEntry: PieEntry?): String {
+                        return getFormattedValue(value)
+                    }
                 })
             }
+
+            // 🌟 FIX: Update legend entries to map correctly to data and colors
+            chart.legend.setCustom(entries.mapIndexed { index, entry ->
+                LegendEntry(
+                    entry.label,
+                    // CORRECTED ENUM NAME: Use Legend.LegendForm.SQUARE
+                    com.github.mikephil.charting.components.Legend.LegendForm.SQUARE,
+                    10f, // size
+                    2f, // line length (irrelevant for square)
+                    null, // text label form
+                    entryColors[index]
+                )
+            })
 
             chart.data = pieData
             chart.invalidate()

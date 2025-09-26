@@ -76,9 +76,15 @@ class FoodLogViewModel : ViewModel() {
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
 
-    // 🟤 New: StateFlow for weekly protein intake
+    // 🟤 StateFlow for weekly protein intake
     private val _weeklyProtein = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyProtein = _weeklyProtein.asStateFlow()
+
+    // 🌟 NEW STATE: Macronutrient percentages for yesterday
+    private val _yesterdayMacroPercentages = MutableStateFlow(
+        mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
+    )
+    val yesterdayMacroPercentages = _yesterdayMacroPercentages.asStateFlow()
 
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
@@ -105,6 +111,8 @@ class FoodLogViewModel : ViewModel() {
                     _mealsForSelectedDateState.value = emptyList()
                     _weeklyCalories.value = emptyMap()
                     _weeklyProtein.value = emptyMap() // 🟤 New: Clear protein data on log out
+                    // 🌟 Clear macro data on logout
+                    _yesterdayMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
                 }
             }
         }
@@ -118,10 +126,12 @@ class FoodLogViewModel : ViewModel() {
         return date.minusDays(daysToSubtract.toLong())
     }
 
+    // 🌟 MODIFIED: Now fetches 7 days of meals for bar charts AND yesterday's meals for pie chart
     private fun fetchMealsForLastSevenDays() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
+                // --- 1. Fetch Meals for Last 7 Days (for Bar Charts & Time of Day Chart) ---
                 val sevenDaysAgo = LocalDate.now().minusDays(6)
                 val startOfPeriod = Date.from(sevenDaysAgo.atStartOfDay(ZoneId.systemDefault()).toInstant())
                 val querySnapshot = firestore.collection("users").document(userId).collection("meals")
@@ -131,7 +141,20 @@ class FoodLogViewModel : ViewModel() {
                 val meals = querySnapshot.toObjects(Meal::class.java)
                 processWeeklyCalories(meals)
                 processCaloriesByTimeOfDay(meals)
-                processWeeklyProtein(meals) // 🟤 New: Call the protein processing function
+                processWeeklyProtein(meals)
+
+                // --- 2. Fetch Meals for Yesterday (for Macro Pie Chart) ---
+                val yesterday = LocalDate.now().minusDays(1)
+                val yesterdayStart = Date.from(yesterday.atStartOfDay(ZoneId.systemDefault()).toInstant())
+                val todayStart = Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant())
+
+                val yesterdaySnapshot = firestore.collection("users").document(userId).collection("meals")
+                    .whereGreaterThanOrEqualTo("timestamp", yesterdayStart)
+                    .whereLessThan("timestamp", todayStart)
+                    .get()
+                    .await()
+                val yesterdayMeals = yesterdaySnapshot.toObjects(Meal::class.java)
+                processYesterdayMacroPercentages(yesterdayMeals) // 🌟 New call
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
             }
@@ -152,7 +175,7 @@ class FoodLogViewModel : ViewModel() {
         _weeklyCalories.value = caloriesByDay
     }
 
-    // 🟤 New: Function to process weekly protein data
+    // 🟤 Function to process weekly protein data
     private fun processWeeklyProtein(meals: List<Meal>) {
         val today = LocalDate.now()
         val proteinByDay = (0..6).associate {
@@ -186,6 +209,47 @@ class FoodLogViewModel : ViewModel() {
         finalTimeBuckets["Night"] = rawTimeBuckets[MealSection.NIGHT.sectionName] ?: 0f
         _caloriesByTimeOfDay.value = finalTimeBuckets
     }
+
+    // 🌟 NEW FUNCTION: Calculate and set macronutrient percentages for YESTERDAY
+    private fun processYesterdayMacroPercentages(meals: List<Meal>) {
+        var totalProtein = 0.0
+        var totalCarbs = 0.0
+        var totalFat = 0.0
+
+        // Use standard energy densities (4 kcal/g for P/C, 9 kcal/g for F)
+        val PROTEIN_CALORIES_PER_GRAM = 4.0
+        val CARB_CALORIES_PER_GRAM = 4.0
+        val FAT_CALORIES_PER_GRAM = 9.0
+
+        for (meal in meals) {
+            totalProtein += meal.protein ?: 0.0
+            totalCarbs += meal.carbohydrates ?: 0.0
+            totalFat += meal.fat ?: 0.0
+        }
+
+        // Convert grams to calories
+        val proteinCalories = totalProtein * PROTEIN_CALORIES_PER_GRAM
+        val carbCalories = totalCarbs * CARB_CALORIES_PER_GRAM
+        val fatCalories = totalFat * FAT_CALORIES_PER_GRAM
+
+        val totalMacroCalories = proteinCalories + carbCalories + fatCalories
+
+        if (totalMacroCalories > 0) {
+            val proteinPct = (proteinCalories / totalMacroCalories * 100).toFloat()
+            val carbPct = (carbCalories / totalMacroCalories * 100).toFloat()
+            val fatPct = (fatCalories / totalMacroCalories * 100).toFloat()
+
+            _yesterdayMacroPercentages.value = mapOf(
+                "Protein" to proteinPct,
+                "Carbs" to carbPct,
+                "Fat" to fatPct
+            )
+        } else {
+            // Set to zero if no data
+            _yesterdayMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
+        }
+    }
+
 
     fun logMeal(
         foodName: String,

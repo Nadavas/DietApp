@@ -10,6 +10,7 @@ import com.nadavariel.dietapp.data.Goal
 import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -24,9 +25,35 @@ class GoalsViewModel : ViewModel() {
     private val _userWeight = MutableStateFlow(0f)
     val userWeight = _userWeight.asStateFlow()
 
+    // 🌟 New State: Tracks which goals are missing (e.g., ["Calorie", "Protein"])
+    private val _missingGoals = MutableStateFlow<List<String>>(emptyList())
+    val missingGoals = _missingGoals.asStateFlow()
+
     init {
         fetchUserGoals()
         fetchUserProfile()
+        // 🌟 Start monitoring for missing goals immediately
+        viewModelScope.launch {
+            goals.collect { currentGoals ->
+                updateMissingGoals(currentGoals)
+            }
+        }
+    }
+
+    private fun updateMissingGoals(currentGoals: List<Goal>) {
+        val missing = currentGoals
+            .filter { it.value.isNullOrBlank() || it.value == "0" }
+            .map { goal ->
+                when {
+                    goal.text.contains("calorie", ignoreCase = true) -> "Calorie"
+                    goal.text.contains("protein", ignoreCase = true) -> "Protein"
+                    // Add other goal types here if needed (e.g., Weight)
+                    else -> "Goal"
+                }
+            }
+            .distinct() // Ensure no duplicate names
+        _missingGoals.value = missing
+        Log.d("GoalsViewModel", "Missing goals updated: $missing")
     }
 
     private fun fetchUserGoals() {

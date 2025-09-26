@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,6 +70,10 @@ fun HomeScreen(
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
     val goals by goalViewModel.goals.collectAsState()
+
+    // 🌟 New State: Collect missing goals from ViewModel
+    val missingGoals by goalViewModel.missingGoals.collectAsState()
+
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
@@ -115,6 +120,16 @@ fun HomeScreen(
                     avatarId = userProfile.avatarId,
                     onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
+            }
+
+            // 🌟 New UI: Display missing goals warning if needed
+            item {
+                if (missingGoals.isNotEmpty()) {
+                    MissingGoalsWarning(
+                        missingGoals = missingGoals,
+                        onSetGoalsClick = { navController.navigate(NavRoutes.GOALS) }
+                    )
+                }
             }
 
             // --- DATE PICKER SECTION ---
@@ -239,6 +254,50 @@ private fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: ()
         )
     }
 }
+
+// 🌟 New Composable: Missing Goals Warning
+@Composable
+private fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit) {
+    val missingListText = missingGoals.joinToString(" and ")
+    val message = "Your ${missingListText} goal${if (missingGoals.size > 1) "s" else ""} are missing."
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(
+                    imageVector = Icons.Default.Error,
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            TextButton(onClick = onSetGoalsClick) {
+                Text("SET GOALS")
+            }
+        }
+    }
+}
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
