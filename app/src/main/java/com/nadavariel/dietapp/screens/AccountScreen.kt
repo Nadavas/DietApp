@@ -143,22 +143,6 @@ fun AccountScreen(
                 onClick = { navController.navigate(NavRoutes.GOALS) }
             )
 
-            // Threads
-            AccountCard(
-                title = "Threads",
-                leading = {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_forum),
-                        contentDescription = "Threads",
-                        colorFilter = ColorFilter.tint(LocalContentColor.current)
-                    )
-                },
-                trailing = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Threads")
-                },
-                onClick = { navController.navigate(NavRoutes.THREADS) }
-            )
-
             // Settings
             AccountCard(
                 title = "Settings",

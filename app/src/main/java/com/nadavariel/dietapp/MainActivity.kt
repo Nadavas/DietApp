@@ -41,12 +41,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.Meal
-// Import your screen composables
-import com.nadavariel.dietapp.screens.* // This should cover all your screens
+import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.theme.DietAppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.ThreadViewModel // <<< --- ADD THIS IMPORT
+import com.nadavariel.dietapp.viewmodel.ThreadViewModel // <<< already imported
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -62,7 +61,6 @@ class MainActivity : ComponentActivity() {
                 object : ViewModelProvider.Factory {
                     @RequiresApi(Build.VERSION_CODES.O)
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        // Using a when statement can be cleaner for multiple ViewModels
                         return when {
                             modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
                                 @Suppress("UNCHECKED_CAST")
@@ -72,9 +70,9 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 FoodLogViewModel() as T
                             }
-                            modelClass.isAssignableFrom(ThreadViewModel::class.java) -> { // <<< --- ADD ThreadViewModel CASE
+                            modelClass.isAssignableFrom(ThreadViewModel::class.java) -> { // <<<
                                 @Suppress("UNCHECKED_CAST")
-                                ThreadViewModel() as T // Assuming ThreadViewModel has no constructor args
+                                ThreadViewModel() as T // <<<
                             }
                             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
                         }
@@ -84,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
             val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
-            val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory) // <<< --- INSTANTIATE ThreadViewModel
+            val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory) // <<<
 
             val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
             val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
@@ -115,13 +113,10 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         modifier = Modifier,
                         bottomBar = {
-                            // Your existing bottomBar logic.
-                            // You might want to add NavRoutes.THREADS to this list if you want the bottom bar
-                            // on the main ThreadsScreen (but usually not on ThreadDetailScreen).
                             if (selectedRoute == NavRoutes.HOME ||
-                                selectedRoute == NavRoutes.ADD_EDIT_MEAL || // Consider if this should always show bottom nav
+                                selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
                                 selectedRoute == NavRoutes.STATISTICS ||
-                                selectedRoute == NavRoutes.THREADS || // <<< ADDED NavRoutes.THREADS HERE
+                                selectedRoute == NavRoutes.THREADS || // <<< added Threads
                                 selectedRoute == NavRoutes.ACCOUNT
                             ) {
                                 NavigationBar {
@@ -137,11 +132,10 @@ class MainActivity : ComponentActivity() {
                                         icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
                                         label = { Text("Home") }
                                     )
-                                    // Add/Edit Meal Item
                                     NavigationBarItem(
-                                        selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL, // Or a route specifically for "Add"
+                                        selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL,
                                         onClick = {
-                                            navController.navigate(NavRoutes.ADD_EDIT_MEAL) { // Navigate to base route
+                                            navController.navigate(NavRoutes.ADD_EDIT_MEAL) {
                                                 popUpTo(NavRoutes.HOME) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
@@ -161,6 +155,18 @@ class MainActivity : ComponentActivity() {
                                         },
                                         icon = { Icon(painterResource(id = R.drawable.ic_bar_filled), contentDescription = "Stats") },
                                         label = { Text("Stats") }
+                                    )
+                                    NavigationBarItem(
+                                        selected = selectedRoute == NavRoutes.THREADS,
+                                        onClick = {
+                                            navController.navigate(NavRoutes.THREADS) {
+                                                popUpTo(NavRoutes.HOME) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        },
+                                        icon = { Icon(painterResource(id = R.drawable.ic_forum), contentDescription = "Threads") },
+                                        label = { Text("Threads") }
                                     )
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.ACCOUNT,
@@ -197,7 +203,7 @@ class MainActivity : ComponentActivity() {
                             startDestination = startDestination,
                             modifier = Modifier.padding(innerPadding)
                         ) {
-                            // --- Your Existing Routes (should be fine) ---
+                            // --- Existing routes ---
                             composable(NavRoutes.LANDING) {
                                 authViewModel.resetAuthResult()
                                 Greeting(
@@ -336,11 +342,11 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // --- THREAD RELATED ROUTES ---
+                            // --- Thread routes ---
                             composable(NavRoutes.THREADS) {
                                 ThreadsScreen(
                                     navController = navController,
-                                    threadViewModel = threadViewModel, // Pass the ViewModel
+                                    threadViewModel = threadViewModel,
                                 )
                             }
                             composable(NavRoutes.CREATE_THREAD) {
@@ -352,7 +358,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             composable(
-                                route = NavRoutes.THREAD_DETAIL_WITH_ARG, // e.g., "thread_detail/{threadId}"
+                                route = NavRoutes.THREAD_DETAIL_WITH_ARG,
                                 arguments = listOf(navArgument("threadId") { type = NavType.StringType })
                             ) { backStackEntry ->
                                 val threadId = backStackEntry.arguments?.getString("threadId")
@@ -360,13 +366,11 @@ class MainActivity : ComponentActivity() {
                                     ThreadDetailScreen(
                                         navController = navController,
                                         threadId = threadId,
-                                        threadViewModel = threadViewModel, // Pass the ViewModel
+                                        threadViewModel = threadViewModel,
                                         authViewModel = authViewModel
                                     )
                                 } else {
-                                    // Handle missing threadId, e.g., show error or navigate back
                                     Text("Error: Thread ID is missing.")
-                                    // Consider: LaunchedEffect(Unit) { navController.popBackStack() }
                                 }
                             }
                         }
