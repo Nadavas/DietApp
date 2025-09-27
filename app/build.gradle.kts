@@ -1,8 +1,11 @@
+
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id("kotlinx-serialization") // ADD THIS PLUGIN
 }
 
 android {
@@ -59,12 +62,16 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
 
     // Firebase dependencies
+    // The BoM (Bill of Materials) manages versions for all Firebase libraries
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
-    implementation(libs.play.services.auth)
+    implementation(libs.play.services.auth) // For Google Sign-In
     implementation(libs.firebase.functions.ktx)
+
+    // Kotlinx Serialization (often needed with Firebase)
+    implementation(libs.kotlinx.serialization.json) // ADD THIS DEPENDENCY
 
     // For graphics
     implementation(libs.mpandroidchart)

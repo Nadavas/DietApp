@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -70,96 +71,129 @@ fun ThreadDetailScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = selectedThread?.header?.take(30)?.plus(
+                            if ((selectedThread?.header?.length ?: 0) > 30) "..." else ""
+                        ) ?: "Thread",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier
+                            .shadow(4.dp, CircleShape)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape)
+                            .size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        },
         bottomBar = {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                color = MaterialTheme.colorScheme.surface
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                shadowElevation = 8.dp
             ) {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Transparent,
-                                    Color(0xFFB3E5FC).copy(alpha = 0.2f) // Light blue accent
+                                    MaterialTheme.colorScheme.surface,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                                 )
                             )
                         )
-                        .padding(12.dp)
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = newCommentText,
-                            onValueChange = { newCommentText = it },
-                            placeholder = {
-                                Text(
-                                    "Add a comment...",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium
+                    OutlinedTextField(
+                        value = newCommentText,
+                        onValueChange = { newCommentText = it },
+                        placeholder = {
+                            Text(
+                                "Add a comment...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp)),
+                        maxLines = 3,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    val isEnabled = newCommentText.isNotBlank() && selectedThread != null
+                    val sendButtonColor by animateColorAsState(
+                        targetValue = if (isEnabled)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        animationSpec = tween(300),
+                        label = "send_button_color"
+                    )
+
+                    FloatingActionButton(
+                        onClick = {
+                            if (isEnabled) {
+                                val authorNameToUse = currentUser?.displayName?.takeIf { it.isNotBlank() }
+                                    ?: currentUser?.email?.substringBefore("@")
+                                    ?: "Anonymous"
+                                threadViewModel.addComment(
+                                    threadId = selectedThread!!.id,
+                                    commentText = newCommentText,
+                                    authorName = authorNameToUse
                                 )
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(16.dp)),
-                            maxLines = 3,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color(0xFFB3E5FC), // Light blue border
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                cursorColor = Color(0xFFB3E5FC) // Light blue cursor
-                            )
+                                newCommentText = ""
+                            }
+                        },
+                        containerColor = sendButtonColor,
+                        contentColor = if (isEnabled)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 6.dp
                         )
-
-                        val isEnabled = newCommentText.isNotBlank() && selectedThread != null
-                        val sendButtonColor by animateColorAsState(
-                            targetValue = if (isEnabled)
-                                Color(0xFFB3E5FC) // Light blue button
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                            animationSpec = tween(300),
-                            label = "send_button_color"
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send comment",
+                            modifier = Modifier.size(20.dp)
                         )
-
-                        FloatingActionButton(
-                            onClick = {
-                                if (isEnabled) {
-                                    val authorNameToUse = currentUser?.displayName?.takeIf { it.isNotBlank() }
-                                        ?: currentUser?.email?.substringBefore("@")
-                                        ?: "Anonymous"
-                                    threadViewModel.addComment(
-                                        threadId = selectedThread!!.id,
-                                        commentText = newCommentText,
-                                        authorName = authorNameToUse
-                                    )
-                                    newCommentText = ""
-                                }
-                            },
-                            containerColor = sendButtonColor,
-                            contentColor = if (isEnabled)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(44.dp),
-                            shape = CircleShape,
-                            elevation = FloatingActionButtonDefaults.elevation(
-                                defaultElevation = 2.dp,
-                                pressedElevation = 4.dp
-                            )
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send comment",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
                     }
                 }
             }
@@ -192,50 +226,11 @@ fun ThreadDetailScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(bottom = 80.dp), // Adjust for bottom bar height
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.background),
+                contentPadding = PaddingValues(bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            IconButton(
-                                onClick = { navController.popBackStack() },
-                                modifier = Modifier
-                                    .shadow(2.dp, CircleShape)
-                                    .background(
-                                        MaterialTheme.colorScheme.surface,
-                                        CircleShape
-                                    )
-                                    .size(40.dp)
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    "Back",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Text(
-                                text = selectedThread?.header?.take(30)?.plus(
-                                    if ((selectedThread?.header?.length ?: 0) > 30) "..." else ""
-                                ) ?: "Thread",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-
                 item {
                     ThreadContentView(
                         thread = selectedThread!!,
@@ -317,8 +312,8 @@ fun ThreadDetailScreen(
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                    modifier = Modifier.size(28.dp)
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(32.dp)
                                 ) {
                                     Box(
                                         contentAlignment = Alignment.Center,
@@ -326,9 +321,9 @@ fun ThreadDetailScreen(
                                     ) {
                                         Text(
                                             text = name.firstOrNull()?.uppercase() ?: "?",
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelLarge,
                                             color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.SemiBold
                                         )
                                     }
                                 }
@@ -344,7 +339,8 @@ fun ThreadDetailScreen(
                 }
             },
             shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         )
     }
 }
@@ -362,17 +358,20 @@ fun ThreadContentView(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier
                 .background(
-                    Brush.horizontalGradient(
+                    Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                             MaterialTheme.colorScheme.surface
                         )
                     )
@@ -383,8 +382,10 @@ fun ThreadContentView(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = thread.header,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    ),
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 28.sp
                 )
@@ -395,8 +396,8 @@ fun ThreadContentView(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        modifier = Modifier.size(24.dp)
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Box(
                             contentAlignment = Alignment.Center,
@@ -404,17 +405,19 @@ fun ThreadContentView(
                         ) {
                             Text(
                                 text = thread.authorName.firstOrNull()?.uppercase() ?: "?",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
 
                     Text(
                         text = thread.authorName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
@@ -434,25 +437,29 @@ fun ThreadContentView(
 
             Text(
                 text = thread.paragraph,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp
+                ),
                 color = MaterialTheme.colorScheme.onSurface,
-                lineHeight = 22.sp
+                maxLines = 10,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
 
             Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { if (likeCount > 0) onLikesCountClicked() }
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val likeButtonColor by animateColorAsState(
                         targetValue = if (hasUserLiked)
@@ -465,7 +472,7 @@ fun ThreadContentView(
 
                     IconButton(
                         onClick = onLikeClicked,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(36.dp)
                     ) {
                         AnimatedContent(
                             targetState = hasUserLiked,
@@ -480,7 +487,7 @@ fun ThreadContentView(
                                 if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = if (liked) "Unlike" else "Like",
                                 tint = likeButtonColor,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -488,8 +495,10 @@ fun ThreadContentView(
                     if (likeCount > 0) {
                         Text(
                             text = if (likeCount == 1) "$likeCount like" else "$likeCount likes",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp
+                            ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -504,19 +513,22 @@ fun CommentsHeaderSection(commentsCount: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(10.dp)
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = if (commentsCount == 0) "Comments" else "Comments ($commentsCount)",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            ),
             color = MaterialTheme.colorScheme.onSurface
         )
     }
@@ -527,16 +539,30 @@ fun EmptyCommentsState() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+            .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            "No comments yet.\nStart the conversation! 💬",
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge,
-            lineHeight = 24.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Outlined.ChatBubbleOutline,
+                contentDescription = "No comments",
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "No comments yet.\nStart the conversation! 💬",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -544,29 +570,35 @@ fun EmptyCommentsState() {
 fun CommentItemView(comment: Comment, enterTransition: EnterTransition = fadeIn() + scaleIn()) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd, hh:mma", Locale.getDefault()) }
 
-    Box(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .clip(RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(12.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                ),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Top
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                modifier = Modifier.size(32.dp)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                modifier = Modifier.size(36.dp)
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -574,9 +606,9 @@ fun CommentItemView(comment: Comment, enterTransition: EnterTransition = fadeIn(
                 ) {
                     Text(
                         text = comment.authorName.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -592,8 +624,10 @@ fun CommentItemView(comment: Comment, enterTransition: EnterTransition = fadeIn(
                 ) {
                     Text(
                         text = comment.authorName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 15.sp
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
@@ -606,9 +640,13 @@ fun CommentItemView(comment: Comment, enterTransition: EnterTransition = fadeIn(
 
                 Text(
                     text = comment.text,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 18.sp
+                    maxLines = 5,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
         }

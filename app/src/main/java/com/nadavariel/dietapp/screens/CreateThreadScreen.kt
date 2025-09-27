@@ -18,15 +18,25 @@ import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 @Composable
 fun CreateThreadScreen(
     navController: NavController,
+    // The onThreadCreated callback is not used when calling the ViewModel directly, can be removed if desired
     onThreadCreated: (title: String, topic: String, author: String) -> Unit,
     threadViewModel: ThreadViewModel = viewModel()
 ) {
     var header by remember { mutableStateOf("") }
     var paragraph by remember { mutableStateOf("") }
-    var topic by remember { mutableStateOf("Training") }
+    // MODIFIED: This state now stores the KEY for Firebase (e.g., "Training")
+    var topicKey by remember { mutableStateOf("Training") }
     var type by remember { mutableStateOf("Question") }
 
-    val topics = listOf("Training", "Diet", "Recipes")
+    // MODIFIED: Use a Map to link the Firebase key to a user-friendly display name.
+    val topics = mapOf(
+        "Training" to "Training & Fitness",
+        "Diet" to "Diet & Nutrition",
+        "Recipes" to "Healthy Recipes",
+        "MentalHealth" to "Mental Wellness",
+        "SuccessStories" to "Success Stories",
+        "GearAndTech" to "Gear & Tech"
+    )
     val types = listOf("Question", "Guide", "Help", "Discussion")
 
     Scaffold(
@@ -61,7 +71,7 @@ fun CreateThreadScreen(
                 label = { Text("Thread Paragraph") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp), // ensures the box has some initial height
+                    .heightIn(min = 100.dp),
                 maxLines = Int.MAX_VALUE,
                 singleLine = false,
             )
@@ -73,7 +83,8 @@ fun CreateThreadScreen(
                 onExpandedChange = { topicExpanded = !topicExpanded }
             ) {
                 OutlinedTextField(
-                    value = topic,
+                    // MODIFIED: Display the user-friendly name from the map
+                    value = topics[topicKey] ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Select Topic") },
@@ -84,11 +95,12 @@ fun CreateThreadScreen(
                     expanded = topicExpanded,
                     onDismissRequest = { topicExpanded = false }
                 ) {
-                    topics.forEach { option ->
+                    // MODIFIED: Iterate over the map to show options
+                    topics.forEach { (key, displayName) ->
                         DropdownMenuItem(
-                            text = { Text(option) },
+                            text = { Text(displayName) }, // Show the display name
                             onClick = {
-                                topic = option
+                                topicKey = key // Save the key
                                 topicExpanded = false
                             }
                         )
@@ -132,7 +144,8 @@ fun CreateThreadScreen(
                 onClick = {
                     val user = FirebaseAuth.getInstance().currentUser
                     val name = user?.displayName ?: user?.email ?: "Anonymous"
-                    threadViewModel.createThread(header, paragraph, topic, type, name)
+                    // MODIFIED: Pass the stored key to the view model
+                    threadViewModel.createThread(header, paragraph, topicKey, type, name)
                     navController.popBackStack()
                 },
                 enabled = header.isNotBlank() && paragraph.isNotBlank()
