@@ -13,6 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.WaterDrop // Used for Sodium
+import androidx.compose.material.icons.filled.AcUnit // Used for Calcium/Iron
+import androidx.compose.material.icons.filled.LocalHospital // Used for Vitamin C
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,7 +39,7 @@ import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.components.Legend // 🌟 NEW IMPORT
+import com.github.mikephil.charting.components.Legend
 import com.github.mikephil.charting.components.LegendEntry
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
@@ -58,10 +62,31 @@ fun StatisticsScreen(
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
     val yesterdayMacroPercentages by foodLogViewModel.yesterdayMacroPercentages.collectAsState()
+
+    // 🌟 NEW WEEKLY STATES
+    val weeklyFiber by foodLogViewModel.weeklyFiber.collectAsState()
+    val weeklySugar by foodLogViewModel.weeklySugar.collectAsState()
+    val weeklySodium by foodLogViewModel.weeklySodium.collectAsState()
+    val weeklyPotassium by foodLogViewModel.weeklyPotassium.collectAsState()
+    val weeklyCalcium by foodLogViewModel.weeklyCalcium.collectAsState()
+    val weeklyIron by foodLogViewModel.weeklyIron.collectAsState()
+    val weeklyVitaminC by foodLogViewModel.weeklyVitaminC.collectAsState()
+
     val goals by goalViewModel.goals.collectAsState()
 
-    val calorieTarget = goals.firstOrNull()?.value?.toIntOrNull()
-    val proteinTarget = goals.getOrNull(1)?.value?.toIntOrNull()
+    // 🌟 CORRECTED: Only retrieve goals if they are explicitly set in the GoalsViewModel (based on index)
+    val calorieTarget = goals.getOrNull(0)?.value?.toIntOrNull() // Index 0 (Assuming Calorie goal is first)
+    val proteinTarget = goals.getOrNull(1)?.value?.toIntOrNull() // Index 1 (Assuming Protein goal is second)
+
+    // 🌟 FIX: REMOVED DEFAULT VALUES (e.g., ?: 25). Now, if the goal is null, the target is null.
+    val fiberTarget = goals.getOrNull(2)?.value?.toIntOrNull()
+    val sugarTarget = goals.getOrNull(3)?.value?.toIntOrNull()
+    val sodiumTarget = goals.getOrNull(4)?.value?.toIntOrNull()
+    val potassiumTarget = goals.getOrNull(5)?.value?.toIntOrNull()
+    val calciumTarget = goals.getOrNull(6)?.value?.toIntOrNull()
+    val ironTarget = goals.getOrNull(7)?.value?.toIntOrNull()
+    val vitaminCTarget = goals.getOrNull(8)?.value?.toIntOrNull()
+
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -92,14 +117,16 @@ fun StatisticsScreen(
                 StatisticsHeader()
             }
 
-            // --- CALORIES CARD ---
+            // --- MACRONUTRIENT CARDS ---
+
+            // CALORIES
             item {
                 StatisticCard(
                     title = "Weekly Calorie Intake",
                     icon = Icons.Default.LocalFireDepartment
                 ) {
                     if (weeklyCalories.isEmpty() || weeklyCalories.values.all { it == 0 }) {
-                        EmptyChartState(message = "Log your meals to see your weekly progress here!")
+                        EmptyChartState(message = "Log your meals to see your weekly calorie progress!")
                     } else {
                         BeautifulBarChart(
                             weeklyData = weeklyCalories,
@@ -111,7 +138,7 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- PROTEIN CARD ---
+            // PROTEIN
             item {
                 StatisticCard(
                     title = "Weekly Protein Intake",
@@ -130,20 +157,157 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- PIE CHART CARD (Updated for Macronutrients) ---
+            // PIE CHART
             item {
                 StatisticCard(
-                    title = "Yesterday's Macronutrient Distribution", // Changed title
+                    title = "Yesterday's Macronutrient Distribution",
                     icon = Icons.Default.PieChart
                 ) {
                     val hasMacroData = yesterdayMacroPercentages.values.any { it > 0f }
                     if (!hasMacroData) {
-                        EmptyChartState(message = "Log meals with nutritional data from yesterday to see your macro distribution!") // Changed message
+                        EmptyChartState(message = "Log meals with nutritional data from yesterday to see your macro distribution!")
                     } else {
                         BeautifulPieChart(
-                            data = yesterdayMacroPercentages, // Use new macro data
+                            data = yesterdayMacroPercentages,
                             primaryColor = primaryColor.toArgb(),
                             onSurfaceColor = onSurfaceColor.toArgb()
+                        )
+                    }
+                }
+            }
+
+            // --------------------------------------------------------------------------------
+            // 🌟 MICRONUTRIENT GRAPHS (Targets removed)
+            // --------------------------------------------------------------------------------
+
+            // FIBER
+            item {
+                StatisticCard(
+                    title = "Weekly Fiber Intake",
+                    icon = Icons.Default.Favorite
+                ) {
+                    if (weeklyFiber.isEmpty() || weeklyFiber.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with fiber to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklyFiber,
+                            primaryColor = primaryColor.toArgb(),
+                            target = fiberTarget,
+                            label = "g"
+                        )
+                    }
+                }
+            }
+
+            // SUGAR
+            item {
+                StatisticCard(
+                    title = "Weekly Sugar Intake",
+                    icon = Icons.Default.WaterDrop
+                ) {
+                    if (weeklySugar.isEmpty() || weeklySugar.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with sugar content to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklySugar,
+                            primaryColor = primaryColor.toArgb(),
+                            target = sugarTarget,
+                            label = "g"
+                        )
+                    }
+                }
+            }
+
+            // SODIUM
+            item {
+                StatisticCard(
+                    title = "Weekly Sodium Intake",
+                    icon = Icons.Default.WaterDrop
+                ) {
+                    if (weeklySodium.isEmpty() || weeklySodium.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with sodium content to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklySodium,
+                            primaryColor = primaryColor.toArgb(),
+                            target = sodiumTarget,
+                            label = "mg"
+                        )
+                    }
+                }
+            }
+
+            // POTASSIUM
+            item {
+                StatisticCard(
+                    title = "Weekly Potassium Intake",
+                    icon = Icons.Default.Favorite
+                ) {
+                    if (weeklyPotassium.isEmpty() || weeklyPotassium.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with potassium content to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklyPotassium,
+                            primaryColor = primaryColor.toArgb(),
+                            target = potassiumTarget,
+                            label = "mg"
+                        )
+                    }
+                }
+            }
+
+            // CALCIUM
+            item {
+                StatisticCard(
+                    title = "Weekly Calcium Intake",
+                    icon = Icons.Default.AcUnit
+                ) {
+                    if (weeklyCalcium.isEmpty() || weeklyCalcium.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with calcium content to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklyCalcium,
+                            primaryColor = primaryColor.toArgb(),
+                            target = calciumTarget,
+                            label = "mg"
+                        )
+                    }
+                }
+            }
+
+            // IRON
+            item {
+                StatisticCard(
+                    title = "Weekly Iron Intake",
+                    icon = Icons.Default.AcUnit
+                ) {
+                    if (weeklyIron.isEmpty() || weeklyIron.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with iron content to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklyIron,
+                            primaryColor = primaryColor.toArgb(),
+                            target = ironTarget,
+                            label = "mg"
+                        )
+                    }
+                }
+            }
+
+            // VITAMIN C
+            item {
+                StatisticCard(
+                    title = "Weekly Vitamin C Intake",
+                    icon = Icons.Default.LocalHospital
+                ) {
+                    if (weeklyVitaminC.isEmpty() || weeklyVitaminC.values.all { it == 0 }) {
+                        EmptyChartState(message = "Log meals with Vitamin C content to track your weekly intake.")
+                    } else {
+                        BeautifulBarChart(
+                            weeklyData = weeklyVitaminC,
+                            primaryColor = primaryColor.toArgb(),
+                            target = vitaminCTarget,
+                            label = "mg"
                         )
                     }
                 }
@@ -153,7 +317,7 @@ fun StatisticsScreen(
 }
 
 // --------------------------------------------------------------------------------
-// |                       HELPER COMPOSABLES                                     |
+// |                       HELPER COMPOSABLES (UNMODIFIED)                        |
 // --------------------------------------------------------------------------------
 
 @Composable
@@ -234,7 +398,7 @@ fun EmptyChartState(message: String) {
 }
 
 // --------------------------------------------------------------------------------
-// |                CHART COMPOSABLES                                             |
+// |                CHART COMPOSABLES (UNMODIFIED)                                |
 // --------------------------------------------------------------------------------
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -242,7 +406,7 @@ fun EmptyChartState(message: String) {
 fun BeautifulBarChart(
     weeklyData: Map<LocalDate, Int>,
     primaryColor: Int,
-    target: Int?,
+    target: Int?, // Key Change: This is now explicitly nullable
     label: String
 ) {
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
@@ -305,8 +469,11 @@ fun BeautifulBarChart(
 
                     val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
                     val targetValue = target?.toFloat() ?: 0f
+
+                    // Logic remains the same: If target is null, targetValue is 0f and won't affect the max
                     axisMaximum = maxOf(maxBar, targetValue) * 1.15f
 
+                    // 🌟 FIX: Only add LimitLine if target is NOT null
                     target?.let {
                         val targetLine = LimitLine(it.toFloat(), "Target: $it $label").apply {
                             lineWidth = 2f
@@ -318,6 +485,9 @@ fun BeautifulBarChart(
                         }
                         removeAllLimitLines()
                         addLimitLine(targetLine)
+                    } ?: run {
+                        // Ensure no old limit lines remain if target is null
+                        removeAllLimitLines()
                     }
                 }
 

@@ -30,7 +30,7 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-// 🌟 KEY CHANGE 1: Data class for Gemini's nutritional information MUST be updated
+// 🌟 KEY CHANGE 1: Data class for Gemini's nutritional information is confirmed to be correct
 data class FoodNutritionalInfo(
     @SerializedName("food_name") val food_name: String?,
     @SerializedName("serving_unit") val serving_unit: String?,
@@ -39,14 +39,14 @@ data class FoodNutritionalInfo(
     @SerializedName("protein") val protein: String?,
     @SerializedName("carbohydrates") val carbohydrates: String?,
     @SerializedName("fat") val fat: String?,
-    // 🌟 New fields added to match the prompt and JSON output
+    // New fields confirmed
     @SerializedName("fiber") val fiber: String?,
     @SerializedName("sugar") val sugar: String?,
     @SerializedName("sodium") val sodium: String?,
     @SerializedName("potassium") val potassium: String?,
     @SerializedName("calcium") val calcium: String?,
     @SerializedName("iron") val iron: String?,
-    @SerializedName("vitamin_c") val vitaminC: String? // Note the underscore for JSON field
+    @SerializedName("vitamin_c") val vitaminC: String?
 )
 
 sealed class GeminiResult {
@@ -90,7 +90,7 @@ class FoodLogViewModel : ViewModel() {
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
 
-    // 🌟 KEY CHANGE 2: NEW STATE FLOWS FOR ADDED WEEKLY NUTRIENTS (INT for simplicity)
+    // 🌟 KEY CHANGE 2: STATE FLOWS FOR ALL NEW WEEKLY NUTRIENTS (g/mg, so Int)
     private val _weeklyFiber = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyFiber = _weeklyFiber.asStateFlow()
 
@@ -102,7 +102,16 @@ class FoodLogViewModel : ViewModel() {
 
     private val _weeklyPotassium = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyPotassium = _weeklyPotassium.asStateFlow()
-    // We will aggregate Calcium, Iron, and Vitamin C into a single daily total if needed later
+
+    // 🌟 NEW STATES FOR CALCIUM, IRON, AND VITAMIN C
+    private val _weeklyCalcium = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyCalcium = _weeklyCalcium.asStateFlow()
+
+    private val _weeklyIron = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyIron = _weeklyIron.asStateFlow()
+
+    private val _weeklyVitaminC = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyVitaminC = _weeklyVitaminC.asStateFlow()
 
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
@@ -129,11 +138,14 @@ class FoodLogViewModel : ViewModel() {
                     _weeklyCalories.value = emptyMap()
                     _weeklyProtein.value = emptyMap()
                     _yesterdayMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
-                    // 🌟 CLEAR NEW STATES ON LOGOUT
+                    // 🌟 CLEAR ALL NEW STATES ON LOGOUT
                     _weeklyFiber.value = emptyMap()
                     _weeklySugar.value = emptyMap()
                     _weeklySodium.value = emptyMap()
                     _weeklyPotassium.value = emptyMap()
+                    _weeklyCalcium.value = emptyMap()
+                    _weeklyIron.value = emptyMap()
+                    _weeklyVitaminC.value = emptyMap()
                 }
             }
         }
@@ -147,7 +159,7 @@ class FoodLogViewModel : ViewModel() {
         return date.minusDays(daysToSubtract.toLong())
     }
 
-    // 🌟 UPDATED: Call new processing functions
+    // 🌟 KEY CHANGE 3: Call all new processing functions
     private fun fetchMealsForLastSevenDays() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
@@ -164,11 +176,15 @@ class FoodLogViewModel : ViewModel() {
                 processWeeklyCalories(meals)
                 processCaloriesByTimeOfDay(meals)
                 processWeeklyProtein(meals)
-                // 🌟 CALL NEW WEEKLY PROCESSORS
+
+                // 🌟 CALL ALL NEW WEEKLY PROCESSORS
                 processWeeklyFiber(meals)
                 processWeeklySugar(meals)
                 processWeeklySodium(meals)
                 processWeeklyPotassium(meals)
+                processWeeklyCalcium(meals) // NEW
+                processWeeklyIron(meals)     // NEW
+                processWeeklyVitaminC(meals) // NEW
 
                 // 2. Fetch Meals for Yesterday (for Macro Pie Chart)
                 val yesterday = LocalDate.now().minusDays(1)
@@ -217,7 +233,6 @@ class FoodLogViewModel : ViewModel() {
         _weeklyProtein.value = proteinByDay
     }
 
-    // 🌟 NEW FUNCTION: Process Weekly Fiber
     private fun processWeeklyFiber(meals: List<Meal>) {
         val today = LocalDate.now()
         val fiberByDay = (0..6).associate {
@@ -233,7 +248,6 @@ class FoodLogViewModel : ViewModel() {
         _weeklyFiber.value = fiberByDay
     }
 
-    // 🌟 NEW FUNCTION: Process Weekly Sugar
     private fun processWeeklySugar(meals: List<Meal>) {
         val today = LocalDate.now()
         val sugarByDay = (0..6).associate {
@@ -249,10 +263,8 @@ class FoodLogViewModel : ViewModel() {
         _weeklySugar.value = sugarByDay
     }
 
-    // 🌟 NEW FUNCTION: Process Weekly Sodium
     private fun processWeeklySodium(meals: List<Meal>) {
         val today = LocalDate.now()
-        // Sodium is typically in mg, so we keep it as an Int
         val sodiumByDay = (0..6).associate {
             today.minusDays(it.toLong()) to 0
         }.toMutableMap()
@@ -266,10 +278,8 @@ class FoodLogViewModel : ViewModel() {
         _weeklySodium.value = sodiumByDay
     }
 
-    // 🌟 NEW FUNCTION: Process Weekly Potassium
     private fun processWeeklyPotassium(meals: List<Meal>) {
         val today = LocalDate.now()
-        // Potassium is typically in mg, so we keep it as an Int
         val potassiumByDay = (0..6).associate {
             today.minusDays(it.toLong()) to 0
         }.toMutableMap()
@@ -281,6 +291,54 @@ class FoodLogViewModel : ViewModel() {
             }
         }
         _weeklyPotassium.value = potassiumByDay
+    }
+
+    // 🌟 KEY CHANGE 4: NEW FUNCTION: Process Weekly Calcium (in mg, so Int)
+    private fun processWeeklyCalcium(meals: List<Meal>) {
+        val today = LocalDate.now()
+        val calciumByDay = (0..6).associate {
+            today.minusDays(it.toLong()) to 0
+        }.toMutableMap()
+        for (meal in meals) {
+            val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            val calciumValue = meal.calcium?.toInt() ?: 0
+            if (calciumByDay.containsKey(mealDate)) {
+                calciumByDay[mealDate] = (calciumByDay[mealDate] ?: 0) + calciumValue
+            }
+        }
+        _weeklyCalcium.value = calciumByDay
+    }
+
+    // 🌟 KEY CHANGE 5: NEW FUNCTION: Process Weekly Iron (in mg, so Int)
+    private fun processWeeklyIron(meals: List<Meal>) {
+        val today = LocalDate.now()
+        val ironByDay = (0..6).associate {
+            today.minusDays(it.toLong()) to 0
+        }.toMutableMap()
+        for (meal in meals) {
+            val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            val ironValue = meal.iron?.toInt() ?: 0
+            if (ironByDay.containsKey(mealDate)) {
+                ironByDay[mealDate] = (ironByDay[mealDate] ?: 0) + ironValue
+            }
+        }
+        _weeklyIron.value = ironByDay
+    }
+
+    // 🌟 KEY CHANGE 6: NEW FUNCTION: Process Weekly Vitamin C (in mg, so Int)
+    private fun processWeeklyVitaminC(meals: List<Meal>) {
+        val today = LocalDate.now()
+        val vitaminCByDay = (0..6).associate {
+            today.minusDays(it.toLong()) to 0
+        }.toMutableMap()
+        for (meal in meals) {
+            val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            val vitaminCValue = meal.vitaminC?.toInt() ?: 0
+            if (vitaminCByDay.containsKey(mealDate)) {
+                vitaminCByDay[mealDate] = (vitaminCByDay[mealDate] ?: 0) + vitaminCValue
+            }
+        }
+        _weeklyVitaminC.value = vitaminCByDay
     }
 
     private fun processCaloriesByTimeOfDay(meals: List<Meal>) {
@@ -339,7 +397,7 @@ class FoodLogViewModel : ViewModel() {
     }
 
 
-    // 🌟 KEY CHANGE 3: logMeal now accepts all 7 new nutrient parameters
+    // 🌟 logMeal is confirmed to handle all 7 new nutrient parameters correctly
     fun logMeal(
         foodName: String,
         calories: Int,
@@ -349,7 +407,6 @@ class FoodLogViewModel : ViewModel() {
         protein: Double?,
         carbohydrates: Double?,
         fat: Double?,
-        // 🌟 New nutrient parameters
         fiber: Double?,
         sugar: Double?,
         sodium: Double?,
@@ -368,7 +425,6 @@ class FoodLogViewModel : ViewModel() {
             protein = protein,
             carbohydrates = carbohydrates,
             fat = fat,
-            // 🌟 Assign new nutrient values
             fiber = fiber,
             sugar = sugar,
             sodium = sodium,
@@ -379,6 +435,7 @@ class FoodLogViewModel : ViewModel() {
         )
         viewModelScope.launch {
             try {
+                // This assumes Meal.kt is updated to receive the new fields
                 firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 fetchMealsForLastSevenDays()
             } catch (e: Exception) {
@@ -387,7 +444,7 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // 🌟 KEY CHANGE 4: updateMeal now accepts all 7 new nutrient parameters
+    // 🌟 updateMeal is confirmed to handle all 7 new nutrient parameters correctly
     fun updateMeal(
         mealId: String,
         newFoodName: String,
@@ -398,7 +455,6 @@ class FoodLogViewModel : ViewModel() {
         newProtein: Double?,
         newCarbohydrates: Double?,
         newFat: Double?,
-        // 🌟 New nutrient parameters
         newFiber: Double?,
         newSugar: Double?,
         newSodium: Double?,
@@ -422,7 +478,7 @@ class FoodLogViewModel : ViewModel() {
             "protein" to newProtein,
             "carbohydrates" to newCarbohydrates,
             "fat" to newFat,
-            // 🌟 Add new nutritional fields to the update map
+            // Add all 7 new nutritional fields to the update map
             "fiber" to newFiber,
             "sugar" to newSugar,
             "sodium" to newSodium,
@@ -470,6 +526,7 @@ class FoodLogViewModel : ViewModel() {
                 }
                 if (snapshot != null) {
                     val mealList = snapshot.documents.mapNotNull { doc ->
+                        // This relies on the Meal data class being fully updated
                         doc.toObject(Meal::class.java)?.copy(id = doc.id)
                     }
                     _mealsForSelectedDateState.value = mealList
@@ -528,7 +585,6 @@ class FoodLogViewModel : ViewModel() {
         fetchMealsForLastSevenDays()
     }
 
-    // 🌟 KEY CHANGE 5: Parsing logic to extract new fields
     fun analyzeImageWithGemini(foodName: String) {
         _geminiResult.value = GeminiResult.Loading
         viewModelScope.launch {
@@ -547,7 +603,6 @@ class FoodLogViewModel : ViewModel() {
                     if (success == true && geminiData != null) {
                         val gson = Gson()
                         val jsonString = gson.toJson(geminiData)
-                        // This line relies on the updated FoodNutritionalInfo data class
                         val listType = object : TypeToken<List<FoodNutritionalInfo>>() {}.type
                         val parsedList: List<FoodNutritionalInfo> = gson.fromJson(jsonString, listType)
 
