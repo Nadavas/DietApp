@@ -30,7 +30,16 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-// 🌟 KEY CHANGE 1: Data class for Gemini's nutritional information is confirmed to be correct
+// 🌟 NEW: Data class for Graph Preferences
+data class GraphPreference(
+    val id: String, // Unique ID (e.g., "calories", "protein", "fiber")
+    val title: String, // Display name
+    val order: Int, // User-defined display order (0, 1, 2, ...)
+    val isVisible: Boolean, // Whether the user wants to see it
+    val isMacro: Boolean // Helper for potential future UI grouping
+)
+
+// Data class for Gemini's nutritional information
 data class FoodNutritionalInfo(
     @SerializedName("food_name") val food_name: String?,
     @SerializedName("serving_unit") val serving_unit: String?,
@@ -39,7 +48,6 @@ data class FoodNutritionalInfo(
     @SerializedName("protein") val protein: String?,
     @SerializedName("carbohydrates") val carbohydrates: String?,
     @SerializedName("fat") val fat: String?,
-    // New fields confirmed
     @SerializedName("fiber") val fiber: String?,
     @SerializedName("sugar") val sugar: String?,
     @SerializedName("sodium") val sodium: String?,
@@ -62,6 +70,9 @@ class FoodLogViewModel : ViewModel() {
     private val firestore: FirebaseFirestore = Firebase.firestore
     private val functions = Firebase.functions("me-west1")
 
+    // 🌟 NEW: Firebase Collection Reference for preferences
+    private val preferencesCollection = firestore.collection("users").document(auth.currentUser?.uid ?: "no_user").collection("preferences")
+
     private val _selectedDateState = MutableStateFlow(LocalDate.now())
     val selectedDateState = _selectedDateState.asStateFlow()
 
@@ -72,6 +83,10 @@ class FoodLogViewModel : ViewModel() {
     val mealsForSelectedDate = _mealsForSelectedDateState.asStateFlow()
 
     private var mealsListenerRegistration: ListenerRegistration? = null
+
+    // 🌟 NEW: Graph Preference State Flow
+    private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
+    val graphPreferences = _graphPreferences.asStateFlow()
 
     // --- EXISTING WEEKLY STATES ---
     private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
@@ -90,7 +105,7 @@ class FoodLogViewModel : ViewModel() {
     )
     val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow()
 
-    // 🌟 KEY CHANGE 2: STATE FLOWS FOR ALL NEW WEEKLY NUTRIENTS (g/mg, so Int)
+    // 🌟 STATE FLOWS FOR ALL NEW WEEKLY NUTRIENTS (g/mg, so Int)
     private val _weeklyFiber = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyFiber = _weeklyFiber.asStateFlow()
 
@@ -103,7 +118,6 @@ class FoodLogViewModel : ViewModel() {
     private val _weeklyPotassium = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyPotassium = _weeklyPotassium.asStateFlow()
 
-    // 🌟 NEW STATES FOR CALCIUM, IRON, AND VITAMIN C
     private val _weeklyCalcium = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyCalcium = _weeklyCalcium.asStateFlow()
 
@@ -131,6 +145,7 @@ class FoodLogViewModel : ViewModel() {
                 if (currentUser != null) {
                     listenForMealsForDate(selectedDateState.value)
                     fetchMealsForLastSevenDays()
+                    fetchGraphPreferences() // 🌟 NEW: Fetch preferences on sign-in
                 } else {
                     mealsListenerRegistration?.remove()
                     mealsListenerRegistration = null
@@ -138,7 +153,6 @@ class FoodLogViewModel : ViewModel() {
                     _weeklyCalories.value = emptyMap()
                     _weeklyProtein.value = emptyMap()
                     _yesterdayMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
-                    // 🌟 CLEAR ALL NEW STATES ON LOGOUT
                     _weeklyFiber.value = emptyMap()
                     _weeklySugar.value = emptyMap()
                     _weeklySodium.value = emptyMap()
@@ -146,10 +160,110 @@ class FoodLogViewModel : ViewModel() {
                     _weeklyCalcium.value = emptyMap()
                     _weeklyIron.value = emptyMap()
                     _weeklyVitaminC.value = emptyMap()
+                    _graphPreferences.value = emptyList() // 🌟 NEW: Clear preferences on logout
                 }
             }
         }
     }
+
+    // -------------------------------------------------------------------------
+    // |                    NEW GRAPH PREFERENCE METHODS                       |
+    // -------------------------------------------------------------------------
+
+    private fun getDefaultGraphPreferences(): List<GraphPreference> = listOf(
+        GraphPreference("calories", "Weekly Calorie Intake", 0, true, true),
+        GraphPreference("protein", "Weekly Protein Intake", 1, true, true),
+        GraphPreference("macros_pie", "Yesterday's Macronutrient Distribution", 2, true, true),
+        GraphPreference("fiber", "Weekly Fiber Intake", 3, true, false),
+        GraphPreference("sugar", "Weekly Sugar Intake", 4, true, false),
+        GraphPreference("sodium", "Weekly Sodium Intake", 5, true, false),
+        GraphPreference("potassium", "Weekly Potassium Intake", 6, true, false),
+        GraphPreference("calcium", "Weekly Calcium Intake", 7, true, false),
+        GraphPreference("iron", "Weekly Iron Intake", 8, true, false),
+        GraphPreference("vitamin_c", "Weekly Vitamin C Intake", 9, true, false)
+    )
+
+    fun fetchGraphPreferences() {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            try {
+                // Fetch the document containing the list of graph preferences
+                val snapshot = preferencesCollection.document("graph_order").get().await()
+
+                if (snapshot.exists()) {
+                    @Suppress("UNCHECKED_CAST")
+                    val storedList = snapshot.get("list") as? List<Map<String, Any>>
+
+                    val preferences = storedList?.mapNotNull { map ->
+                        // Safely map Firestore data to data class
+                        GraphPreference(
+                            id = map["id"] as? String ?: return@mapNotNull null,
+                            title = map["title"] as? String ?: return@mapNotNull null,
+                            order = (map["order"] as? Long)?.toInt() ?: 0,
+                            isVisible = map["isVisible"] as? Boolean ?: true,
+                            isMacro = map["isMacro"] as? Boolean ?: false
+                        )
+                    } ?: getDefaultGraphPreferences()
+
+                    // CRITICAL: Merge default with stored list to handle new graphs
+                    val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
+                    val storedMap = preferences.associateBy { it.id }
+
+                    // Create the final list by prioritizing stored preferences but including all defaults
+                    // (and ensuring new graphs appear at the end)
+                    val finalPreferences = defaultMap.keys.mapNotNull { id ->
+                        if (storedMap.containsKey(id)) {
+                            // Use stored preference but ensure it has the correct, up-to-date title
+                            storedMap[id]?.copy(title = defaultMap[id]?.title ?: storedMap[id]!!.title)
+                        } else {
+                            // New graph not in storage, add it to the end
+                            defaultMap[id]?.copy(order = defaultMap.size + storedMap.size)
+                        }
+                    }.sortedBy { it.order }
+
+                    _graphPreferences.value = finalPreferences
+
+                } else {
+                    // No preferences found, use and save default order
+                    val defaultList = getDefaultGraphPreferences()
+                    _graphPreferences.value = defaultList
+                    saveGraphPreferences(defaultList) // Save default for the first time
+                }
+            } catch (e: Exception) {
+                Log.e("FoodLogViewModel", "Error fetching graph preferences: ${e.message}")
+                _graphPreferences.value = getDefaultGraphPreferences()
+            }
+        }
+    }
+
+    fun saveGraphPreferences(preferences: List<GraphPreference>) {
+        val userId = auth.currentUser?.uid ?: return
+        _graphPreferences.value = preferences // Optimistic update
+        viewModelScope.launch {
+            try {
+                // Prepare data for Firestore
+                val dataToSave = hashMapOf("list" to preferences.map { it.toMap() })
+                preferencesCollection.document("graph_order").set(dataToSave).await()
+            } catch (e: Exception) {
+                Log.e("FoodLogViewModel", "Error saving graph preferences: ${e.message}")
+            }
+        }
+    }
+
+    // Helper function to convert GraphPreference to Map for Firestore
+    private fun GraphPreference.toMap(): Map<String, Any> {
+        return mapOf(
+            "id" to id,
+            "title" to title,
+            "order" to order,
+            "isVisible" to isVisible,
+            "isMacro" to isMacro
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // |                    EXISTING LOGIC                                     |
+    // -------------------------------------------------------------------------
 
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
@@ -159,7 +273,12 @@ class FoodLogViewModel : ViewModel() {
         return date.minusDays(daysToSubtract.toLong())
     }
 
-    // 🌟 KEY CHANGE 3: Call all new processing functions
+    // Updated to call fetchGraphPreferences
+    fun refreshStatistics() {
+        fetchMealsForLastSevenDays()
+        fetchGraphPreferences() // Ensure preferences are also refreshed
+    }
+
     private fun fetchMealsForLastSevenDays() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
@@ -177,14 +296,14 @@ class FoodLogViewModel : ViewModel() {
                 processCaloriesByTimeOfDay(meals)
                 processWeeklyProtein(meals)
 
-                // 🌟 CALL ALL NEW WEEKLY PROCESSORS
+                // CALL ALL NEW WEEKLY PROCESSORS
                 processWeeklyFiber(meals)
                 processWeeklySugar(meals)
                 processWeeklySodium(meals)
                 processWeeklyPotassium(meals)
-                processWeeklyCalcium(meals) // NEW
-                processWeeklyIron(meals)     // NEW
-                processWeeklyVitaminC(meals) // NEW
+                processWeeklyCalcium(meals)
+                processWeeklyIron(meals)
+                processWeeklyVitaminC(meals)
 
                 // 2. Fetch Meals for Yesterday (for Macro Pie Chart)
                 val yesterday = LocalDate.now().minusDays(1)
@@ -293,7 +412,6 @@ class FoodLogViewModel : ViewModel() {
         _weeklyPotassium.value = potassiumByDay
     }
 
-    // 🌟 KEY CHANGE 4: NEW FUNCTION: Process Weekly Calcium (in mg, so Int)
     private fun processWeeklyCalcium(meals: List<Meal>) {
         val today = LocalDate.now()
         val calciumByDay = (0..6).associate {
@@ -309,7 +427,6 @@ class FoodLogViewModel : ViewModel() {
         _weeklyCalcium.value = calciumByDay
     }
 
-    // 🌟 KEY CHANGE 5: NEW FUNCTION: Process Weekly Iron (in mg, so Int)
     private fun processWeeklyIron(meals: List<Meal>) {
         val today = LocalDate.now()
         val ironByDay = (0..6).associate {
@@ -325,7 +442,6 @@ class FoodLogViewModel : ViewModel() {
         _weeklyIron.value = ironByDay
     }
 
-    // 🌟 KEY CHANGE 6: NEW FUNCTION: Process Weekly Vitamin C (in mg, so Int)
     private fun processWeeklyVitaminC(meals: List<Meal>) {
         val today = LocalDate.now()
         val vitaminCByDay = (0..6).associate {
@@ -397,7 +513,6 @@ class FoodLogViewModel : ViewModel() {
     }
 
 
-    // 🌟 logMeal is confirmed to handle all 7 new nutrient parameters correctly
     fun logMeal(
         foodName: String,
         calories: Int,
@@ -435,7 +550,6 @@ class FoodLogViewModel : ViewModel() {
         )
         viewModelScope.launch {
             try {
-                // This assumes Meal.kt is updated to receive the new fields
                 firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 fetchMealsForLastSevenDays()
             } catch (e: Exception) {
@@ -444,7 +558,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // 🌟 updateMeal is confirmed to handle all 7 new nutrient parameters correctly
     fun updateMeal(
         mealId: String,
         newFoodName: String,
@@ -478,7 +591,6 @@ class FoodLogViewModel : ViewModel() {
             "protein" to newProtein,
             "carbohydrates" to newCarbohydrates,
             "fat" to newFat,
-            // Add all 7 new nutritional fields to the update map
             "fiber" to newFiber,
             "sugar" to newSugar,
             "sodium" to newSodium,
@@ -526,7 +638,6 @@ class FoodLogViewModel : ViewModel() {
                 }
                 if (snapshot != null) {
                     val mealList = snapshot.documents.mapNotNull { doc ->
-                        // This relies on the Meal data class being fully updated
                         doc.toObject(Meal::class.java)?.copy(id = doc.id)
                     }
                     _mealsForSelectedDateState.value = mealList
@@ -579,10 +690,6 @@ class FoodLogViewModel : ViewModel() {
 
     fun getMealById(mealId: String): Meal? {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
-    }
-
-    fun refreshStatistics() {
-        fetchMealsForLastSevenDays()
     }
 
     fun analyzeImageWithGemini(foodName: String) {
