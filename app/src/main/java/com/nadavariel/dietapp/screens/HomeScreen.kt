@@ -64,14 +64,14 @@ fun HomeScreen(
     goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController,
 ) {
-    // --- STATE AND DATA (LOGIC UNCHANGED) ---
+    // --- STATE AND DATA ---
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
     val goals by goalViewModel.goals.collectAsState()
 
-    // 🌟 New State: Collect missing goals from ViewModel
+    // New State: Collect missing goals from ViewModel
     val missingGoals by goalViewModel.missingGoals.collectAsState()
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
@@ -122,7 +122,7 @@ fun HomeScreen(
                 )
             }
 
-            // 🌟 New UI: Display missing goals warning if needed
+            // New UI: Display missing goals warning if needed
             item {
                 if (missingGoals.isNotEmpty()) {
                     MissingGoalsWarning(
@@ -152,7 +152,6 @@ fun HomeScreen(
                 CalorieSummaryCard(
                     totalCalories = totalCaloriesForSelectedDate,
                     // A goal is assumed for the progress bar.
-                    // This could be fetched from userProfile in a real app.
                     goalCalories = goals.firstOrNull()?.value?.toIntOrNull() ?: 2000
                 )
             }
@@ -164,7 +163,7 @@ fun HomeScreen(
                 }
             } else {
                 groupedMeals.forEach { (section, mealsInSection) ->
-                    // 🌟 Key UI Change: Sticky headers provide better context while scrolling.
+                    // Key UI Change: Sticky headers provide better context while scrolling.
                     stickyHeader {
                         MealSectionHeader(section)
                     }
@@ -255,7 +254,7 @@ private fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: ()
     }
 }
 
-// 🌟 New Composable: Missing Goals Warning
+// New Composable: Missing Goals Warning
 @Composable
 private fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit) {
     val missingListText = missingGoals.joinToString(" and ")
@@ -536,7 +535,7 @@ fun MealItem(
     onDelete: (Meal) -> Unit,
     onEdit: (Meal) -> Unit
 ) {
-    // 🌟 Key UI Change: A gradient background makes the card pop.
+    // Key UI Change: A gradient background makes the card pop.
     val cardBrush = Brush.horizontalGradient(
         colors = listOf(
             sectionColor.copy(alpha = 0.2f),
@@ -552,7 +551,7 @@ fun MealItem(
             .background(cardBrush)
             .clickable { onToggleActions(meal.id) }
     ) {
-        // 🌟 Key UI Change: smooth expansion animation
+        // Key UI Change: smooth expansion animation
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -628,6 +627,7 @@ fun MealItem(
             ) {
                 Column {
                     Divider(modifier = Modifier.padding(top = 12.dp, bottom = 12.dp))
+                    // 🌟 KEY CHANGE 1: Update to new NutritionDetailsTable
                     NutritionDetailsTable(meal)
                 }
             }
@@ -635,31 +635,66 @@ fun MealItem(
     }
 }
 
+// 🌟 KEY CHANGE 2: Updated NutritionDetailsTable to include all 7 new nutrients
 @Composable
 fun NutritionDetailsTable(meal: Meal) {
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "Nutritional Info",
+            text = "Macronutrients (g)",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp)
         )
+        // Row 1: Protein, Carbs, Fat
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            NutritionDetailItem("Protein", meal.protein)
-            NutritionDetailItem("Carbs", meal.carbohydrates)
-            NutritionDetailItem("Fat", meal.fat)
+            NutritionDetailItem("Protein", meal.protein, "g")
+            NutritionDetailItem("Carbs", meal.carbohydrates, "g")
+            NutritionDetailItem("Fat", meal.fat, "g")
+        }
+
+        Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+        Text(
+            text = "Micronutrients & Fiber",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        // Row 2: Fiber, Sugar, Sodium (g/mg)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            NutritionDetailItem("Fiber", meal.fiber, "g")
+            NutritionDetailItem("Sugar", meal.sugar, "g")
+            NutritionDetailItem("Sodium", meal.sodium, "mg")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Row 3: Potassium, Calcium, Iron, Vitamin C (mg)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            NutritionDetailItem("Potassium", meal.potassium, "mg")
+            NutritionDetailItem("Calcium", meal.calcium, "mg")
+            NutritionDetailItem("Iron", meal.iron, "mg")
+            NutritionDetailItem("Vit C", meal.vitaminC, "mg")
         }
     }
 }
 
+// 🌟 KEY CHANGE 3: Updated NutritionDetailItem to accept a unit
 @Composable
-fun RowScope.NutritionDetailItem(label: String, value: Double?) {
+fun RowScope.NutritionDetailItem(label: String, value: Double?, unit: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.weight(1f)
@@ -671,7 +706,7 @@ fun RowScope.NutritionDetailItem(label: String, value: Double?) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = value?.let { "${String.format("%.1f", it)}g" } ?: "–",
+            text = value?.let { "${String.format("%.1f", it)}${unit}" } ?: "–",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface

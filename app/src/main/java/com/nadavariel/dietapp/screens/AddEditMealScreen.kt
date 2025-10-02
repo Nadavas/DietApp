@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome // FIX: Replaced Sparkle with a standard icon
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Schedule
@@ -48,7 +48,7 @@ fun AddEditMealScreen(
     navController: NavController,
     mealToEdit: Meal? = null,
 ) {
-    // --- STATE AND LOGIC (UNCHANGED) ---
+    // --- STATE AND LOGIC ---
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
@@ -60,8 +60,17 @@ fun AddEditMealScreen(
     var proteinText by remember { mutableStateOf("") }
     var carbsText by remember { mutableStateOf("") }
     var fatText by remember { mutableStateOf("") }
+
+    // 🌟 1. NEW STATE VARIABLES FOR NUTRIENTS
+    var fiberText by remember { mutableStateOf("") }
+    var sugarText by remember { mutableStateOf("") }
+    var sodiumText by remember { mutableStateOf("") }
+    var potassiumText by remember { mutableStateOf("") }
+    var calciumText by remember { mutableStateOf("") }
+    var ironText by remember { mutableStateOf("") }
+    var vitaminCText by remember { mutableStateOf("") }
+
     var servingAmountText by remember { mutableStateOf("") }
-    // FIX: Corrected typo from mutableState of to mutableStateOf
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
@@ -77,6 +86,16 @@ fun AddEditMealScreen(
                 proteinText = it.protein?.toString() ?: ""
                 carbsText = it.carbohydrates?.toString() ?: ""
                 fatText = it.fat?.toString() ?: ""
+
+                // 🌟 2. INITIALIZE NEW STATES FOR EDIT MODE
+                fiberText = it.fiber?.toString() ?: ""
+                sugarText = it.sugar?.toString() ?: ""
+                sodiumText = it.sodium?.toString() ?: ""
+                potassiumText = it.potassium?.toString() ?: ""
+                calciumText = it.calcium?.toString() ?: ""
+                ironText = it.iron?.toString() ?: ""
+                vitaminCText = it.vitaminC?.toString() ?: ""
+
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
             }
         } else {
@@ -88,6 +107,16 @@ fun AddEditMealScreen(
             proteinText = ""
             carbsText = ""
             fatText = ""
+
+            // 🌟 RESET NEW STATES FOR ADD MODE
+            fiberText = ""
+            sugarText = ""
+            sodiumText = ""
+            potassiumText = ""
+            calciumText = ""
+            ironText = ""
+            vitaminCText = ""
+
             selectedDateTimeState = Calendar.getInstance()
         }
     }
@@ -98,8 +127,6 @@ fun AddEditMealScreen(
             val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
             successResult.foodInfoList.forEach { foodInfo ->
-                // FIX: Replaced the incorrect Triple destructuring with direct variable assignments.
-                // A Triple can only hold 3 values, and this was attempting to use 7.
                 val geminiFoodName = foodInfo.food_name
                 val geminiCalories = foodInfo.calories?.toIntOrNull()
                 val geminiServingAmount = foodInfo.serving_amount
@@ -108,16 +135,33 @@ fun AddEditMealScreen(
                 val geminiCarbs = foodInfo.carbohydrates?.toDoubleOrNull()
                 val geminiFat = foodInfo.fat?.toDoubleOrNull()
 
+                // 🌟 3. EXTRACT NEW NUTRIENT VALUES FROM GEMINI RESULT
+                val geminiFiber = foodInfo.fiber?.toDoubleOrNull()
+                val geminiSugar = foodInfo.sugar?.toDoubleOrNull()
+                val geminiSodium = foodInfo.sodium?.toDoubleOrNull()
+                val geminiPotassium = foodInfo.potassium?.toDoubleOrNull()
+                val geminiCalcium = foodInfo.calcium?.toDoubleOrNull()
+                val geminiIron = foodInfo.iron?.toDoubleOrNull()
+                val geminiVitaminC = foodInfo.vitaminC?.toDoubleOrNull()
+
                 if (geminiFoodName != null && geminiCalories != null) {
                     foodLogViewModel.logMeal(
-                        geminiFoodName,
-                        geminiCalories,
-                        geminiServingAmount,
-                        geminiServingUnit,
-                        mealTimestamp,
-                        geminiProtein,
-                        geminiCarbs,
-                        geminiFat
+                        foodName = geminiFoodName,
+                        calories = geminiCalories,
+                        servingAmount = geminiServingAmount,
+                        servingUnit = geminiServingUnit,
+                        mealTime = mealTimestamp,
+                        protein = geminiProtein,
+                        carbohydrates = geminiCarbs,
+                        fat = geminiFat,
+                        // 🌟 PASS NEW NUTRIENTS TO logMeal
+                        fiber = geminiFiber,
+                        sugar = geminiSugar,
+                        sodium = geminiSodium,
+                        potassium = geminiPotassium,
+                        calcium = geminiCalcium,
+                        iron = geminiIron,
+                        vitaminC = geminiVitaminC
                     )
                 }
             }
@@ -193,13 +237,14 @@ fun AddEditMealScreen(
                         )
                     }
                 }
+
                 item {
-                    SectionCard(title = "Nutritional Info") {
+                    SectionCard(title = "Macronutrients (g)") {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = proteinText,
                                 onValueChange = { proteinText = it },
-                                label = { Text("Protein (g)") },
+                                label = { Text("Protein") },
                                 modifier = Modifier.weight(1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true
@@ -207,7 +252,7 @@ fun AddEditMealScreen(
                             OutlinedTextField(
                                 value = carbsText,
                                 onValueChange = { carbsText = it },
-                                label = { Text("Carbs (g)") },
+                                label = { Text("Carbs") },
                                 modifier = Modifier.weight(1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true
@@ -215,7 +260,80 @@ fun AddEditMealScreen(
                             OutlinedTextField(
                                 value = fatText,
                                 onValueChange = { fatText = it },
-                                label = { Text("Fat (g)") },
+                                label = { Text("Fat") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                        }
+                    }
+                }
+
+                // 🌟 4. NEW UI FOR ADDED NUTRIENTS
+                item {
+                    SectionCard(title = "Micronutrients & Fiber") {
+                        // Row 1: Fiber (g), Sugar (g), Sodium (mg)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = fiberText,
+                                onValueChange = { fiberText = it },
+                                label = { Text("Fiber (g)") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = sugarText,
+                                onValueChange = { sugarText = it },
+                                label = { Text("Sugar (g)") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = sodiumText,
+                                onValueChange = { sodiumText = it },
+                                label = { Text("Sodium (mg)") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        // Row 2: Potassium (mg), Calcium (mg)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = potassiumText,
+                                onValueChange = { potassiumText = it },
+                                label = { Text("Potassium (mg)") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = calciumText,
+                                onValueChange = { calciumText = it },
+                                label = { Text("Calcium (mg)") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        // Row 3: Iron (mg), Vitamin C (mg)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = ironText,
+                                onValueChange = { ironText = it },
+                                label = { Text("Iron (mg)") },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = vitaminCText,
+                                onValueChange = { vitaminCText = it },
+                                label = { Text("Vit C (mg)") },
                                 modifier = Modifier.weight(1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true
@@ -226,7 +344,7 @@ fun AddEditMealScreen(
             }
 
 
-            // --- DATE & TIME PICKER ---
+            // --- DATE & TIME PICKER (UNCHANGED) ---
             item {
                 SectionCard(title = "Date & Time") {
                     DateTimePickerRow(
@@ -296,8 +414,23 @@ fun AddEditMealScreen(
                             val mealTimestamp = Timestamp(selectedDateTimeState.time)
                             if (mealToEdit != null) {
                                 foodLogViewModel.updateMeal(
-                                    mealToEdit.id, foodName, calValue, servingAmountText, servingUnitText,
-                                    mealTimestamp, proteinText.toDoubleOrNull(), carbsText.toDoubleOrNull(), fatText.toDoubleOrNull()
+                                    mealToEdit.id,
+                                    foodName,
+                                    calValue,
+                                    servingAmountText,
+                                    servingUnitText,
+                                    mealTimestamp,
+                                    proteinText.toDoubleOrNull(),
+                                    carbsText.toDoubleOrNull(),
+                                    fatText.toDoubleOrNull(),
+                                    // 🌟 5. PASS NEW NUTRIENTS TO updateMeal
+                                    fiberText.toDoubleOrNull(),
+                                    sugarText.toDoubleOrNull(),
+                                    sodiumText.toDoubleOrNull(),
+                                    potassiumText.toDoubleOrNull(),
+                                    calciumText.toDoubleOrNull(),
+                                    ironText.toDoubleOrNull(),
+                                    vitaminCText.toDoubleOrNull()
                                 )
                             }
                             navController.popBackStack()
@@ -335,7 +468,7 @@ fun AddEditMealScreen(
 }
 
 // --------------------------------------------------------------------------------
-// |                       NEW HELPER COMPOSABLES FOR CLEAN UI                    |
+// |                       HELPER COMPOSABLES (UNCHANGED)                         |
 // --------------------------------------------------------------------------------
 
 @Composable

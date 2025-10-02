@@ -43,9 +43,14 @@ exports.analyzeFoodWithGemini = onCall(
         const prompt = `
           You are a nutritional assistant.
           Analyze the nutritional content of the food item(s) and quantity specified in "${foodName}".
-          For each distinct, main food item in the request, provide the calories, protein, carbs, and fat for that exact quantity.
-          Minor components (e.g., sauces, small garnishes, seasonings) that are typically consumed with a main dish should not be separated. For example, "pasta with tomato sauce" is one item, but "rice with chicken breast" contains two separate main food items.
-          If a number is not specified for a main food item, use a common, natural serving size (e.g., "1 banana", "1 bowl").
+          For each distinct, main food item in the request, provide the calories, protein, carbs, fat, fiber, sugar, sodium, potassium, calcium, iron, and vitamin C for that exact quantity
+
+          RULES AND CONSTRAINTS:
+          1. DECOMPOSITION: Minor components (e.g., sauces, small garnishes, seasonings) that are typically consumed with a main dish should not be separated. For example, "pasta with tomato sauce" is one item. A named dish (like 'Caesar Salad' or 'Hummus Plate') should be treated as a SINGLE item and not decomposed unless the user explicitly lists multiple ingredients.
+          2. SEPARATION: Main components should be separated. For example, "rice with chicken breast" contains two separate main food items.
+          3. SERVING AMOUNT: If a number is not specified for a main food item, use a common, natural serving size (e.g., "1 piece", "1 bowl"). DO NOT use fractional amounts (e.g., "0.5 cup", "3 oz") unless the user explicitly specified a fraction in their entry.
+          4. UNIT SELECTION: For whole fruits or vegetables without a specified unit, the unit should be "piece" or "unit" instead of "cup" or "grams"
+
           Return the data as a single JSON array containing an object for each main food item.
           If the food is not found, return an empty array: [].
           Example for "5 bananas":
@@ -57,7 +62,14 @@ exports.analyzeFoodWithGemini = onCall(
               "calories": "525",
               "protein": "6.5",
               "carbohydrates": "135",
-              "fat": "2"
+              "fat": "2",
+              "fiber": "17.5",
+              "sugar": "72.5",
+              "sodium": "5",
+              "potassium": "2100",
+              "calcium": "30",
+              "iron": "1.5",
+              "vitamin_c": "51"
             }
           ]
           Example for "rice with chicken breast":
@@ -69,16 +81,30 @@ exports.analyzeFoodWithGemini = onCall(
               "calories": "205",
               "protein": "4.3",
               "carbohydrates": "44.5",
-              "fat": "0.4"
+              "fat": "0.4",
+              "fiber": "0.6",
+              "sugar": "0",
+              "sodium": "2",
+              "potassium": "55",
+              "calcium": "5",
+              "iron": "0.2",
+              "vitamin_c": "0"
             },
             {
               "food_name": "Chicken Breast",
-              "serving_unit": "ounce",
-              "serving_amount": "3",
+              "serving_unit": "piece",
+              "serving_amount": "1",
               "calories": "165",
               "protein": "31",
               "carbohydrates": "0",
-              "fat": "3.6"
+              "fat": "3.6",
+              "fiber": "0",
+              "sugar": "0",
+              "sodium": "75",
+              "potassium": "330",
+              "calcium": "5",
+              "iron": "0.7",
+              "vitamin_c": "0"
             }
           ]
           Example for "pasta with tomato sauce":
@@ -90,7 +116,33 @@ exports.analyzeFoodWithGemini = onCall(
               "calories": "300",
               "protein": "11",
               "carbohydrates": "50",
-              "fat": "6"
+              "fat": "6",
+              "fiber": "4",
+              "sugar": "6",
+              "sodium": "450",
+              "potassium": "150",
+              "calcium": "40",
+              "iron": "2",
+              "vitamin_c": "8"
+            }
+          ]
+          Example for "caesar salad":
+          [
+            {
+              "food_name": "Caesar Salad",
+              "serving_unit": "bowl",
+              "serving_amount": "1",
+              "calories": "300",
+              "protein": "8",
+              "carbohydrates": "15",
+              "fat": "23",
+              "fiber": "2.5",
+              "sugar": "4",
+              "sodium": "420",
+              "potassium": "180",
+              "calcium": "100",
+              "iron": "1",
+              "vitamin_c": "15"
             }
           ]
         `;
