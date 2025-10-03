@@ -352,9 +352,7 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.CREATE_THREAD) {
                                 CreateThreadScreen(
                                     navController = navController,
-                                    onThreadCreated = { title: String, topic: String, author: String ->
-                                        println("New thread created: $title in $topic by $author")
-                                    }
+                                    threadViewModel = threadViewModel
                                 )
                             }
                             composable(
