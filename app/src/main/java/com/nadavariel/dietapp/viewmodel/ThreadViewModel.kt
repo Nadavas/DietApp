@@ -3,16 +3,17 @@ package com.nadavariel.dietapp.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.privacysandbox.ads.adservices.topics.Topic
-import com.nadavariel.dietapp.model.Thread
-import com.nadavariel.dietapp.data.Comment
-import com.nadavariel.dietapp.data.Like
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.Timestamp
+import com.nadavariel.dietapp.data.Comment
+import com.nadavariel.dietapp.data.Like
+import com.nadavariel.dietapp.model.Thread
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +24,7 @@ class ThreadViewModel : ViewModel() {
     private val firestore = Firebase.firestore
     private val auth = Firebase.auth
 
+    // --- EXISTING STATE FLOWS ---
     private val _threads = MutableStateFlow<List<Thread>>(emptyList())
     val threads: StateFlow<List<Thread>> = _threads.asStateFlow()
 
@@ -37,6 +39,11 @@ class ThreadViewModel : ViewModel() {
 
     private val _hasUserLiked = MutableStateFlow(false)
     val hasUserLiked: StateFlow<Boolean> = _hasUserLiked.asStateFlow()
+
+    // --- NEW STATE FLOW FOR HOTTEST THREADS ---
+    private val _hottestThreads = MutableStateFlow<List<Thread>>(emptyList())
+    val hottestThreads: StateFlow<List<Thread>> = _hottestThreads.asStateFlow()
+
 
     init {
         fetchAllThreads()
@@ -56,7 +63,12 @@ class ThreadViewModel : ViewModel() {
                         val threadList = snapshots?.mapNotNull { document ->
                             document.toObject<Thread>()?.copy(id = document.id)
                         } ?: emptyList()
+
                         _threads.value = threadList
+                        // --- MODIFIED: Trigger calculation when threads are fetched/updated ---
+                        if (threadList.isNotEmpty()) {
+                            calculateHottestThreads(threadList)
+                        }
                     }
             } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error fetching all threads", e)
@@ -64,6 +76,64 @@ class ThreadViewModel : ViewModel() {
             }
         }
     }
+
+    // --- NEW: Helper data class for sorting threads by score ---
+    private data class ThreadWithStats(val thread: Thread, val score: Int)
+
+    // --- NEW: Function to calculate the top 3 hottest threads ---
+    private fun calculateHottestThreads(threads: List<Thread>) {
+        viewModelScope.launch {
+            try {
+                val threadsWithStats = threads.map { thread ->
+                    async {
+                        val likeCount = fetchLikeCount(thread.id)
+                        val commentCount = fetchCommentCount(thread.id)
+                        ThreadWithStats(thread, likeCount + commentCount)
+                    }
+                }.awaitAll() // Executes all async blocks in parallel and waits for completion
+
+                // Sort by the combined score and take the top 3
+                _hottestThreads.value = threadsWithStats
+                    .sortedByDescending { it.score }
+                    .take(3)
+                    .map { it.thread }
+                Log.d("ThreadViewModel", "Hottest threads updated.")
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error calculating hottest threads", e)
+                _hottestThreads.value = emptyList()
+            }
+        }
+    }
+
+    // --- NEW: Internal suspend functions to get counts for hottest thread calculation ---
+    private suspend fun fetchLikeCount(threadId: String): Int {
+        return try {
+            val snapshot = firestore.collection("threads")
+                .document(threadId)
+                .collection("likes")
+                .get()
+                .await()
+            snapshot.size()
+        } catch (e: Exception) {
+            Log.e("ThreadViewModel", "Error suspend fetching like count for thread $threadId", e)
+            0
+        }
+    }
+
+    private suspend fun fetchCommentCount(threadId: String): Int {
+        return try {
+            val snapshot = firestore.collection("threads")
+                .document(threadId)
+                .collection("comments")
+                .get()
+                .await()
+            snapshot.size()
+        } catch (e: Exception) {
+            Log.e("ThreadViewModel", "Error suspend fetching comment count for thread $threadId", e)
+            0
+        }
+    }
+
 
     fun fetchThreadById(threadId: String) {
         viewModelScope.launch {
@@ -211,7 +281,7 @@ class ThreadViewModel : ViewModel() {
             header = header,
             paragraph = paragraph,
             topic = topic,
-            type = type, // ✅ now included
+            type = type,
             timestamp = System.currentTimeMillis()
         )
 
@@ -232,7 +302,7 @@ class ThreadViewModel : ViewModel() {
         _hasUserLiked.value = false
     }
 
-    // ✅ NEW: Fetch usernames of users who liked the thread
+
     fun getLikesForThread(threadId: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {
             try {
@@ -251,7 +321,7 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-    // ✅ NEW: Fetch like count (one-shot)
+
     fun getLikeCountForThread(threadId: String, onResult: (Int) -> Unit) {
         viewModelScope.launch {
             try {
@@ -269,7 +339,7 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-    // ✅ NEW: Fetch comment count (one-shot)
+
     fun getCommentCountForThread(threadId: String, onResult: (Int) -> Unit) {
         viewModelScope.launch {
             try {

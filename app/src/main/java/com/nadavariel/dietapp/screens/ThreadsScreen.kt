@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +54,10 @@ fun ThreadsScreen(
 ) {
     val allTopics = communityTopics
     val threads by threadViewModel.threads.collectAsState()
+    // --- NEW: Collect the hottest threads from the ViewModel ---
+    // Note: You will need to update your ThreadViewModel to expose this state flow.
+    // It should contain a list of the top 3 threads sorted by likes + comments.
+    val hottestThreads by threadViewModel.hottestThreads.collectAsState()
 
     var selectedTopicKey by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -105,9 +111,7 @@ fun ThreadsScreen(
                         }
                     }
                 },
-                // --- NEW CODE: Add the back button ---
                 navigationIcon = {
-                    // Show the back arrow only when a topic is selected
                     if (selectedTopicKey != null) {
                         IconButton(onClick = { selectedTopicKey = null }) {
                             Icon(
@@ -121,17 +125,24 @@ fun ThreadsScreen(
         }
     ) { paddingValues ->
         AnimatedContent(
-            targetState = selectedTopicKey, // Animate based on the key
+            targetState = selectedTopicKey,
             transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
             label = "Topic/Thread Transition"
         ) { key ->
             if (key == null || selectedTopic == null) {
-                // Show topic grid. When a topic is clicked, we just set its key.
-                TopicSelectionGrid(paddingValues, allTopics) { topic ->
-                    selectedTopicKey = topic.key
-                }
+                // --- MODIFIED: Show the new home screen with hottest threads and topics ---
+                CommunityHomeScreen(
+                    paddingValues = paddingValues,
+                    hottestThreads = hottestThreads,
+                    allTopics = allTopics,
+                    navController = navController,
+                    threadViewModel = threadViewModel, // <<< ADD THIS LINE
+                    onTopicSelected = { topic ->
+                        selectedTopicKey = topic.key
+                    }
+                )
             } else {
-                // Show thread list. We use the key to filter threads, and pass the full topic object.
+                // This part remains unchanged
                 ThreadList(
                     paddingValues = paddingValues,
                     threads = threads.filter { it.topic == key },
@@ -143,6 +154,178 @@ fun ThreadsScreen(
         }
     }
 }
+
+// --- NEW COMPOSABLES START ---
+
+/**
+ * The main view when no topic is selected, displaying hottest threads and topic grid.
+ */
+@Composable
+fun CommunityHomeScreen(
+    paddingValues: PaddingValues,
+    hottestThreads: List<Thread>,
+    allTopics: List<Topic>,
+    navController: NavController,
+    threadViewModel: ThreadViewModel, // <<< ADD THIS PARAMETER
+    onTopicSelected: (Topic) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.padding(paddingValues),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // --- Hottest Threads Section ---
+        if (hottestThreads.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(
+                        "🔥 Hottest Threads",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        hottestThreads.forEach { thread ->
+                            val topic = allTopics.find { it.key == thread.topic }
+                            if (topic != null) {
+                                HottestThreadCard(
+                                    thread = thread,
+                                    topic = topic,
+                                    navController = navController,
+                                    threadViewModel = threadViewModel
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Topics Section ---
+        item {
+            Text(
+                "Or Explore by Topic",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        // Re-implementation of the 2-column topic grid within the LazyColumn
+        val topicRows = allTopics.chunked(2)
+        items(topicRows) { rowItems ->
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                rowItems.forEach { topic ->
+                    Box(modifier = Modifier.weight(1f)) {
+                        TopicCard(topic, onTopicSelected)
+                    }
+                }
+                // Add a spacer to the end of the row if there's only one item,
+                // to prevent it from stretching to full width.
+                if (rowItems.size < 2) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A compact card for displaying a single "hottest thread".
+ * Clicking it navigates to the thread's detail screen.
+ */
+@Composable
+fun HottestThreadCard(
+    thread: Thread,
+    topic: Topic,
+    navController: NavController,
+    threadViewModel: ThreadViewModel // <<< ADD THIS PARAMETER
+) {
+    // --- NEW: Fetch like and comment counts ---
+    val likeCount by produceState(initialValue = 0, thread.id) {
+        threadViewModel.getLikeCountForThread(thread.id) { count -> value = count }
+    }
+    val commentCount by produceState(initialValue = 0, thread.id) {
+        threadViewModel.getCommentCountForThread(thread.id) { count -> value = count }
+    }
+
+    Card(
+        onClick = { navController.navigate(NavRoutes.threadDetail(thread.id)) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(vertical = 12.dp)) {
+            // Top part with text
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                // Topic color indicator bar is now just a small circle
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(topic.gradient.first(), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                // Thread title and topic
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = topic.displayName.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = topic.gradient.first(),
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = thread.header,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                // Navigation arrow
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "View thread",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // --- NEW: Bottom part with stats ---
+            Spacer(modifier = Modifier.height(12.dp))
+            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), modifier = Modifier.padding(horizontal = 16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                StatIcon(
+                    icon = Icons.Outlined.FavoriteBorder,
+                    text = "$likeCount",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                StatIcon(
+                    icon = Icons.Outlined.ChatBubbleOutline,
+                    text = "$commentCount",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+// --- NEW COMPOSABLES END ---
 
 
 // --- NO CHANGES BELOW THIS LINE ---
