@@ -17,7 +17,7 @@ data class Topic(
 // This is now the single source of truth for all topics
 val communityTopics = listOf(
     Topic("Training", "Training & Fitness", "Workouts, tips, and goals", Icons.Outlined.FitnessCenter, listOf(Color(0xFFF9484A), Color(0xFFFBD72B))),
-    Topic("Diet", "Diet & Nutrition", "Plans, science, and questions", Icons.Outlined.RestaurantMenu, listOf(Color(0xFF6A11CB), Color(0xFF2575FC))),
+    Topic("Diet", "Diet & Nutrition", "Plans, science, and questions", Icons.Outlined.RestaurantMenu, listOf(Color(0xFFC475F5), Color(0xFF6C9DEF))),
     Topic("Recipes", "Healthy Recipes", "Share your tasty creations", Icons.Outlined.MenuBook, listOf(Color(0xFF16A085), Color(0xFFF4D03F))),
     Topic("MentalHealth", "Mental Wellness", "Mindfulness and motivation", Icons.Outlined.SelfImprovement, listOf(Color(0xFF00C9FF), Color(0xFF92FE9D))),
     Topic("SuccessStories", "Success Stories", "Inspire and be inspired", Icons.Outlined.EmojiEvents, listOf(Color(0xFFF3904F), Color(0xFF3B4371))),

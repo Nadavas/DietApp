@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.copy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -27,6 +29,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -116,10 +119,15 @@ class MainActivity : ComponentActivity() {
                             if (selectedRoute == NavRoutes.HOME ||
                                 selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
                                 selectedRoute == NavRoutes.STATISTICS ||
-                                selectedRoute == NavRoutes.THREADS || // <<< added Threads
+                                selectedRoute == NavRoutes.THREADS ||
                                 selectedRoute == NavRoutes.ACCOUNT
                             ) {
-                                NavigationBar {
+                                NavigationBar(
+                                    // Use a dark, semi-transparent purple that blends beautifully with the background gradient.
+                                    containerColor = Color(0xFF1A0433).copy(alpha = 0.5f),
+                                    // The default content color can remain a soft white for readability.
+                                    contentColor = Color.White.copy(alpha = 0.7f)
+                                ) {
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.HOME,
                                         onClick = {
@@ -130,7 +138,15 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
-                                        label = { Text("Home") }
+                                        label = { Text("Home") },
+                                        // Define colors for selected and unselected states
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color.White, // Make selected icon fully white
+                                            selectedTextColor = Color.White, // Make selected text fully white
+                                            unselectedIconColor = Color.White.copy(alpha = 0.6f), // Softer white for unselected
+                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                            indicatorColor = Color.White.copy(alpha = 0.15f) // Subtle indicator background
+                                        )
                                     )
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL,
@@ -142,7 +158,14 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         icon = { Icon(Icons.Filled.Add, contentDescription = "Add Meal") },
-                                        label = { Text("Add Meal") }
+                                        label = { Text("Add Meal") },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color.White,
+                                            selectedTextColor = Color.White,
+                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                            indicatorColor = Color.White.copy(alpha = 0.15f)
+                                        )
                                     )
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.STATISTICS,
@@ -154,7 +177,14 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         icon = { Icon(painterResource(id = R.drawable.ic_bar_filled), contentDescription = "Stats") },
-                                        label = { Text("Stats") }
+                                        label = { Text("Stats") },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color.White,
+                                            selectedTextColor = Color.White,
+                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                            indicatorColor = Color.White.copy(alpha = 0.15f)
+                                        )
                                     )
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.THREADS,
@@ -166,7 +196,14 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         icon = { Icon(painterResource(id = R.drawable.ic_forum), contentDescription = "Threads") },
-                                        label = { Text("Threads") }
+                                        label = { Text("Threads") },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color.White,
+                                            selectedTextColor = Color.White,
+                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                            indicatorColor = Color.White.copy(alpha = 0.15f)
+                                        )
                                     )
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.ACCOUNT,
@@ -192,7 +229,14 @@ class MainActivity : ComponentActivity() {
                                                 Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
                                             }
                                         },
-                                        label = { Text("Account") }
+                                        label = { Text("Account") },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color.White,
+                                            selectedTextColor = Color.White,
+                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                            indicatorColor = Color.White.copy(alpha = 0.15f)
+                                        )
                                     )
                                 }
                             }
