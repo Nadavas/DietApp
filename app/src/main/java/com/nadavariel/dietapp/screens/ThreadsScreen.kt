@@ -17,10 +17,10 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,15 +53,12 @@ fun ThreadsScreen(
     val allTopics = communityTopics
     val threads by threadViewModel.threads.collectAsState()
 
-    // CORRECT STATE MANAGEMENT: Use a simple, saveable state for the topic's key (e.g., "Fitness").
     var selectedTopicKey by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Find the full Topic object from the key. This will be null if no topic is selected.
     val selectedTopic: Topic? = remember(selectedTopicKey) {
         allTopics.find { it.key == selectedTopicKey }
     }
 
-    // When a topic is selected, the back button should clear the selection.
     if (selectedTopicKey != null) {
         BackHandler(enabled = true) {
             selectedTopicKey = null
@@ -76,14 +73,12 @@ fun ThreadsScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // CORRECTLY uses the `displayName` from the `selectedTopic` object.
                         Text(
                             text = selectedTopic?.displayName ?: "Community",
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp,
                             modifier = Modifier.weight(1f)
                         )
-                        // This button remains unchanged
                         Button(
                             onClick = { navController.navigate("create_thread") },
                             shape = RoundedCornerShape(12.dp),
@@ -110,6 +105,18 @@ fun ThreadsScreen(
                         }
                     }
                 },
+                // --- NEW CODE: Add the back button ---
+                navigationIcon = {
+                    // Show the back arrow only when a topic is selected
+                    if (selectedTopicKey != null) {
+                        IconButton(onClick = { selectedTopicKey = null }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to Community"
+                            )
+                        }
+                    }
+                }
             )
         }
     ) { paddingValues ->
