@@ -24,8 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -77,7 +79,7 @@ fun ThreadDetailScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), // Softer background
+        containerColor = Color.Transparent, // Make container transparent to see the background
         topBar = {
             TopAppBar(
                 title = {
@@ -126,52 +128,68 @@ fun ThreadDetailScreen(
             )
         }
     ) { paddingValues ->
-        if (selectedThread == null) {
-            // Loading state
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
+        // The main content area is now a Box to layer the background and content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues) // Apply padding here to the container
+        ) {
+            // 1. Themed Background (Drawn first, so it's in the back)
+            if (topic != null) {
+                ThemedBackground(icon = topic.icon, color = gradient.first())
+            } else {
+                // Fallback for when topic is loading
+                Box(modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(bottom = 80.dp),
-            ) {
-                // Main thread content
-                item {
-                    ThreadContentView(
-                        thread = selectedThread!!,
-                        likeCount = likeCount,
-                        hasUserLiked = hasUserLiked,
-                        gradient = gradient,
-                        onLikeClicked = {
-                            if (currentUser != null) {
-                                val authorName = currentUser.displayName?.takeIf { it.isNotBlank() }
-                                    ?: currentUser.email?.substringBefore("@")
-                                    ?: "Anonymous"
-                                threadViewModel.toggleLike(threadId, currentUser.uid, authorName)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)))
+            }
+
+            // 2. Your Content (Drawn on top of the background)
+            if (selectedThread == null) {
+                // Loading state
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(), // It fills the Box
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                ) {
+                    // Main thread content
+                    item {
+                        ThreadContentView(
+                            thread = selectedThread!!,
+                            likeCount = likeCount,
+                            hasUserLiked = hasUserLiked,
+                            gradient = gradient,
+                            onLikeClicked = {
+                                if (currentUser != null) {
+                                    val authorName = currentUser.displayName?.takeIf { it.isNotBlank() }
+                                        ?: currentUser.email?.substringBefore("@")
+                                        ?: "Anonymous"
+                                    threadViewModel.toggleLike(threadId, currentUser.uid, authorName)
+                                }
+                            },
+                            onLikesCountClicked = {
+                                threadViewModel.getLikesForThread(threadId) { users ->
+                                    likedUsers = users
+                                    showLikesDialog = true
+                                }
                             }
-                        },
-                        onLikesCountClicked = {
-                            threadViewModel.getLikesForThread(threadId) { users ->
-                                likedUsers = users
-                                showLikesDialog = true
-                            }
+                        )
+                    }
+
+                    // Comments section
+                    item {
+                        CommentsHeaderSection(commentsCount = comments.size, color = gradient.first())
+                    }
+
+                    if (comments.isEmpty()) {
+                        item { EmptyCommentsState() }
+                    } else {
+                        items(comments, key = { it.id }) { comment ->
+                            CommentItemView(comment = comment, gradient = gradient)
                         }
-                    )
-                }
-
-                // Comments section
-                item {
-                    CommentsHeaderSection(commentsCount = comments.size, color = gradient.first())
-                }
-
-                if (comments.isEmpty()) {
-                    item { EmptyCommentsState() }
-                } else {
-                    items(comments, key = { it.id }) { comment ->
-                        CommentItemView(comment = comment, gradient = gradient)
                     }
                 }
             }
@@ -185,6 +203,39 @@ fun ThreadDetailScreen(
             onDismiss = { showLikesDialog = false },
             gradient = gradient
         )
+    }
+}
+
+@Composable
+fun ThemedBackground(icon: ImageVector, color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+    ) {
+        // This creates a grid of icons to form a wallpaper-like pattern
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(80.dp)
+        ) {
+            repeat(10) { rowIndex ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    repeat(5) { colIndex ->
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = color.copy(alpha = 0.05f), // Very low alpha for subtlety
+                            modifier = Modifier
+                                .size(80.dp)
+                                .rotate(if ((rowIndex + colIndex) % 2 == 0) -15f else 15f) // Rotate icons slightly
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -259,7 +310,8 @@ fun ThreadContentView(
             // Animated Like Button
             val likeColor by animateColorAsState(
                 targetValue = if (hasUserLiked) gradient.first() else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(300)
+                animationSpec = tween(300),
+                label = ""
             )
             IconButton(onClick = onLikeClicked) {
                 AnimatedContent(
@@ -495,4 +547,3 @@ fun LikesDialog(
         containerColor = MaterialTheme.colorScheme.surface
     )
 }
-
