@@ -3,6 +3,7 @@ package com.nadavariel.dietapp.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.privacysandbox.ads.adservices.topics.Topic
 import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.data.Comment
 import com.nadavariel.dietapp.data.Like

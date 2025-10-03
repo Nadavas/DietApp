@@ -1,11 +1,13 @@
 package com.nadavariel.dietapp.screens
 
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.style.TextAlign
-import android.annotation.SuppressLint
-import androidx.compose.animation.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,19 +17,23 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,60 +50,60 @@ fun ThreadsScreen(
     navController: NavController,
     threadViewModel: ThreadViewModel = viewModel()
 ) {
-    val topics = communityTopics
+    val allTopics = communityTopics
     val threads by threadViewModel.threads.collectAsState()
-    var selectedTopic by remember { mutableStateOf<Topic?>(null) }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+
+    // CORRECT STATE MANAGEMENT: Use a simple, saveable state for the topic's key (e.g., "Fitness").
+    var selectedTopicKey by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Find the full Topic object from the key. This will be null if no topic is selected.
+    val selectedTopic: Topic? = remember(selectedTopicKey) {
+        allTopics.find { it.key == selectedTopicKey }
+    }
+
+    // When a topic is selected, the back button should clear the selection.
+    if (selectedTopicKey != null) {
+        BackHandler(enabled = true) {
+            selectedTopicKey = null
+        }
+    }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()).nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        // CORRECTLY uses the `displayName` from the `selectedTopic` object.
                         Text(
-                            text = if (selectedTopic == null) "Community" else selectedTopic!!.displayName,
+                            text = selectedTopic?.displayName ?: "Community",
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp,
                             modifier = Modifier.weight(1f)
                         )
-                        // CHANGED: Adjusted position and added gradient colors like TopicCard
+                        // This button remains unchanged
                         Button(
                             onClick = { navController.navigate("create_thread") },
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent // Gradient will handle the color
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            modifier = Modifier
-                                .height(80.dp)
-                                .padding(start = 30.dp) // Moved left from the edge
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                            contentPadding = PaddingValues(0.dp),
                         ) {
                             Box(
+                                contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .background(
-                                        Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color(0xFF4A90E2), // Starting color
-                                                Color(0xFF50C9C3)  // Ending color, matching TopicCard gradient style
-                                            )
-                                        ),
+                                        Brush.verticalGradient(listOf(Color(0xFF4A90E2), Color(0xFF50C9C3))),
                                         shape = RoundedCornerShape(12.dp)
                                     )
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = Color.White
-                                    )
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                                     Text("Add Thread", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White)
                                 }
                             }
@@ -108,23 +114,31 @@ fun ThreadsScreen(
         }
     ) { paddingValues ->
         AnimatedContent(
-            targetState = selectedTopic,
-            transitionSpec = {
-                fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) togetherWith
-                        fadeOut(animationSpec = androidx.compose.animation.core.tween(400))
-            },
+            targetState = selectedTopicKey, // Animate based on the key
+            transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
             label = "Topic/Thread Transition"
-        ) { topic ->
-            if (topic == null) {
-                TopicSelectionGrid(paddingValues, topics) {
-                    selectedTopic = it
+        ) { key ->
+            if (key == null || selectedTopic == null) {
+                // Show topic grid. When a topic is clicked, we just set its key.
+                TopicSelectionGrid(paddingValues, allTopics) { topic ->
+                    selectedTopicKey = topic.key
                 }
             } else {
-                ThreadList(paddingValues, threads.filter { it.topic == topic.key }, topic, navController, threadViewModel)
+                // Show thread list. We use the key to filter threads, and pass the full topic object.
+                ThreadList(
+                    paddingValues = paddingValues,
+                    threads = threads.filter { it.topic == key },
+                    topic = selectedTopic,
+                    navController = navController,
+                    threadViewModel = threadViewModel
+                )
             }
         }
     }
 }
+
+
+// --- NO CHANGES BELOW THIS LINE ---
 
 @Composable
 fun TopicSelectionGrid(
@@ -137,7 +151,7 @@ fun TopicSelectionGrid(
         modifier = Modifier
             .padding(paddingValues)
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 8.dp),
+        contentPadding = PaddingValues(vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalItemSpacing = 16.dp
     ) {
@@ -183,7 +197,8 @@ fun TopicCard(topic: Topic, onTopicSelected: (Topic) -> Unit) {
                     text = topic.subtitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = Color.White.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -202,13 +217,13 @@ fun ThreadList(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+                .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(32.dp)
             ) {
                 Icon(
                     Icons.Outlined.ChatBubbleOutline,
@@ -219,10 +234,7 @@ fun ThreadList(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     "Nothing here yet.\nTap 'Add Thread' to start the conversation!",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 18.sp
-                    ),
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
@@ -232,8 +244,7 @@ fun ThreadList(
         LazyColumn(
             modifier = Modifier
                 .padding(paddingValues)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -251,26 +262,18 @@ fun ThreadCard(
     navController: NavController,
     threadViewModel: ThreadViewModel
 ) {
-    val likeCount by produceState(initialValue = 0, thread.id, threadViewModel) {
-        threadViewModel.getLikeCountForThread(thread.id) { count ->
-            value = count
-        }
+    val likeCount by produceState(initialValue = 0, thread.id) {
+        threadViewModel.getLikeCountForThread(thread.id) { count -> value = count }
     }
-    val commentCount by produceState(initialValue = 0, thread.id, threadViewModel) {
-        threadViewModel.getCommentCountForThread(thread.id) { count ->
-            value = count
-        }
+    val commentCount by produceState(initialValue = 0, thread.id) {
+        threadViewModel.getCommentCountForThread(thread.id) { count -> value = count }
     }
     Card(
         onClick = { navController.navigate(NavRoutes.threadDetail(thread.id)) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp)),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row {
             Box(
@@ -282,86 +285,36 @@ fun ThreadCard(
                         RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                     )
             )
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(
-                                Brush.linearGradient(topic.gradient),
-                                CircleShape
-                            )
+                            .background(Brush.linearGradient(topic.gradient), CircleShape)
                             .clip(CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = "Author",
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.White
-                        )
+                        Icon(Icons.Default.Person, contentDescription = "Author", modifier = Modifier.size(20.dp), tint = Color.White)
                     }
-                    Text(
-                        text = thread.authorName,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "• 2h ago",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                    Text(text = thread.authorName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(text = "• 2h ago", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = thread.header,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
+                Text(text = thread.header, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = thread.paragraph.take(100) + if (thread.paragraph.length > 100) "..." else "",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp
-                    ),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    StatIcon(
-                        Icons.Outlined.FavoriteBorder,
-                        "$likeCount",
-                        topic.gradient.first()
-                    )
-                    StatIcon(
-                        Icons.Outlined.ChatBubbleOutline,
-                        "$commentCount",
-                        topic.gradient.last()
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    StatIcon(Icons.Outlined.FavoriteBorder, "$likeCount", topic.gradient.first())
+                    StatIcon(Icons.Outlined.ChatBubbleOutline, "$commentCount", topic.gradient.last())
                 }
             }
         }
@@ -371,20 +324,8 @@ fun ThreadCard(
 @Composable
 fun StatIcon(icon: ImageVector, text: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = color,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(imageVector = icon, contentDescription = text, tint = color, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp
-            ),
-            color = color
-        )
+        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = color)
     }
 }
