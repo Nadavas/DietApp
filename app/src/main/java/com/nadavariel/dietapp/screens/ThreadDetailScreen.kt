@@ -1,8 +1,8 @@
 package com.nadavariel.dietapp.screens
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,11 +19,11 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -34,11 +34,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
 import com.nadavariel.dietapp.data.Comment
+import com.nadavariel.dietapp.data.communityTopics // Import communityTopics
+import com.nadavariel.dietapp.model.Thread // Import your Thread model
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +59,12 @@ fun ThreadDetailScreen(
     var showLikesDialog by remember { mutableStateOf(false) }
     var likedUsers by remember { mutableStateOf<List<String>>(emptyList()) }
 
+    // Find the topic based on the thread's topic key to get its gradient and icon
+    val topic = remember(selectedThread) {
+        communityTopics.find { it.key == selectedThread?.topic }
+    }
+    val gradient = topic?.gradient ?: listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+
     LaunchedEffect(threadId) {
         threadViewModel.fetchThreadById(threadId)
         threadViewModel.listenForLikes(threadId)
@@ -70,172 +77,74 @@ fun ThreadDetailScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), // Softer background
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = selectedThread?.header?.take(30)?.plus(
-                            if ((selectedThread?.header?.length ?: 0) > 30) "..." else ""
-                        ) ?: "Thread",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    if (topic != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(topic.icon, contentDescription = null, tint = gradient.first(), modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = topic.displayName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
-                    IconButton(
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier
-                            .shadow(4.dp, CircleShape)
-                            .background(MaterialTheme.colorScheme.surface, CircleShape)
-                            .size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = Color.Transparent, // Make TopAppBar transparent
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                shadowElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.surface,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                )
-                            )
+            CommentInputField(
+                value = newCommentText,
+                onValueChange = { newCommentText = it },
+                onSendClick = {
+                    if (newCommentText.isNotBlank() && selectedThread != null) {
+                        val authorNameToUse = currentUser?.displayName?.takeIf { it.isNotBlank() }
+                            ?: currentUser?.email?.substringBefore("@")
+                            ?: "Anonymous"
+                        threadViewModel.addComment(
+                            threadId = selectedThread!!.id,
+                            commentText = newCommentText,
+                            authorName = authorNameToUse
                         )
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = newCommentText,
-                        onValueChange = { newCommentText = it },
-                        placeholder = {
-                            Text(
-                                "Add a comment...",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp)),
-                        maxLines = 3,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            cursorColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-
-                    val isEnabled = newCommentText.isNotBlank() && selectedThread != null
-                    val sendButtonColor by animateColorAsState(
-                        targetValue = if (isEnabled)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant,
-                        animationSpec = tween(300),
-                        label = "send_button_color"
-                    )
-
-                    FloatingActionButton(
-                        onClick = {
-                            if (isEnabled) {
-                                val authorNameToUse = currentUser?.displayName?.takeIf { it.isNotBlank() }
-                                    ?: currentUser?.email?.substringBefore("@")
-                                    ?: "Anonymous"
-                                threadViewModel.addComment(
-                                    threadId = selectedThread!!.id,
-                                    commentText = newCommentText,
-                                    authorName = authorNameToUse
-                                )
-                                newCommentText = ""
-                            }
-                        },
-                        containerColor = sendButtonColor,
-                        contentColor = if (isEnabled)
-                            MaterialTheme.colorScheme.onPrimary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 4.dp,
-                            pressedElevation = 6.dp
-                        )
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send comment",
-                            modifier = Modifier.size(20.dp)
-                        )
+                        newCommentText = ""
                     }
-                }
-            }
+                },
+                gradient = gradient
+            )
         }
     ) { paddingValues ->
         if (selectedThread == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(36.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        "Loading thread...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            // Loading state
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background),
+                    .padding(paddingValues),
                 contentPadding = PaddingValues(bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Main thread content
                 item {
                     ThreadContentView(
                         thread = selectedThread!!,
                         likeCount = likeCount,
                         hasUserLiked = hasUserLiked,
+                        gradient = gradient,
                         onLikeClicked = {
                             if (currentUser != null) {
                                 val authorName = currentUser.displayName?.takeIf { it.isNotBlank() }
@@ -253,284 +162,268 @@ fun ThreadDetailScreen(
                     )
                 }
 
+                // Comments section
                 item {
-                    CommentsHeaderSection(commentsCount = comments.size)
+                    CommentsHeaderSection(commentsCount = comments.size, color = gradient.first())
                 }
 
                 if (comments.isEmpty()) {
-                    item {
-                        EmptyCommentsState()
-                    }
+                    item { EmptyCommentsState() }
                 } else {
                     items(comments, key = { it.id }) { comment ->
-                        key(comment.id) {
-                            CommentItemView(comment = comment, enterTransition = fadeIn() + scaleIn())
-                        }
+                        CommentItemView(comment = comment, gradient = gradient)
                     }
                 }
             }
         }
     }
 
+    // Dialog to show users who liked the thread
     if (showLikesDialog) {
-        AlertDialog(
-            onDismissRequest = { showLikesDialog = false },
-            confirmButton = {
-                TextButton(
-                    onClick = { showLikesDialog = false },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Close", fontWeight = FontWeight.Medium)
-                }
-            },
-            title = {
-                Text(
-                    "Liked by",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                if (likedUsers.isEmpty()) {
-                    Text(
-                        "No likes yet.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                } else {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        likedUsers.forEach { name ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
-                                        Text(
-                                            text = name.firstOrNull()?.uppercase() ?: "?",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+        LikesDialog(
+            likedUsers = likedUsers,
+            onDismiss = { showLikesDialog = false },
+            gradient = gradient
         )
     }
 }
 
 @Composable
 fun ThreadContentView(
-    thread: com.nadavariel.dietapp.model.Thread,
+    thread: Thread,
     likeCount: Int,
     hasUserLiked: Boolean,
+    gradient: List<Color>,
     onLikeClicked: () -> Unit,
     onLikesCountClicked: () -> Unit
 ) {
-    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy 'at' hh:mma", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                )
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Author Info
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Brush.linearGradient(gradient), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = thread.header,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 28.sp
+                    text = thread.authorName.firstOrNull()?.uppercase() ?: "?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
                 )
+            }
+            Column {
+                Text(
+                    text = thread.authorName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = dateFormatter.format(Date(thread.timestamp)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Text(
-                                text = thread.authorName.firstOrNull()?.uppercase() ?: "?",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
+        // Thread Header
+        Text(
+            text = thread.header,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
 
-                    Text(
-                        text = thread.authorName,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+        // Thread Content
+        Text(
+            text = thread.paragraph,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 24.sp
+        )
 
-                    Text(
-                        text = "•",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Text(
-                        text = dateFormatter.format(Date(thread.timestamp)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+        // Likes section
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Animated Like Button
+            val likeColor by animateColorAsState(
+                targetValue = if (hasUserLiked) gradient.first() else MaterialTheme.colorScheme.onSurfaceVariant,
+                animationSpec = tween(300)
+            )
+            IconButton(onClick = onLikeClicked) {
+                AnimatedContent(
+                    targetState = hasUserLiked,
+                    transitionSpec = { scaleIn(spring(0.8f)) togetherWith scaleOut(animationSpec = tween(200)) },
+                    label = "like_icon"
+                ) { liked ->
+                    Icon(
+                        imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Like",
+                        tint = likeColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
-
-            Text(
-                text = thread.paragraph,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 10,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(
+            // Like count text
+            AnimatedContent(
+                targetState = likeCount,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "like_count"
+            ) { count ->
+                Text(
+                    text = "$count",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable(
+                        enabled = count > 0,
+                        indication = null,
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { if (likeCount > 0) onLikesCountClicked() }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val likeButtonColor by animateColorAsState(
-                        targetValue = if (hasUserLiked)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        animationSpec = tween(300),
-                        label = "like_button_color"
+                        onClick = onLikesCountClicked
                     )
-
-                    IconButton(
-                        onClick = onLikeClicked,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        AnimatedContent(
-                            targetState = hasUserLiked,
-                            transitionSpec = {
-                                (fadeIn() + scaleIn(initialScale = 1.2f)).togetherWith(
-                                    fadeOut() + scaleOut(targetScale = 0.8f)
-                                )
-                            },
-                            label = "like_icon_animation"
-                        ) { liked ->
-                            Icon(
-                                if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = if (liked) "Unlike" else "Like",
-                                tint = likeButtonColor,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    if (likeCount > 0) {
-                        Text(
-                            text = if (likeCount == 1) "$likeCount like" else "$likeCount likes",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                )
             }
         }
     }
 }
 
 @Composable
-fun CommentsHeaderSection(commentsCount: Int) {
+fun CommentInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSendClick: () -> Unit,
+    gradient: List<Color>
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Add a thoughtful comment...") },
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
+                maxLines = 4
+            )
+
+            val isEnabled = value.isNotBlank()
+            IconButton(
+                onClick = onSendClick,
+                enabled = isEnabled,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.linearGradient(if (isEnabled) gradient else listOf(Color.Gray, Color.Gray)),
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CommentsHeaderSection(commentsCount: Int, color: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape)
+        Icon(
+            Icons.Outlined.ChatBubbleOutline,
+            contentDescription = null,
+            tint = color
         )
-        Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = if (commentsCount == 0) "Comments" else "Comments ($commentsCount)",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            ),
+            text = if (commentsCount == 0) "Comments" else "$commentsCount Comments",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+fun CommentItemView(comment: Comment, gradient: List<Color>) {
+    val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Author Avatar
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Brush.linearGradient(gradient), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = comment.authorName.firstOrNull()?.uppercase() ?: "?",
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+
+        // Comment Content
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = comment.authorName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = dateFormatter.format(comment.createdAt.toDate()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = comment.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -539,116 +432,67 @@ fun EmptyCommentsState() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 48.dp, start = 16.dp, end = 16.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+            .padding(vertical = 48.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Icon(
                 Icons.Outlined.ChatBubbleOutline,
-                contentDescription = "No comments",
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
             Text(
-                "No comments yet.\nStart the conversation! 💬",
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                "Be the first to comment",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
     }
 }
 
 @Composable
-fun CommentItemView(comment: Comment, enterTransition: EnterTransition = fadeIn() + scaleIn()) {
-    val dateFormatter = remember { SimpleDateFormat("MMM dd, hh:mma", Locale.getDefault()) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                ),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                modifier = Modifier.size(36.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = comment.authorName.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+fun LikesDialog(
+    likedUsers: List<String>,
+    onDismiss: () -> Unit,
+    gradient: List<Color>
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close", color = gradient.first()) }
+        },
+        title = { Text("Liked by", fontWeight = FontWeight.Bold) },
+        text = {
+            if (likedUsers.isEmpty()) {
+                Text("No one has liked this yet.")
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(likedUsers) { name ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Brush.linearGradient(gradient), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = name.firstOrNull()?.uppercase() ?: "?",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(name, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
                 }
             }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = comment.authorName,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 15.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = dateFormatter.format(comment.createdAt.toDate()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Text(
-                    text = comment.text,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 5,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
 }
+

@@ -6,6 +6,8 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -24,14 +26,15 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,6 +48,7 @@ import com.nadavariel.dietapp.data.Topic
 import com.nadavariel.dietapp.data.communityTopics
 import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -54,9 +58,6 @@ fun ThreadsScreen(
 ) {
     val allTopics = communityTopics
     val threads by threadViewModel.threads.collectAsState()
-    // --- NEW: Collect the hottest threads from the ViewModel ---
-    // Note: You will need to update your ThreadViewModel to expose this state flow.
-    // It should contain a list of the top 3 threads sorted by likes + comments.
     val hottestThreads by threadViewModel.hottestThreads.collectAsState()
 
     var selectedTopicKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -85,11 +86,13 @@ fun ThreadsScreen(
                             fontSize = 24.sp,
                             modifier = Modifier.weight(1f)
                         )
+                        // ---FIX 2: Adjusted padding to move button left---
                         Button(
                             onClick = { navController.navigate("create_thread") },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                             contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.padding(end = 8.dp) // Moves button away from the edge
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
@@ -130,19 +133,17 @@ fun ThreadsScreen(
             label = "Topic/Thread Transition"
         ) { key ->
             if (key == null || selectedTopic == null) {
-                // --- MODIFIED: Show the new home screen with hottest threads and topics ---
                 CommunityHomeScreen(
                     paddingValues = paddingValues,
                     hottestThreads = hottestThreads,
                     allTopics = allTopics,
                     navController = navController,
-                    threadViewModel = threadViewModel, // <<< ADD THIS LINE
+                    threadViewModel = threadViewModel,
                     onTopicSelected = { topic ->
                         selectedTopicKey = topic.key
                     }
                 )
             } else {
-                // This part remains unchanged
                 ThreadList(
                     paddingValues = paddingValues,
                     threads = threads.filter { it.topic == key },
@@ -155,18 +156,14 @@ fun ThreadsScreen(
     }
 }
 
-// --- NEW COMPOSABLES START ---
-
-/**
- * The main view when no topic is selected, displaying hottest threads and topic grid.
- */
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun CommunityHomeScreen(
     paddingValues: PaddingValues,
     hottestThreads: List<Thread>,
     allTopics: List<Topic>,
     navController: NavController,
-    threadViewModel: ThreadViewModel, // <<< ADD THIS PARAMETER
+    threadViewModel: ThreadViewModel,
     onTopicSelected: (Topic) -> Unit
 ) {
     LazyColumn(
@@ -174,34 +171,54 @@ fun CommunityHomeScreen(
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // --- Hottest Threads Section ---
         if (hottestThreads.isNotEmpty()) {
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text(
-                        "🔥 Hottest Threads",
+                        "🔥 Hottest Thread", // Changed title to singular
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        hottestThreads.forEach { thread ->
-                            val topic = allTopics.find { it.key == thread.topic }
-                            if (topic != null) {
-                                HottestThreadCard(
-                                    thread = thread,
-                                    topic = topic,
-                                    navController = navController,
-                                    threadViewModel = threadViewModel
-                                )
+
+                    // --- Animating single card that cycles every 5 seconds ---
+                    var currentIndex by remember { mutableStateOf(0) }
+
+                    // Effect to change the thread every 5 seconds
+                    LaunchedEffect(key1 = hottestThreads.size) {
+                        while (true) {
+                            delay(5000)
+                            if (hottestThreads.isNotEmpty()) {
+                                currentIndex = (currentIndex + 1) % hottestThreads.size
                             }
+                        }
+                    }
+
+                    // AnimatedContent to provide smooth transitions
+                    AnimatedContent(
+                        targetState = currentIndex,
+                        transitionSpec = {
+                            // Slide in from bottom, slide out to top
+                            slideInVertically(animationSpec = tween(600)) { height -> height } + fadeIn(animationSpec = tween(600)) togetherWith
+                                    slideOutVertically(animationSpec = tween(600)) { height -> -height } + fadeOut(animationSpec = tween(600))
+                        },
+                        label = "HottestThreadAnimation"
+                    ) { index ->
+                        val thread = hottestThreads[index]
+                        val topic = allTopics.find { it.key == thread.topic }
+                        if (topic != null) {
+                            HottestThreadCard(
+                                thread = thread,
+                                topic = topic,
+                                navController = navController,
+                                threadViewModel = threadViewModel
+                            )
                         }
                     }
                 }
             }
         }
 
-        // --- Topics Section ---
         item {
             Text(
                 "Or Explore by Topic",
@@ -211,13 +228,13 @@ fun CommunityHomeScreen(
             )
         }
 
-        // Re-implementation of the 2-column topic grid within the LazyColumn
         val topicRows = allTopics.chunked(2)
         items(topicRows) { rowItems ->
             Row(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 rowItems.forEach { topic ->
@@ -225,8 +242,6 @@ fun CommunityHomeScreen(
                         TopicCard(topic, onTopicSelected)
                     }
                 }
-                // Add a spacer to the end of the row if there's only one item,
-                // to prevent it from stretching to full width.
                 if (rowItems.size < 2) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -235,18 +250,13 @@ fun CommunityHomeScreen(
     }
 }
 
-/**
- * A compact card for displaying a single "hottest thread".
- * Clicking it navigates to the thread's detail screen.
- */
 @Composable
 fun HottestThreadCard(
     thread: Thread,
     topic: Topic,
     navController: NavController,
-    threadViewModel: ThreadViewModel // <<< ADD THIS PARAMETER
+    threadViewModel: ThreadViewModel
 ) {
-    // --- NEW: Fetch like and comment counts ---
     val likeCount by produceState(initialValue = 0, thread.id) {
         threadViewModel.getLikeCountForThread(thread.id) { count -> value = count }
     }
@@ -254,81 +264,74 @@ fun HottestThreadCard(
         threadViewModel.getCommentCountForThread(thread.id) { count -> value = count }
     }
 
-    Card(
+    Surface(
         onClick = { navController.navigate(NavRoutes.threadDetail(thread.id)) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        // --- FIX: Add a fixed height to prevent layout jiggle ---
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp),
+        shape = RoundedCornerShape(24.dp),
+        shadowElevation = 8.dp
     ) {
-        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-            // Top part with text
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 16.dp)
+        Box(
+            modifier = Modifier
+                .background(Brush.verticalGradient(topic.gradient))
+                .padding(20.dp)
+        ) {
+            Column(
+                // This ensures the content is spaced out across the fixed height
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Topic color indicator bar is now just a small circle
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(topic.gradient.first(), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                // Thread title and topic
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
+                // Top section with Topic Icon and Name
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = topic.icon,
+                        contentDescription = topic.displayName,
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = topic.displayName.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = topic.gradient.first(),
-                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = thread.header,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                }
+
+                // Middle section with Thread Header
+                Text(
+                    text = thread.header,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Bottom section with stats
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatIcon(
+                        icon = Icons.Outlined.FavoriteBorder,
+                        text = "$likeCount",
+                        color = Color.White
+                    )
+                    StatIcon(
+                        icon = Icons.Outlined.ChatBubbleOutline,
+                        text = "$commentCount",
+                        color = Color.White
                     )
                 }
-                // Navigation arrow
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = "View thread",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // --- NEW: Bottom part with stats ---
-            Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), modifier = Modifier.padding(horizontal = 16.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                StatIcon(
-                    icon = Icons.Outlined.FavoriteBorder,
-                    text = "$likeCount",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                StatIcon(
-                    icon = Icons.Outlined.ChatBubbleOutline,
-                    text = "$commentCount",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
 }
 
-// --- NEW COMPOSABLES END ---
-
-
-// --- NO CHANGES BELOW THIS LINE ---
 
 @Composable
 fun TopicSelectionGrid(
@@ -354,7 +357,9 @@ fun TopicSelectionGrid(
 @Composable
 fun TopicCard(topic: Topic, onTopicSelected: (Topic) -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         shape = RoundedCornerShape(24.dp),
         shadowElevation = 8.dp,
         onClick = { onTopicSelected(topic) }
