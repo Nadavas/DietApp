@@ -532,11 +532,29 @@ class FoodLogViewModel : ViewModel() {
 
     // --- Gemini API Methods ---
 
-    fun analyzeImageWithGemini(foodName: String) {
+    /**
+     * Calls the Firebase function to analyze food, using text name or image data.
+     * @param foodName The food description (used for text input, or a fallback).
+     * @param imageB64 Optional Base64 string of the image for multimodal analysis.
+     */
+    fun analyzeImageWithGemini(foodName: String, imageB64: String? = null) { // <-- PARAMETER ADDED
         _geminiResult.value = GeminiResult.Loading
         viewModelScope.launch {
             try {
-                val data = hashMapOf("foodName" to foodName)
+                // Construct data payload, only including imageB64 if it's not null
+                val data = hashMapOf<String, Any>(
+                    "foodName" to foodName
+                )
+                if (imageB64 != null) {
+                    data["imageB64"] = imageB64
+                }
+
+                // Validate input before API call
+                if (foodName.isBlank() && imageB64 == null) {
+                    _geminiResult.value = GeminiResult.Error("Please enter a food name or select an image.")
+                    return@launch
+                }
+
                 val result = functions
                     .getHttpsCallable("analyzeFoodWithGemini")
                     .call(data)

@@ -9,9 +9,10 @@ const geminiApiKeySecret = defineSecret("GEMINI_API_KEY");
  * Converts a Base64 string to a GoogleGenerativeAI.Part object.
  * @param {string} base64String The image data as a Base64 string.
  * @param {string} mimeType The MIME type of the image (e.g., 'image/jpeg').
- * @returns {{inlineData: {data: string, mimeType: string}}} The Gemini Part object.
+ * @returns {object} The correctly formatted Gemini Part object for the 'contents' array.
  */
 function imageToGenerativePart(base64String, mimeType) {
+  // CRITICAL FIX 1: The key for image data is 'inlineData' and its value is the nested object
   return {
     inlineData: {
       data: base64String,
@@ -40,6 +41,9 @@ exports.analyzeFoodWithGemini = onCall(
   {
     region: "me-west1",
     secrets: [geminiApiKeySecret],
+    // Increase memory/timeout for multimodal requests
+    // memory: "512MiB",
+    // timeoutSeconds: 60,
   },
   async (data) => {
     const MAX_RETRIES = 3;
@@ -59,33 +63,39 @@ exports.analyzeFoodWithGemini = onCall(
         const genAI = new GoogleGenerativeAI(geminiApiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        let contentParts = [];
-        let modelCall; // Variable to hold the final model call (string or object)
-
         // --- STEP 1: Image Analysis (if image is present) ---
         if (imageB64) {
           const imagePart = imageToGenerativePart(imageB64, "image/jpeg");
-          contentParts.push(imagePart);
 
           const descriptionPrompt = `
             Describe the main food item(s) on the plate, including estimated quantities.
             Keep the description concise (e.g., "1 bowl of rice with 1 chicken breast", "2 slices of pizza").
             DO NOT provide nutritional information or JSON.
           `;
-          contentParts.push(descriptionPrompt);
 
-          const descriptionResult = await model.generateContent({ contents: contentParts });
+          // CRITICAL FIX 2: Text parts must be wrapped correctly for the SDK/API version.
+          // By default, the contents array is an array of objects, each containing a 'text' or 'inlineData' property.
+          const multimodalContents = [
+            {
+              role: "user",
+              parts: [
+                imagePart,
+                { text: descriptionPrompt },
+              ],
+            },
+          ];
+
+          // Note: In some older SDK versions or direct API calls, the key 'text' might be disallowed
+          // and the API expects a simple string or a 'parts' array inside the content object.
+          // We will use the standard object format { text: '...' }. If this fails, we will try the simple string.
+
+          const descriptionResult = await model.generateContent({ contents: multimodalContents });
           const textDescription = descriptionResult.response.text().trim();
 
           console.log("Image description from Gemini:", textDescription);
 
           // Use the generated description as the foodName for the next step
           foodName = textDescription;
-
-          // Now, prepare for the nutritional analysis API call
-          // By this point, the image has been consumed and the model context is reset.
-          // We can use the simple text-only prompt for the final JSON generation.
-          contentParts = [];
         }
 
         // --- STEP 2: Nutritional Analysis (using foodName/description) ---
@@ -158,7 +168,7 @@ exports.analyzeFoodWithGemini = onCall(
           ]
         `;
 
-        // The key change: The final prompt is a single string and should be passed directly to generateContent
+        // The final prompt is a single string and is passed directly to generateContent
         const result = await model.generateContent(nutritionalAnalysisPrompt);
         const response = result.response;
         const text = response.text();
@@ -189,9 +199,11 @@ exports.analyzeFoodWithGemini = onCall(
           await new Promise(resolve => setTimeout(resolve, delay));
           retries++;
         } else {
+          // Check if the error is a FirebaseFunctionsException (e.g., from an HttpsError throw)
           if (error.code) {
             throw error;
           } else {
+            // Re-throw a generic internal error for other unhandled exceptions
             throw new HttpsError("internal", "An unknown error occurred during the Gemini analysis. Please try again.");
           }
         }

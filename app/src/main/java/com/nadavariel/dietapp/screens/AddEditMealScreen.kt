@@ -1,7 +1,14 @@
 package com.nadavariel.dietapp.screens
 
-import android.net.Uri // NEW IMPORT
+import android.content.Context
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.OpenableColumns // ADDED for getting file name from Uri
+import android.util.Base64
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,10 +18,15 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
@@ -25,8 +37,17 @@ import com.nadavariel.dietapp.ui.meals.ServingAndCaloriesSection
 import com.nadavariel.dietapp.ui.meals.MacronutrientsSection
 import com.nadavariel.dietapp.ui.meals.MicronutrientsSection
 import com.nadavariel.dietapp.ui.meals.SubmitMealButton
-import com.nadavariel.dietapp.ui.meals.ImageInputSection // NEW IMPORT
+import com.nadavariel.dietapp.ui.meals.ImageInputSection
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.InputStream
+import java.text.SimpleDateFormat
 import java.util.*
+
+// AUTHORITY must match the string in AndroidManifest.xml provider
+private const val FILE_PROVIDER_AUTHORITY = "com.nadavariel.dietapp.provider"
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,9 +57,14 @@ fun AddEditMealScreen(
     navController: NavController,
     mealToEdit: Meal? = null,
 ) {
+    // --- CONTEXT & SCOPE ---
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     // --- STATE AND LOGIC ---
     val isEditMode = mealToEdit != null
 
+    // All existing meal states...
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
     var proteinText by remember { mutableStateOf("") }
@@ -57,10 +83,101 @@ fun AddEditMealScreen(
 
     // --- NEW IMAGE STATE ---
     var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageFile by remember { mutableStateOf<File?>(null) }
+    var imageFileName by remember { mutableStateOf<String?>(null) } // NEW: To display the name
     var imageB64 by remember { mutableStateOf<String?>(null) }
+    var isImageProcessing by remember { mutableStateOf(false) }
     // -------------------------
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
+
+    // --- IMAGE CONVERSION LOGIC ---
+
+    /** Reads the content from a Uri and converts it to a Base64 string on a background thread. */
+    fun uriToBase64(uri: Uri): String? {
+        // Retrieve file name for display
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1) {
+                    imageFileName = cursor.getString(nameIndex)
+                }
+            }
+        }
+
+        val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+        return try {
+            val bytes = inputStream?.readBytes()
+            inputStream?.close()
+            if (bytes != null) {
+                // Use NO_WRAP to prevent issues with multiline Base64 string in JSON payload
+                Base64.encodeToString(bytes, Base64.NO_WRAP)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("AddEditMealScreen", "Error converting URI to Base64: ${e.message}")
+            null
+        }
+    }
+
+    LaunchedEffect(imageUri) {
+        if (imageUri != null) {
+            isImageProcessing = true
+            imageB64 = withContext(Dispatchers.IO) {
+                uriToBase64(imageUri!!)
+            }
+            isImageProcessing = false
+        } else {
+            imageB64 = null
+            imageFileName = null // Clear file name
+        }
+    }
+
+
+    // --- ACTIVITY LAUNCHERS ---
+
+    // Launcher for taking a picture
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            // The image is saved to the file, use its URI
+            imageUri = imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
+        } else {
+            // If capture failed or was cancelled, clear the temporary file/uri
+            imageFile?.delete()
+            imageFile = null
+            imageUri = null
+            imageFileName = null
+        }
+    }
+
+    // Launcher for picking an image from the gallery
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        // Clear old temporary camera file if any
+        imageFile?.delete()
+        imageFile = null
+        imageUri = uri
+    }
+
+    // --- HELPER FUNCTION ---
+
+    /** Creates a temporary file in the app's *private external pictures directory* for the camera output. */
+    fun createImageFile(context: Context): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            storageDir
+        ).apply {
+            imageFile = this // Store the file reference
+        }
+    }
+
 
     // --- INITIALIZATION / EDIT MODE SETUP ---
     LaunchedEffect(mealToEdit) {
@@ -102,6 +219,8 @@ fun AddEditMealScreen(
 
             // Clear new image states
             imageUri = null
+            imageFile = null
+            imageFileName = null
             imageB64 = null
         }
     }
@@ -140,15 +259,26 @@ fun AddEditMealScreen(
         }
     }
 
-    // --- NEW IMAGE INPUT LOGIC (PLACEHOLDERS) ---
+    // --- IMAGE INPUT LOGIC ---
     val onTakePhoto: () -> Unit = {
-        // TODO: Implement camera logic to update imageUri and imageB64
-        println("Placeholder: Take Photo Clicked")
+        // Clear previous state
+        imageUri = null
+        imageB64 = null
+        imageFileName = null // Clear file name
+        val file = createImageFile(context)
+        val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
+        takePictureLauncher.launch(uri)
     }
 
     val onUploadPhoto: () -> Unit = {
-        // TODO: Implement image picker logic to update imageUri and imageB64
-        println("Placeholder: Upload Photo Clicked")
+        // Clear previous state
+        imageUri = null
+        imageB64 = null
+        imageFileName = null // Clear file name
+        // Delete any pending temp file from camera
+        imageFile?.delete()
+        imageFile = null
+        pickImageLauncher.launch("image/*")
     }
     // ---------------------------------------------
 
@@ -174,17 +304,67 @@ fun AddEditMealScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- MEAL DESCRIPTION ---
+            // --- MEAL DESCRIPTION & IMAGE DISPLAY ---
             item {
                 SectionCard(title = if (isEditMode) "Meal Name" else "Describe Your Meal") {
-                    OutlinedTextField(
-                        value = foodName,
-                        onValueChange = { foodName = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(if (!isEditMode) "e.g., 'A bowl of oatmeal with blueberries and a glass of orange juice'" else "Meal Name") },
-                        leadingIcon = { Icon(if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome, contentDescription = null) },
-                        minLines = if (!isEditMode) 3 else 1,
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        OutlinedTextField(
+                            value = foodName,
+                            onValueChange = { foodName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(if (!isEditMode) "e.g., 'A bowl of oatmeal with blueberries and a glass of orange juice'" else "Meal Name") },
+                            leadingIcon = { Icon(if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome, contentDescription = null) },
+                            minLines = if (!isEditMode) 3 else 1,
+                        )
+
+                        // Display the selected image URI if available (ADD MODE ONLY)
+                        if (!isEditMode && imageUri != null) {
+                            Spacer(Modifier.height(16.dp))
+                            // Use Coil to load the image from the Uri
+                            AsyncImage(
+                                model = imageUri,
+                                contentDescription = "Selected Meal Photo",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(Modifier.height(8.dp))
+
+                            // Display file name and processing status
+                            Text(
+                                text = "Selected: ${imageFileName ?: "Unknown File"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            if (isImageProcessing) {
+                                Spacer(Modifier.height(4.dp))
+                                LinearProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    text = "Processing image for AI analysis...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            } else if (imageB64 != null) {
+                                // SUCCESS state
+                                Text(
+                                    text = "Image ready for AI analysis.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                // FAILED state (imageUri != null, but isImageProcessing is false, and imageB64 is null)
+                                Text(
+                                    text = "🚨 Failed to load image data for AI. Please try another photo or enter a description.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -201,6 +381,7 @@ fun AddEditMealScreen(
 
             // --- MANUAL DETAILS (EDIT MODE ONLY) ---
             if (isEditMode) {
+                // ... (Macronutrient and Micronutrient sections)
                 item {
                     ServingAndCaloriesSection(
                         servingAmountText = servingAmountText, onServingAmountChange = { servingAmountText = it },
@@ -245,9 +426,10 @@ fun AddEditMealScreen(
                     foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
                 } else {
                     // Button is enabled if:
-                    // 1. Food name is entered OR an image is ready
-                    // 2. AND Gemini is not currently loading
-                    (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading
+                    // 1. (Food name is entered OR image B64 is ready)
+                    // 2. AND Gemini is not loading
+                    // 3. AND image processing is complete
+                    (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
                 }
 
                 SubmitMealButton(
@@ -256,34 +438,35 @@ fun AddEditMealScreen(
                     isButtonEnabled = isButtonEnabled
                 ) {
                     if (isEditMode) {
+                        // FIX: Changed parameter name from 'vitaminCText' to 'newVitaminC' (based on ViewModel analysis)
                         val calValue = caloriesText.toIntOrNull() ?: 0
                         val mealTimestamp = Timestamp(selectedDateTimeState.time)
                         if (mealToEdit != null) {
                             foodLogViewModel.updateMeal(
                                 mealToEdit.id,
-                                foodName,
-                                calValue,
-                                servingAmountText,
-                                servingUnitText,
-                                mealTimestamp,
-                                proteinText.toDoubleOrNull(),
-                                carbsText.toDoubleOrNull(),
-                                fatText.toDoubleOrNull(),
-                                fiberText.toDoubleOrNull(),
-                                sugarText.toDoubleOrNull(),
-                                sodiumText.toDoubleOrNull(),
-                                potassiumText.toDoubleOrNull(),
-                                calciumText.toDoubleOrNull(),
-                                ironText.toDoubleOrNull(),
-                                vitaminCText.toDoubleOrNull()
+                                newFoodName = foodName,
+                                newCalories = calValue,
+                                newServingAmount = servingAmountText,
+                                newServingUnit = servingUnitText,
+                                newTimestamp = mealTimestamp,
+                                newProtein = proteinText.toDoubleOrNull(),
+                                newCarbohydrates = carbsText.toDoubleOrNull(),
+                                newFat = fatText.toDoubleOrNull(),
+                                newFiber = fiberText.toDoubleOrNull(),
+                                newSugar = sugarText.toDoubleOrNull(),
+                                newSodium = sodiumText.toDoubleOrNull(),
+                                newPotassium = potassiumText.toDoubleOrNull(),
+                                newCalcium = calciumText.toDoubleOrNull(),
+                                newIron = ironText.toDoubleOrNull(),
+                                newVitaminC = vitaminCText.toDoubleOrNull()
                             )
                         }
                         navController.popBackStack()
                     } else {
-                        // Pass both the text and the image Base64 string to the ViewModel
+                        // FIX: Now passes the actual Base64 string to the ViewModel
                         foodLogViewModel.analyzeImageWithGemini(
                             foodName = foodName,
-                            //imageB64 = imageB64
+                            imageB64 = imageB64
                         )
                     }
                 }
