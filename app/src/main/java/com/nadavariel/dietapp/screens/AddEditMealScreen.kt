@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.screens
 
+import android.net.Uri // NEW IMPORT
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,7 @@ import com.nadavariel.dietapp.ui.meals.ServingAndCaloriesSection
 import com.nadavariel.dietapp.ui.meals.MacronutrientsSection
 import com.nadavariel.dietapp.ui.meals.MicronutrientsSection
 import com.nadavariel.dietapp.ui.meals.SubmitMealButton
+import com.nadavariel.dietapp.ui.meals.ImageInputSection // NEW IMPORT
 import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -53,6 +55,11 @@ fun AddEditMealScreen(
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
+    // --- NEW IMAGE STATE ---
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageB64 by remember { mutableStateOf<String?>(null) }
+    // -------------------------
+
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
 
     // --- INITIALIZATION / EDIT MODE SETUP ---
@@ -76,7 +83,7 @@ fun AddEditMealScreen(
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
             }
         } else {
-            // Clear states for Add mode - FIXED to use direct assignment
+            // Clear states for Add mode
             foodName = ""
             caloriesText = ""
             proteinText = ""
@@ -92,10 +99,14 @@ fun AddEditMealScreen(
             servingAmountText = ""
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
+
+            // Clear new image states
+            imageUri = null
+            imageB64 = null
         }
     }
 
-    // --- GEMINI RESULT HANDLER ---
+    // --- GEMINI RESULT HANDLER (UNCHANGED) ---
     LaunchedEffect(geminiResult) {
         if (geminiResult is GeminiResult.Success) {
             val successResult = geminiResult as GeminiResult.Success
@@ -128,6 +139,19 @@ fun AddEditMealScreen(
             foodLogViewModel.resetGeminiResult()
         }
     }
+
+    // --- NEW IMAGE INPUT LOGIC (PLACEHOLDERS) ---
+    val onTakePhoto: () -> Unit = {
+        // TODO: Implement camera logic to update imageUri and imageB64
+        println("Placeholder: Take Photo Clicked")
+    }
+
+    val onUploadPhoto: () -> Unit = {
+        // TODO: Implement image picker logic to update imageUri and imageB64
+        println("Placeholder: Upload Photo Clicked")
+    }
+    // ---------------------------------------------
+
 
     // --- UI ---
     Scaffold(
@@ -163,6 +187,17 @@ fun AddEditMealScreen(
                     )
                 }
             }
+
+            // --- IMAGE INPUT (ADD MODE ONLY) ---
+            if (!isEditMode) {
+                item {
+                    ImageInputSection(
+                        onTakePhotoClick = onTakePhoto,
+                        onUploadPhotoClick = onUploadPhoto
+                    )
+                }
+            }
+            // -------------------------------------
 
             // --- MANUAL DETAILS (EDIT MODE ONLY) ---
             if (isEditMode) {
@@ -209,7 +244,10 @@ fun AddEditMealScreen(
                 val isButtonEnabled = if (isEditMode) {
                     foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
                 } else {
-                    foodName.isNotBlank() && geminiResult !is GeminiResult.Loading
+                    // Button is enabled if:
+                    // 1. Food name is entered OR an image is ready
+                    // 2. AND Gemini is not currently loading
+                    (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading
                 }
 
                 SubmitMealButton(
@@ -242,7 +280,11 @@ fun AddEditMealScreen(
                         }
                         navController.popBackStack()
                     } else {
-                        foodLogViewModel.analyzeImageWithGemini(foodName)
+                        // Pass both the text and the image Base64 string to the ViewModel
+                        foodLogViewModel.analyzeImageWithGemini(
+                            foodName = foodName,
+                            //imageB64 = imageB64
+                        )
                     }
                 }
             }
