@@ -1,43 +1,29 @@
-@file:Suppress("DEPRECATION")
-
 package com.nadavariel.dietapp.screens
 
-import android.R.style as AndroidRStyle
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.os.Build
-import android.widget.DatePicker
-import android.widget.TimePicker
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
-import java.text.SimpleDateFormat
+import com.nadavariel.dietapp.ui.meals.SectionCard
+import com.nadavariel.dietapp.ui.meals.DateTimePickerSection
+import com.nadavariel.dietapp.ui.meals.ServingAndCaloriesSection
+import com.nadavariel.dietapp.ui.meals.MacronutrientsSection
+import com.nadavariel.dietapp.ui.meals.MicronutrientsSection
+import com.nadavariel.dietapp.ui.meals.SubmitMealButton
 import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -49,10 +35,6 @@ fun AddEditMealScreen(
     mealToEdit: Meal? = null,
 ) {
     // --- STATE AND LOGIC ---
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-
-    val context = LocalContext.current
     val isEditMode = mealToEdit != null
 
     var foodName by remember { mutableStateOf("") }
@@ -60,8 +42,6 @@ fun AddEditMealScreen(
     var proteinText by remember { mutableStateOf("") }
     var carbsText by remember { mutableStateOf("") }
     var fatText by remember { mutableStateOf("") }
-
-    // 🌟 1. NEW STATE VARIABLES FOR NUTRIENTS
     var fiberText by remember { mutableStateOf("") }
     var sugarText by remember { mutableStateOf("") }
     var sodiumText by remember { mutableStateOf("") }
@@ -69,13 +49,13 @@ fun AddEditMealScreen(
     var calciumText by remember { mutableStateOf("") }
     var ironText by remember { mutableStateOf("") }
     var vitaminCText by remember { mutableStateOf("") }
-
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
 
+    // --- INITIALIZATION / EDIT MODE SETUP ---
     LaunchedEffect(mealToEdit) {
         if (isEditMode) {
             mealToEdit?.let {
@@ -86,8 +66,6 @@ fun AddEditMealScreen(
                 proteinText = it.protein?.toString() ?: ""
                 carbsText = it.carbohydrates?.toString() ?: ""
                 fatText = it.fat?.toString() ?: ""
-
-                // 🌟 2. INITIALIZE NEW STATES FOR EDIT MODE
                 fiberText = it.fiber?.toString() ?: ""
                 sugarText = it.sugar?.toString() ?: ""
                 sodiumText = it.sodium?.toString() ?: ""
@@ -95,20 +73,15 @@ fun AddEditMealScreen(
                 calciumText = it.calcium?.toString() ?: ""
                 ironText = it.iron?.toString() ?: ""
                 vitaminCText = it.vitaminC?.toString() ?: ""
-
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
             }
         } else {
-            // Reset fields for Add mode
+            // Clear states for Add mode - FIXED to use direct assignment
             foodName = ""
             caloriesText = ""
-            servingAmountText = ""
-            servingUnitText = ""
             proteinText = ""
             carbsText = ""
             fatText = ""
-
-            // 🌟 RESET NEW STATES FOR ADD MODE
             fiberText = ""
             sugarText = ""
             sodiumText = ""
@@ -116,52 +89,38 @@ fun AddEditMealScreen(
             calciumText = ""
             ironText = ""
             vitaminCText = ""
-
+            servingAmountText = ""
+            servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
         }
     }
 
+    // --- GEMINI RESULT HANDLER ---
     LaunchedEffect(geminiResult) {
         if (geminiResult is GeminiResult.Success) {
             val successResult = geminiResult as GeminiResult.Success
             val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
+            // Log each food item parsed by Gemini
             successResult.foodInfoList.forEach { foodInfo ->
-                val geminiFoodName = foodInfo.food_name
-                val geminiCalories = foodInfo.calories?.toIntOrNull()
-                val geminiServingAmount = foodInfo.serving_amount
-                val geminiServingUnit = foodInfo.serving_unit
-                val geminiProtein = foodInfo.protein?.toDoubleOrNull()
-                val geminiCarbs = foodInfo.carbohydrates?.toDoubleOrNull()
-                val geminiFat = foodInfo.fat?.toDoubleOrNull()
-
-                // 🌟 3. EXTRACT NEW NUTRIENT VALUES FROM GEMINI RESULT
-                val geminiFiber = foodInfo.fiber?.toDoubleOrNull()
-                val geminiSugar = foodInfo.sugar?.toDoubleOrNull()
-                val geminiSodium = foodInfo.sodium?.toDoubleOrNull()
-                val geminiPotassium = foodInfo.potassium?.toDoubleOrNull()
-                val geminiCalcium = foodInfo.calcium?.toDoubleOrNull()
-                val geminiIron = foodInfo.iron?.toDoubleOrNull()
-                val geminiVitaminC = foodInfo.vitaminC?.toDoubleOrNull()
-
-                if (geminiFoodName != null && geminiCalories != null) {
+                val cal = foodInfo.calories?.toIntOrNull()
+                if (foodInfo.food_name != null && cal != null) {
                     foodLogViewModel.logMeal(
-                        foodName = geminiFoodName,
-                        calories = geminiCalories,
-                        servingAmount = geminiServingAmount,
-                        servingUnit = geminiServingUnit,
+                        foodName = foodInfo.food_name,
+                        calories = cal,
+                        servingAmount = foodInfo.serving_amount,
+                        servingUnit = foodInfo.serving_unit,
                         mealTime = mealTimestamp,
-                        protein = geminiProtein,
-                        carbohydrates = geminiCarbs,
-                        fat = geminiFat,
-                        // 🌟 PASS NEW NUTRIENTS TO logMeal
-                        fiber = geminiFiber,
-                        sugar = geminiSugar,
-                        sodium = geminiSodium,
-                        potassium = geminiPotassium,
-                        calcium = geminiCalcium,
-                        iron = geminiIron,
-                        vitaminC = geminiVitaminC
+                        protein = foodInfo.protein?.toDoubleOrNull(),
+                        carbohydrates = foodInfo.carbohydrates?.toDoubleOrNull(),
+                        fat = foodInfo.fat?.toDoubleOrNull(),
+                        fiber = foodInfo.fiber?.toDoubleOrNull(),
+                        sugar = foodInfo.sugar?.toDoubleOrNull(),
+                        sodium = foodInfo.sodium?.toDoubleOrNull(),
+                        potassium = foodInfo.potassium?.toDoubleOrNull(),
+                        calcium = foodInfo.calcium?.toDoubleOrNull(),
+                        iron = foodInfo.iron?.toDoubleOrNull(),
+                        vitaminC = foodInfo.vitaminC?.toDoubleOrNull()
                     )
                 }
             }
@@ -208,195 +167,41 @@ fun AddEditMealScreen(
             // --- MANUAL DETAILS (EDIT MODE ONLY) ---
             if (isEditMode) {
                 item {
-                    SectionCard(title = "Serving & Calories") {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = servingAmountText,
-                                onValueChange = { servingAmountText = it },
-                                label = { Text("Amount") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = servingUnitText,
-                                onValueChange = { servingUnitText = it },
-                                label = { Text("Unit") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = caloriesText,
-                            onValueChange = { if (it.all(Char::isDigit)) caloriesText = it },
-                            label = { Text("Calories (kcal)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
+                    ServingAndCaloriesSection(
+                        servingAmountText = servingAmountText, onServingAmountChange = { servingAmountText = it },
+                        servingUnitText = servingUnitText, onServingUnitChange = { servingUnitText = it },
+                        caloriesText = caloriesText, onCaloriesChange = { caloriesText = it }
+                    )
                 }
 
                 item {
-                    SectionCard(title = "Macronutrients (g)") {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = proteinText,
-                                onValueChange = { proteinText = it },
-                                label = { Text("Protein") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = carbsText,
-                                onValueChange = { carbsText = it },
-                                label = { Text("Carbs") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = fatText,
-                                onValueChange = { fatText = it },
-                                label = { Text("Fat") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                        }
-                    }
+                    MacronutrientsSection(
+                        proteinText = proteinText, onProteinChange = { proteinText = it },
+                        carbsText = carbsText, onCarbsChange = { carbsText = it },
+                        fatText = fatText, onFatChange = { fatText = it }
+                    )
                 }
 
-                // 🌟 4. NEW UI FOR ADDED NUTRIENTS
                 item {
-                    SectionCard(title = "Micronutrients & Fiber") {
-                        // Row 1: Fiber (g), Sugar (g), Sodium (mg)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = fiberText,
-                                onValueChange = { fiberText = it },
-                                label = { Text("Fiber (g)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = sugarText,
-                                onValueChange = { sugarText = it },
-                                label = { Text("Sugar (g)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = sodiumText,
-                                onValueChange = { sodiumText = it },
-                                label = { Text("Sodium (mg)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        // Row 2: Potassium (mg), Calcium (mg)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = potassiumText,
-                                onValueChange = { potassiumText = it },
-                                label = { Text("Potassium (mg)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = calciumText,
-                                onValueChange = { calciumText = it },
-                                label = { Text("Calcium (mg)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        // Row 3: Iron (mg), Vitamin C (mg)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = ironText,
-                                onValueChange = { ironText = it },
-                                label = { Text("Iron (mg)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = vitaminCText,
-                                onValueChange = { vitaminCText = it },
-                                label = { Text("Vit C (mg)") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true
-                            )
-                        }
-                    }
+                    MicronutrientsSection(
+                        fiberText = fiberText, onFiberChange = { fiberText = it },
+                        sugarText = sugarText, onSugarChange = { sugarText = it },
+                        sodiumText = sodiumText, onSodiumChange = { sodiumText = it },
+                        potassiumText = potassiumText, onPotassiumChange = { potassiumText = it },
+                        calciumText = calciumText, onCalciumChange = { calciumText = it },
+                        ironText = ironText, onIronChange = { ironText = it },
+                        vitaminCText = vitaminCText, onVitaminCChange = { vitaminCText = it }
+                    )
                 }
             }
 
 
-            // --- DATE & TIME PICKER (UNCHANGED) ---
+            // --- DATE & TIME PICKER ---
             item {
-                SectionCard(title = "Date & Time") {
-                    DateTimePickerRow(
-                        icon = Icons.Default.CalendarMonth,
-                        label = "Date",
-                        value = dateFormat.format(selectedDateTimeState.time)
-                    ) {
-                        val datePickerDialog = DatePickerDialog(
-                            context,
-                            { _: DatePicker, year, month, day ->
-                                selectedDateTimeState = (selectedDateTimeState.clone() as Calendar).apply {
-                                    set(Calendar.YEAR, year)
-                                    set(Calendar.MONTH, month)
-                                    set(Calendar.DAY_OF_MONTH, day)
-                                }
-                            },
-                            selectedDateTimeState.get(Calendar.YEAR),
-                            selectedDateTimeState.get(Calendar.MONTH),
-                            selectedDateTimeState.get(Calendar.DAY_OF_MONTH)
-                        )
-                        datePickerDialog.datePicker.maxDate = System.currentTimeMillis()
-                        datePickerDialog.show()
-                    }
-
-                    Divider(Modifier.padding(vertical = 8.dp))
-
-                    DateTimePickerRow(
-                        icon = Icons.Default.Schedule,
-                        label = "Time",
-                        value = timeFormat.format(selectedDateTimeState.time)
-                    ) {
-                        TimePickerDialog(
-                            context,
-                            AndroidRStyle.Theme_Holo_Light_Dialog_NoActionBar,
-                            { _: TimePicker, hour, minute ->
-                                val newCalendar = (selectedDateTimeState.clone() as Calendar).apply {
-                                    set(Calendar.HOUR_OF_DAY, hour)
-                                    set(Calendar.MINUTE, minute)
-                                }
-                                // Ensure time is not in the future
-                                if (newCalendar.after(Calendar.getInstance())) {
-                                    selectedDateTimeState = Calendar.getInstance()
-                                } else {
-                                    selectedDateTimeState = newCalendar
-                                }
-                            },
-                            selectedDateTimeState.get(Calendar.HOUR_OF_DAY),
-                            selectedDateTimeState.get(Calendar.MINUTE),
-                            true
-                        ).show()
-                    }
-                }
+                DateTimePickerSection(
+                    selectedDateTimeState = selectedDateTimeState,
+                    onDateTimeUpdate = { selectedDateTimeState = it }
+                )
             }
 
             // --- SUBMIT BUTTON ---
@@ -407,123 +212,40 @@ fun AddEditMealScreen(
                     foodName.isNotBlank() && geminiResult !is GeminiResult.Loading
                 }
 
-                Button(
-                    onClick = {
-                        if (isEditMode) {
-                            val calValue = caloriesText.toIntOrNull() ?: 0
-                            val mealTimestamp = Timestamp(selectedDateTimeState.time)
-                            if (mealToEdit != null) {
-                                foodLogViewModel.updateMeal(
-                                    mealToEdit.id,
-                                    foodName,
-                                    calValue,
-                                    servingAmountText,
-                                    servingUnitText,
-                                    mealTimestamp,
-                                    proteinText.toDoubleOrNull(),
-                                    carbsText.toDoubleOrNull(),
-                                    fatText.toDoubleOrNull(),
-                                    // 🌟 5. PASS NEW NUTRIENTS TO updateMeal
-                                    fiberText.toDoubleOrNull(),
-                                    sugarText.toDoubleOrNull(),
-                                    sodiumText.toDoubleOrNull(),
-                                    potassiumText.toDoubleOrNull(),
-                                    calciumText.toDoubleOrNull(),
-                                    ironText.toDoubleOrNull(),
-                                    vitaminCText.toDoubleOrNull()
-                                )
-                            }
-                            navController.popBackStack()
-                        } else {
-                            foodLogViewModel.analyzeImageWithGemini(foodName)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    enabled = isButtonEnabled,
-                    shape = RoundedCornerShape(12.dp)
+                SubmitMealButton(
+                    isEditMode = isEditMode,
+                    geminiResult = geminiResult,
+                    isButtonEnabled = isButtonEnabled
                 ) {
-                    AnimatedContent(
-                        targetState = geminiResult is GeminiResult.Loading,
-                        label = "button_state_animation"
-                    ) { isLoading ->
-                        if (isLoading) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = LocalContentColor.current,
-                                    strokeWidth = 2.dp
-                                )
-                                Text("Analyzing...")
-                            }
-                        } else {
-                            Text(if (isEditMode) "Save Changes" else "Add Meal with AI", fontSize = 18.sp)
+                    if (isEditMode) {
+                        val calValue = caloriesText.toIntOrNull() ?: 0
+                        val mealTimestamp = Timestamp(selectedDateTimeState.time)
+                        if (mealToEdit != null) {
+                            foodLogViewModel.updateMeal(
+                                mealToEdit.id,
+                                foodName,
+                                calValue,
+                                servingAmountText,
+                                servingUnitText,
+                                mealTimestamp,
+                                proteinText.toDoubleOrNull(),
+                                carbsText.toDoubleOrNull(),
+                                fatText.toDoubleOrNull(),
+                                fiberText.toDoubleOrNull(),
+                                sugarText.toDoubleOrNull(),
+                                sodiumText.toDoubleOrNull(),
+                                potassiumText.toDoubleOrNull(),
+                                calciumText.toDoubleOrNull(),
+                                ironText.toDoubleOrNull(),
+                                vitaminCText.toDoubleOrNull()
+                            )
                         }
+                        navController.popBackStack()
+                    } else {
+                        foodLogViewModel.analyzeImageWithGemini(foodName)
                     }
                 }
             }
         }
-    }
-}
-
-// --------------------------------------------------------------------------------
-// |                       HELPER COMPOSABLES (UNCHANGED)                         |
-// --------------------------------------------------------------------------------
-
-@Composable
-private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-            content()
-        }
-    }
-}
-
-@Composable
-private fun DateTimePickerRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.End
-        )
     }
 }
