@@ -1,10 +1,12 @@
 package com.nadavariel.dietapp.screens
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
-import android.provider.OpenableColumns // ADDED for getting file name from Uri
+import android.provider.OpenableColumns
 import android.util.Base64
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -46,7 +49,6 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
-// AUTHORITY must match the string in AndroidManifest.xml provider
 private const val FILE_PROVIDER_AUTHORITY = "com.nadavariel.dietapp.provider"
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -57,14 +59,9 @@ fun AddEditMealScreen(
     navController: NavController,
     mealToEdit: Meal? = null,
 ) {
-    // --- CONTEXT & SCOPE ---
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    // --- STATE AND LOGIC ---
     val isEditMode = mealToEdit != null
 
-    // All existing meal states...
     var foodName by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
     var proteinText by remember { mutableStateOf("") }
@@ -81,21 +78,15 @@ fun AddEditMealScreen(
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
 
-    // --- NEW IMAGE STATE ---
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var imageFile by remember { mutableStateOf<File?>(null) }
-    var imageFileName by remember { mutableStateOf<String?>(null) } // NEW: To display the name
+    var imageFileName by remember { mutableStateOf<String?>(null) }
     var imageB64 by remember { mutableStateOf<String?>(null) }
     var isImageProcessing by remember { mutableStateOf(false) }
-    // -------------------------
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
 
-    // --- IMAGE CONVERSION LOGIC ---
-
-    /** Reads the content from a Uri and converts it to a Base64 string on a background thread. */
     fun uriToBase64(uri: Uri): String? {
-        // Retrieve file name for display
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
                 val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -110,7 +101,6 @@ fun AddEditMealScreen(
             val bytes = inputStream?.readBytes()
             inputStream?.close()
             if (bytes != null) {
-                // Use NO_WRAP to prevent issues with multiline Base64 string in JSON payload
                 Base64.encodeToString(bytes, Base64.NO_WRAP)
             } else {
                 null
@@ -130,42 +120,10 @@ fun AddEditMealScreen(
             isImageProcessing = false
         } else {
             imageB64 = null
-            imageFileName = null // Clear file name
-        }
-    }
-
-
-    // --- ACTIVITY LAUNCHERS ---
-
-    // Launcher for taking a picture
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            // The image is saved to the file, use its URI
-            imageUri = imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
-        } else {
-            // If capture failed or was cancelled, clear the temporary file/uri
-            imageFile?.delete()
-            imageFile = null
-            imageUri = null
             imageFileName = null
         }
     }
 
-    // Launcher for picking an image from the gallery
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        // Clear old temporary camera file if any
-        imageFile?.delete()
-        imageFile = null
-        imageUri = uri
-    }
-
-    // --- HELPER FUNCTION ---
-
-    /** Creates a temporary file in the app's *private external pictures directory* for the camera output. */
     fun createImageFile(context: Context): File {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
@@ -174,12 +132,43 @@ fun AddEditMealScreen(
             ".jpg",
             storageDir
         ).apply {
-            imageFile = this // Store the file reference
+            imageFile = this
         }
     }
 
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            imageUri = imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
+        } else {
+            imageFile?.delete()
+            imageFile = null
+            imageUri = null
+            imageFileName = null
+        }
+    }
 
-    // --- INITIALIZATION / EDIT MODE SETUP ---
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val file = createImageFile(context)
+            val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
+            takePictureLauncher.launch(uri)
+        } else {
+            Log.e("AddEditMealScreen", "Camera permission denied.")
+        }
+    }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imageFile?.delete()
+        imageFile = null
+        imageUri = uri
+    }
+
     LaunchedEffect(mealToEdit) {
         if (isEditMode) {
             mealToEdit?.let {
@@ -200,7 +189,6 @@ fun AddEditMealScreen(
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
             }
         } else {
-            // Clear states for Add mode
             foodName = ""
             caloriesText = ""
             proteinText = ""
@@ -217,7 +205,6 @@ fun AddEditMealScreen(
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
 
-            // Clear new image states
             imageUri = null
             imageFile = null
             imageFileName = null
@@ -225,13 +212,11 @@ fun AddEditMealScreen(
         }
     }
 
-    // --- GEMINI RESULT HANDLER (UNCHANGED) ---
     LaunchedEffect(geminiResult) {
         if (geminiResult is GeminiResult.Success) {
             val successResult = geminiResult as GeminiResult.Success
             val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
-            // Log each food item parsed by Gemini
             successResult.foodInfoList.forEach { foodInfo ->
                 val cal = foodInfo.calories?.toIntOrNull()
                 if (foodInfo.food_name != null && cal != null) {
@@ -259,31 +244,32 @@ fun AddEditMealScreen(
         }
     }
 
-    // --- IMAGE INPUT LOGIC ---
     val onTakePhoto: () -> Unit = {
-        // Clear previous state
         imageUri = null
         imageB64 = null
-        imageFileName = null // Clear file name
-        val file = createImageFile(context)
-        val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
-        takePictureLauncher.launch(uri)
+        imageFileName = null
+
+        when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
+            PackageManager.PERMISSION_GRANTED -> {
+                val file = createImageFile(context)
+                val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
+                takePictureLauncher.launch(uri)
+            }
+            else -> {
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
     }
 
     val onUploadPhoto: () -> Unit = {
-        // Clear previous state
         imageUri = null
         imageB64 = null
-        imageFileName = null // Clear file name
-        // Delete any pending temp file from camera
+        imageFileName = null
         imageFile?.delete()
         imageFile = null
         pickImageLauncher.launch("image/*")
     }
-    // ---------------------------------------------
 
-
-    // --- UI ---
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -304,7 +290,6 @@ fun AddEditMealScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- MEAL DESCRIPTION & IMAGE DISPLAY ---
             item {
                 SectionCard(title = if (isEditMode) "Meal Name" else "Describe Your Meal") {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -317,10 +302,8 @@ fun AddEditMealScreen(
                             minLines = if (!isEditMode) 3 else 1,
                         )
 
-                        // Display the selected image URI if available (ADD MODE ONLY)
                         if (!isEditMode && imageUri != null) {
                             Spacer(Modifier.height(16.dp))
-                            // Use Coil to load the image from the Uri
                             AsyncImage(
                                 model = imageUri,
                                 contentDescription = "Selected Meal Photo",
@@ -331,7 +314,6 @@ fun AddEditMealScreen(
                             )
                             Spacer(Modifier.height(8.dp))
 
-                            // Display file name and processing status
                             Text(
                                 text = "Selected: ${imageFileName ?: "Unknown File"}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -349,14 +331,12 @@ fun AddEditMealScreen(
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
                             } else if (imageB64 != null) {
-                                // SUCCESS state
                                 Text(
                                     text = "Image ready for AI analysis.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             } else {
-                                // FAILED state (imageUri != null, but isImageProcessing is false, and imageB64 is null)
                                 Text(
                                     text = "🚨 Failed to load image data for AI. Please try another photo or enter a description.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -368,7 +348,6 @@ fun AddEditMealScreen(
                 }
             }
 
-            // --- IMAGE INPUT (ADD MODE ONLY) ---
             if (!isEditMode) {
                 item {
                     ImageInputSection(
@@ -377,11 +356,8 @@ fun AddEditMealScreen(
                     )
                 }
             }
-            // -------------------------------------
 
-            // --- MANUAL DETAILS (EDIT MODE ONLY) ---
             if (isEditMode) {
-                // ... (Macronutrient and Micronutrient sections)
                 item {
                     ServingAndCaloriesSection(
                         servingAmountText = servingAmountText, onServingAmountChange = { servingAmountText = it },
@@ -411,8 +387,6 @@ fun AddEditMealScreen(
                 }
             }
 
-
-            // --- DATE & TIME PICKER ---
             item {
                 DateTimePickerSection(
                     selectedDateTimeState = selectedDateTimeState,
@@ -420,15 +394,10 @@ fun AddEditMealScreen(
                 )
             }
 
-            // --- SUBMIT BUTTON ---
             item {
                 val isButtonEnabled = if (isEditMode) {
                     foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
                 } else {
-                    // Button is enabled if:
-                    // 1. (Food name is entered OR image B64 is ready)
-                    // 2. AND Gemini is not loading
-                    // 3. AND image processing is complete
                     (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
                 }
 
@@ -438,7 +407,6 @@ fun AddEditMealScreen(
                     isButtonEnabled = isButtonEnabled
                 ) {
                     if (isEditMode) {
-                        // FIX: Changed parameter name from 'vitaminCText' to 'newVitaminC' (based on ViewModel analysis)
                         val calValue = caloriesText.toIntOrNull() ?: 0
                         val mealTimestamp = Timestamp(selectedDateTimeState.time)
                         if (mealToEdit != null) {
@@ -463,7 +431,6 @@ fun AddEditMealScreen(
                         }
                         navController.popBackStack()
                     } else {
-                        // FIX: Now passes the actual Base64 string to the ViewModel
                         foodLogViewModel.analyzeImageWithGemini(
                             foodName = foodName,
                             imageB64 = imageB64
