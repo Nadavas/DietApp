@@ -1,21 +1,38 @@
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Define secret key
 const geminiApiKeySecret = defineSecret("GEMINI_API_KEY");
 
+/**
+ * Converts a Base64 string to a GoogleGenerativeAI.Part object.
+ * @param {string} base64String The image data as a Base64 string.
+ * @param {string} mimeType The MIME type of the image (e.g., 'image/jpeg').
+ * @returns {{inlineData: {data: string, mimeType: string}}} The Gemini Part object.
+ */
+function imageToGenerativePart(base64String, mimeType) {
+  return {
+    inlineData: {
+      data: base64String,
+      mimeType
+    },
+  };
+}
+
+/**
+ * Extracts a JSON string from a markdown code block, or returns the text if not found.
+ * @param {string} text The response text from the Gemini API.
+ * @returns {string} The cleaned JSON string.
+ */
 function extractJsonFromMarkdown(text) {
-  // Check if the response is a markdown code block for JSON
   const jsonStart = text.indexOf('```json\n');
   const jsonEnd = text.indexOf('\n```', jsonStart + 7);
 
   if (jsonStart !== -1 && jsonEnd !== -1) {
-    // Extract the content between the markdown fences
     return text.substring(jsonStart + 8, jsonEnd).trim();
   }
 
-  // If it's not a markdown block, assume it's a plain JSON string
   return text.trim();
 }
 
@@ -31,16 +48,48 @@ exports.analyzeFoodWithGemini = onCall(
 
     while (retries < MAX_RETRIES) {
       try {
-        const foodName = data.data.foodName;
-        if (!foodName) {
-          throw new onCall.HttpsError("invalid-argument", "The 'foodName' parameter is required.");
+        let foodName = data.data.foodName;
+        const imageB64 = data.data.imageB64;
+
+        if (!foodName && !imageB64) {
+          throw new HttpsError("invalid-argument", "Either 'foodName' or 'imageB64' must be provided.");
         }
 
         const geminiApiKey = geminiApiKeySecret.value();
         const genAI = new GoogleGenerativeAI(geminiApiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        const prompt = `
+        let contentParts = [];
+        let modelCall; // Variable to hold the final model call (string or object)
+
+        // --- STEP 1: Image Analysis (if image is present) ---
+        if (imageB64) {
+          const imagePart = imageToGenerativePart(imageB64, "image/jpeg");
+          contentParts.push(imagePart);
+
+          const descriptionPrompt = `
+            Describe the main food item(s) on the plate, including estimated quantities.
+            Keep the description concise (e.g., "1 bowl of rice with 1 chicken breast", "2 slices of pizza").
+            DO NOT provide nutritional information or JSON.
+          `;
+          contentParts.push(descriptionPrompt);
+
+          const descriptionResult = await model.generateContent({ contents: contentParts });
+          const textDescription = descriptionResult.response.text().trim();
+
+          console.log("Image description from Gemini:", textDescription);
+
+          // Use the generated description as the foodName for the next step
+          foodName = textDescription;
+
+          // Now, prepare for the nutritional analysis API call
+          // By this point, the image has been consumed and the model context is reset.
+          // We can use the simple text-only prompt for the final JSON generation.
+          contentParts = [];
+        }
+
+        // --- STEP 2: Nutritional Analysis (using foodName/description) ---
+        const nutritionalAnalysisPrompt = `
           You are a nutritional assistant.
           Analyze the nutritional content of the food item(s) and quantity specified in "${foodName}".
           For each distinct, main food item in the request, provide the calories, protein, carbs, fat, fiber, sugar, sodium, potassium, calcium, iron, and vitamin C for that exact quantity
@@ -107,47 +156,10 @@ exports.analyzeFoodWithGemini = onCall(
               "vitamin_c": "0"
             }
           ]
-          Example for "pasta with tomato sauce":
-          [
-            {
-              "food_name": "Pasta with Tomato Sauce",
-              "serving_unit": "cup",
-              "serving_amount": "1",
-              "calories": "300",
-              "protein": "11",
-              "carbohydrates": "50",
-              "fat": "6",
-              "fiber": "4",
-              "sugar": "6",
-              "sodium": "450",
-              "potassium": "150",
-              "calcium": "40",
-              "iron": "2",
-              "vitamin_c": "8"
-            }
-          ]
-          Example for "caesar salad":
-          [
-            {
-              "food_name": "Caesar Salad",
-              "serving_unit": "bowl",
-              "serving_amount": "1",
-              "calories": "300",
-              "protein": "8",
-              "carbohydrates": "15",
-              "fat": "23",
-              "fiber": "2.5",
-              "sugar": "4",
-              "sodium": "420",
-              "potassium": "180",
-              "calcium": "100",
-              "iron": "1",
-              "vitamin_c": "15"
-            }
-          ]
         `;
 
-        const result = await model.generateContent(prompt);
+        // The key change: The final prompt is a single string and should be passed directly to generateContent
+        const result = await model.generateContent(nutritionalAnalysisPrompt);
         const response = result.response;
         const text = response.text();
 
@@ -159,8 +171,7 @@ exports.analyzeFoodWithGemini = onCall(
           parsedJson = JSON.parse(cleanedText);
         } catch (parseError) {
           console.error("Failed to parse cleaned Gemini response as JSON:", parseError);
-          // A specific error for JSON parsing issues
-          throw new onCall.HttpsError("internal", "Gemini response was not a valid JSON string. Check function logs for details.");
+          throw new HttpsError("internal", "Gemini response was not a valid JSON string. Check function logs for details.");
         }
 
         return {
@@ -172,31 +183,26 @@ exports.analyzeFoodWithGemini = onCall(
         lastError = error;
         console.error(`Attempt ${retries + 1} failed:`, error.message);
 
-        // Check if the error is a temporary 503 from Gemini
         if (error.status === 503) {
-          const delay = Math.pow(2, retries) * 1000; // Exponential backoff (1s, 2s, 4s)
+          const delay = Math.pow(2, retries) * 1000;
           console.log(`Retrying in ${delay / 1000} seconds...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           retries++;
         } else {
-          // For any other error (like the `TypeError` or a bad prompt),
-          // don't retry and just rethrow the error to the client.
-          if (error.code) { // This checks if it's an HttpsError
+          if (error.code) {
             throw error;
           } else {
-            // Re-throw as a generic internal error to be safe
-            throw new onCall.HttpsError("internal", "An unknown error occurred during the Gemini analysis. Please try again.");
+            throw new HttpsError("internal", "An unknown error occurred during the Gemini analysis. Please try again.");
           }
         }
       }
     }
 
-    // If all retries fail, throw the last error
     if (lastError) {
       if (lastError.code) {
         throw lastError;
       }
-      throw new onCall.HttpsError("unavailable", "The Gemini API is currently unavailable. Please try again in a few moments.");
+      throw new HttpsError("unavailable", "The Gemini API is currently unavailable. Please try again in a few moments.");
     }
   }
 );
