@@ -5,6 +5,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,8 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,40 +26,56 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
-import java.time.format.DateTimeFormatter
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+// NOTE: The duplicate glassmorphism modifier function has been removed from this file.
+// It will now use the one defined in HomeHeaderComposables.kt.
 
 @Composable
 fun CalorieSummaryCard(totalCalories: Int, goalCalories: Int) {
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(24.dp))
+            // FIX: Add the border back to the outer Box to make it visible.
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.2f),
+                RoundedCornerShape(24.dp)
+            )
     ) {
+        // 1. BACKGROUND LAYER: This is the blurred glass effect.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassmorphism(shape = RoundedCornerShape(24.dp))
+        )
+
+        // 2. CONTENT LAYER: This Column contains the sharp, readable text and progress bar.
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Daily Summary",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.White.copy(alpha = 0.9f)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "$totalCalories",
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = Color.White
             )
             Text(
                 text = "/ $goalCalories kcal",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.8f)
             )
             Spacer(modifier = Modifier.height(12.dp))
             val progress = (totalCalories.toFloat() / goalCalories.toFloat()).coerceIn(0f, 1f)
@@ -68,6 +85,8 @@ fun CalorieSummaryCard(totalCalories: Int, goalCalories: Int) {
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(CircleShape),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.3f)
             )
         }
     }
@@ -78,9 +97,8 @@ fun MealSectionHeader(section: MealSection) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            // Ensure background is set for the sticky header
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .background(Color.Transparent) // Make sticky header transparent
+            .padding(horizontal = 4.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -93,7 +111,7 @@ fun MealSectionHeader(section: MealSection) {
             text = section.sectionName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color.White
         )
     }
 }
@@ -108,23 +126,29 @@ fun MealItem(
     onDelete: (Meal) -> Unit,
     onEdit: (Meal) -> Unit
 ) {
-    val cardBrush = Brush.horizontalGradient(
-        colors = listOf(
-            sectionColor.copy(alpha = 0.2f),
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.1f)
-        )
-    )
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(cardBrush)
+            // FIX: Add the border back to the outer Box to make it visible.
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.2f),
+                RoundedCornerShape(16.dp)
+            )
             .clickable { onToggleActions(meal.id) }
     ) {
+        // 1. BACKGROUND LAYER: The blurred glass effect sits here.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassmorphism()
+        )
+
+        // 2. CONTENT LAYER: This Column holds all the sharp text and icons.
         Column(
             modifier = Modifier
+                .fillMaxWidth() // Ensure content fills the Box
                 .padding(16.dp)
                 .animateContentSize(animationSpec = spring())
         ) {
@@ -132,7 +156,6 @@ fun MealItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Meal Info
                 Column(modifier = Modifier.weight(1f)) {
                     val servingInfo = if (!meal.servingAmount.isNullOrBlank() && !meal.servingUnit.isNullOrBlank()) {
                         "(${meal.servingAmount} ${meal.servingUnit})"
@@ -141,16 +164,15 @@ fun MealItem(
                         text = meal.foodName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.White
                     )
                     Text(
                         text = servingInfo,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.White.copy(alpha = 0.8f)
                     )
                 }
 
-                // Calories or Actions
                 AnimatedContent(
                     targetState = showActions,
                     transitionSpec = {
@@ -163,10 +185,10 @@ fun MealItem(
                             horizontalArrangement = Arrangement.End
                         ) {
                             IconButton(onClick = { onEdit(meal) }) {
-                                Icon(Icons.Default.Edit, "Edit Meal", tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Edit, "Edit Meal", tint = Color.White)
                             }
                             IconButton(onClick = { onDelete(meal) }) {
-                                Icon(Icons.Default.Delete, "Delete Meal", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, "Delete Meal", tint = MaterialTheme.colorScheme.errorContainer)
                             }
                         }
                     } else {
@@ -183,21 +205,23 @@ fun MealItem(
                             Text(
                                 text = formattedTime,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = Color.White.copy(alpha = 0.8f)
                             )
                         }
                     }
                 }
             }
 
-            // Collapsible nutritional information
             AnimatedVisibility(
                 visible = showActions,
                 enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                 exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
             ) {
                 Column {
-                    Divider(modifier = Modifier.padding(top = 12.dp, bottom = 12.dp))
+                    Divider(
+                        modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
+                        color = Color.White.copy(alpha = 0.2f)
+                    )
                     NutritionDetailsTable(meal)
                 }
             }
@@ -207,17 +231,14 @@ fun MealItem(
 
 @Composable
 fun NutritionDetailsTable(meal: Meal) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Macronutrients (g)",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White.copy(alpha = 0.8f),
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        // Row 1: Protein, Carbs, Fat
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
@@ -226,17 +247,14 @@ fun NutritionDetailsTable(meal: Meal) {
             NutritionDetailItem("Carbs", meal.carbohydrates, "g")
             NutritionDetailItem("Fat", meal.fat, "g")
         }
-
-        Divider(modifier = Modifier.padding(vertical = 12.dp))
-
+        Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.2f))
         Text(
             text = "Micronutrients & Fiber",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White.copy(alpha = 0.8f),
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        // Row 2: Fiber, Sugar, Sodium (g/mg)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
@@ -245,10 +263,7 @@ fun NutritionDetailsTable(meal: Meal) {
             NutritionDetailItem("Sugar", meal.sugar, "g")
             NutritionDetailItem("Sodium", meal.sodium, "mg")
         }
-
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Row 3: Potassium, Calcium, Iron, Vitamin C (mg)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
@@ -271,13 +286,13 @@ fun RowScope.NutritionDetailItem(label: String, value: Double?, unit: String) {
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.White.copy(alpha = 0.8f)
         )
         Text(
             text = value?.let { "${String.format("%.1f", it)}$unit" } ?: "–",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color.White
         )
     }
 }
@@ -295,7 +310,7 @@ fun EmptyState() {
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
             lineHeight = 24.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.White.copy(alpha = 0.8f)
         )
     }
 }

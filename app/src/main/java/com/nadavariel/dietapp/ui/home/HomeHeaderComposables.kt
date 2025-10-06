@@ -1,6 +1,9 @@
 package com.nadavariel.dietapp.ui.home
 
+import android.os.Build
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,20 +14,36 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nadavariel.dietapp.util.AvatarConstants
 
+// A helper modifier for the glass effect. You can move this to a shared UI file.
+fun Modifier.glassmorphism(
+    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
+    color: Color = Color.White
+) = this
+    .then(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Modifier.blur(radius = 20.dp)
+        } else {
+            Modifier
+        }
+    )
+    .background(color.copy(alpha = 0.15f), shape)
+    .border(1.dp, color.copy(alpha = 0.2f), shape)
+
 @Composable
 fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 16.dp),
+            .padding(start = 4.dp, end = 16.dp), // Adjusted padding for TopAppBar
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -32,13 +51,13 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             Text(
                 text = "Welcome,",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.8f) // Updated color
             )
             Text(
                 text = userName.ifBlank { "Guest" },
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.White // Updated color
             )
         }
         Image(
@@ -46,10 +65,10 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             contentDescription = "User Avatar",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(64.dp)
+                .size(56.dp)
                 .clip(CircleShape)
+                .border(2.dp, Color.White.copy(alpha = 0.5f), CircleShape) // Replaced shadow with border
                 .clickable(onClick = onAvatarClick)
-                .shadow(elevation = 4.dp, shape = CircleShape)
         )
     }
 }
@@ -59,19 +78,27 @@ fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit)
     val missingListText = missingGoals.joinToString(" and ")
     val message = "Your $missingListText goal${if (missingGoals.size > 1) "s" else ""} are missing."
 
-    Card(
+    // FIX: Use a Box to separate the blurred background from the sharp content.
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        ),
-        shape = RoundedCornerShape(12.dp)
+            .clip(RoundedCornerShape(16.dp)) // Clip the entire Box
     ) {
+        // 1. BACKGROUND LAYER: A blurred, colored Box that sits behind the content.
+        Box(
+            modifier = Modifier
+                .fillMaxSize() // Match the size of the parent Box
+                .glassmorphism(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.error
+                )
+        )
+
+        // 2. CONTENT LAYER: The Row with your text and buttons, which is NOT blurred.
         Row(
             modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -79,18 +106,18 @@ fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit)
                 Icon(
                     imageVector = Icons.Default.Error,
                     contentDescription = "Warning",
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = Color.White, // Updated color
                     modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    color = Color.White // Updated color
                 )
             }
             TextButton(onClick = onSetGoalsClick) {
-                Text("SET GOALS")
+                Text("SET GOALS", color = Color.White, fontWeight = FontWeight.Bold) // Updated color
             }
         }
     }

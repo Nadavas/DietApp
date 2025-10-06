@@ -124,9 +124,9 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 NavigationBar(
                                     // Use a dark, semi-transparent purple that blends beautifully with the background gradient.
-                                    containerColor = Color(0xFF1A0433).copy(alpha = 0.5f),
+                                    containerColor = Color(0xFF003FCE).copy(alpha = 0.7f),
                                     // The default content color can remain a soft white for readability.
-                                    contentColor = Color.White.copy(alpha = 0.7f)
+                                    contentColor = Color.White.copy(alpha = 0.9f)
                                 ) {
                                     NavigationBarItem(
                                         selected = selectedRoute == NavRoutes.HOME,

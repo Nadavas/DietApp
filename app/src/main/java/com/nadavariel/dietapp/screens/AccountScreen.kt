@@ -1,10 +1,13 @@
 package com.nadavariel.dietapp.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -33,6 +36,101 @@ import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.account.ReauthDialog
 import com.nadavariel.dietapp.ui.account.ImageIcon
 
+@Composable
+fun AccountActionButtons(
+    onSignOutClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Sign Out Button
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable { onSignOutClick() },
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Sign Out",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Sign Out",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        // Delete Account Button
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable { onDeleteClick() },
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Account",
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Delete Account",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountScreen(
@@ -52,7 +150,7 @@ fun AccountScreen(
 
     // --- Constants ---
     val dietAndNutritionGradient = remember {
-        Brush.verticalGradient(listOf(Color(0xFF6A11CB), Color(0xFF2575FC)))
+        Brush.verticalGradient(listOf(Color(0x6103506C), Color(0xFF1644A0)))
     }
     val endColor = remember { Color(0xFF2575FC) }
 
@@ -70,6 +168,7 @@ fun AccountScreen(
                 }
                 authViewModel.resetAuthResult()
             }
+
             is AuthResult.Error -> {
                 errorMessage = if (result.message == "re-authenticate-required") {
                     showReauthDialog = true
@@ -78,6 +177,7 @@ fun AccountScreen(
                     result.message
                 }
             }
+
             else -> errorMessage = null
         }
     }
@@ -121,23 +221,43 @@ fun AccountScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AccountCard(
                         title = "Profile",
-                        leadingIcon = { Icon(Icons.Filled.Person, contentDescription = "My Profile") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Person,
+                                contentDescription = "My Profile"
+                            )
+                        },
                         hasNotification = hasMissingDetails,
                         onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                     )
                     AccountCard(
                         title = "Questions",
-                        leadingIcon = { ImageIcon(painterResource(id = R.drawable.ic_query_filled), "Questions") },
+                        leadingIcon = {
+                            ImageIcon(
+                                painterResource(id = R.drawable.ic_query_filled),
+                                "Questions"
+                            )
+                        },
                         onClick = { navController.navigate(NavRoutes.QUESTIONS) }
                     )
                     AccountCard(
                         title = "Goals",
-                        leadingIcon = { ImageIcon(painterResource(id = R.drawable.ic_goals), "Goals") },
+                        leadingIcon = {
+                            ImageIcon(
+                                painterResource(id = R.drawable.ic_goals),
+                                "Goals"
+                            )
+                        },
                         onClick = { navController.navigate(NavRoutes.GOALS) }
                     )
                     AccountCard(
                         title = "Settings",
-                        leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = "Settings"
+                            )
+                        },
                         onClick = { navController.navigate(NavRoutes.SETTINGS) }
                     )
                 }
@@ -145,20 +265,9 @@ fun AccountScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 // Action Buttons
-                AccountActionButton(
-                    text = "Sign Out",
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    onClick = { showSignOutDialog = true },
-                    contentColor = endColor
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                AccountActionButton(
-                    text = "Delete Account",
-                    icon = Icons.Default.Delete,
-                    onClick = { showDeleteConfirmationDialog = true },
-                    contentColor = MaterialTheme.colorScheme.error
+                AccountActionButtons(
+                    onSignOutClick = { showSignOutDialog = true },
+                    onDeleteClick = { showDeleteConfirmationDialog = true }
                 )
 
                 errorMessage?.let {
