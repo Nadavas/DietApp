@@ -3,16 +3,19 @@ package com.nadavariel.dietapp.ui.meals
 import android.R.style as AndroidRStyle
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.os.Build
 import android.widget.DatePicker
 import android.widget.TimePicker
-import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,12 +23,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.nadavariel.dietapp.ui.home.glassmorphism
+import com.nadavariel.dietapp.viewmodel.GeminiResult
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -34,17 +40,33 @@ import java.util.Locale
 
 @Composable
 fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.2f),
+                RoundedCornerShape(16.dp)
+            )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Background layer with glassmorphism
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassmorphism(shape = RoundedCornerShape(16.dp))
+        )
+
+        // Content layer
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+        ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.9f),
                 modifier = Modifier.padding(bottom = 12.dp)
             )
             content()
@@ -87,7 +109,10 @@ fun DateTimePickerSection(
             datePickerDialog.show()
         }
 
-        Divider(Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = Color.White.copy(alpha = 0.2f)
+        )
 
         DateTimePickerRow(
             icon = Icons.Default.Schedule,
@@ -102,7 +127,6 @@ fun DateTimePickerSection(
                         set(Calendar.HOUR_OF_DAY, hour)
                         set(Calendar.MINUTE, minute)
                     }
-                    // Ensure time is not in the future
                     if (newCalendar.after(Calendar.getInstance())) {
                         onDateTimeUpdate(Calendar.getInstance())
                     } else {
@@ -135,20 +159,21 @@ private fun DateTimePickerRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.8f),
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
+            color = Color.White,
             textAlign = TextAlign.End
         )
     }
@@ -167,27 +192,48 @@ fun ServingAndCaloriesSection(
             OutlinedTextField(
                 value = servingAmountText,
                 onValueChange = onServingAmountChange,
-                label = { Text("Amount") },
+                label = { Text("Amount", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    cursorColor = Color.White
+                )
             )
             OutlinedTextField(
                 value = servingUnitText,
                 onValueChange = onServingUnitChange,
-                label = { Text("Unit") },
+                label = { Text("Unit", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    cursorColor = Color.White
+                )
             )
         }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = caloriesText,
             onValueChange = { if (it.all(Char::isDigit)) onCaloriesChange(it) },
-            label = { Text("Calories (kcal)") },
+            label = { Text("Calories (kcal)", color = Color.White.copy(alpha = 0.7f)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                cursorColor = Color.White
+            )
         )
     }
 }
@@ -203,26 +249,47 @@ fun MacronutrientsSection(
             OutlinedTextField(
                 value = proteinText,
                 onValueChange = onProteinChange,
-                label = { Text("Protein") },
+                label = { Text("Protein", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    cursorColor = Color.White
+                )
             )
             OutlinedTextField(
                 value = carbsText,
                 onValueChange = onCarbsChange,
-                label = { Text("Carbs") },
+                label = { Text("Carbs", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    cursorColor = Color.White
+                )
             )
             OutlinedTextField(
                 value = fatText,
                 onValueChange = onFatChange,
-                label = { Text("Fat") },
+                label = { Text("Fat", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    cursorColor = Color.White
+                )
             )
         }
     }
@@ -238,75 +305,87 @@ fun MicronutrientsSection(
     ironText: String, onIronChange: (String) -> Unit,
     vitaminCText: String, onVitaminCChange: (String) -> Unit,
 ) {
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color.White,
+        unfocusedTextColor = Color.White,
+        focusedBorderColor = Color.White.copy(alpha = 0.6f),
+        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+        cursorColor = Color.White
+    )
+
     SectionCard(title = "Micronutrients & Fiber") {
-        // Row 1: Fiber (g), Sugar (g), Sodium (mg)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = fiberText,
                 onValueChange = onFiberChange,
-                label = { Text("Fiber (g)") },
+                label = { Text("Fiber (g)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
             OutlinedTextField(
                 value = sugarText,
                 onValueChange = onSugarChange,
-                label = { Text("Sugar (g)") },
+                label = { Text("Sugar (g)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
             OutlinedTextField(
                 value = sodiumText,
                 onValueChange = onSodiumChange,
-                label = { Text("Sodium (mg)") },
+                label = { Text("Sodium (mg)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
         }
         Spacer(Modifier.height(12.dp))
-        // Row 2: Potassium (mg), Calcium (mg)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = potassiumText,
                 onValueChange = onPotassiumChange,
-                label = { Text("Potassium (mg)") },
+                label = { Text("Potassium (mg)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
             OutlinedTextField(
                 value = calciumText,
                 onValueChange = onCalciumChange,
-                label = { Text("Calcium (mg)") },
+                label = { Text("Calcium (mg)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
-            Spacer(modifier = Modifier.weight(1f)) // Balance the row
+            Spacer(modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
-        // Row 3: Iron (mg), Vitamin C (mg)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = ironText,
                 onValueChange = onIronChange,
-                label = { Text("Iron (mg)") },
+                label = { Text("Iron (mg)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
             OutlinedTextField(
                 value = vitaminCText,
                 onValueChange = onVitaminCChange,
-                label = { Text("Vit C (mg)") },
+                label = { Text("Vit C (mg)", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
-            Spacer(modifier = Modifier.weight(1f)) // Balance the row
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

@@ -1,14 +1,13 @@
 package com.nadavariel.dietapp.ui.meals
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.viewmodel.GeminiResult
 
 @Composable
@@ -20,30 +19,35 @@ fun SubmitMealButton(
 ) {
     Button(
         onClick = onClick,
+        enabled = isButtonEnabled,
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp),
-        enabled = isButtonEnabled,
-        shape = RoundedCornerShape(12.dp)
+            .height(56.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.White.copy(alpha = 0.9f),
+            contentColor = Color(0xFF1644A0),
+            disabledContainerColor = Color.White.copy(alpha = 0.3f),
+            disabledContentColor = Color.White.copy(alpha = 0.5f)
+        )
     ) {
-        AnimatedContent(
-            targetState = geminiResult is GeminiResult.Loading,
-            label = "button_state_animation"
-        ) { isLoading ->
-            if (isLoading) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = LocalContentColor.current,
-                        strokeWidth = 2.dp
-                    )
-                    Text("Analyzing...")
-                }
-            } else {
-                Text(if (isEditMode) "Save Changes" else "Add Meal with AI", fontSize = 18.sp)
+        when {
+            geminiResult is GeminiResult.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color(0xFF1644A0)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text("Analyzing with AI...")
+            }
+            isEditMode -> {
+                Icon(Icons.Default.CheckCircle, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Update Meal")
+            }
+            else -> {
+                Icon(Icons.Default.CheckCircle, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Add Meal with AI")
             }
         }
     }

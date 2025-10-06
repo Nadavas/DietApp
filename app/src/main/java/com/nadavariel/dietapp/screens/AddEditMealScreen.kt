@@ -12,8 +12,11 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -22,6 +25,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -41,6 +47,7 @@ import com.nadavariel.dietapp.ui.meals.MacronutrientsSection
 import com.nadavariel.dietapp.ui.meals.MicronutrientsSection
 import com.nadavariel.dietapp.ui.meals.SubmitMealButton
 import com.nadavariel.dietapp.ui.meals.ImageInputSection
+import com.nadavariel.dietapp.ui.home.glassmorphism
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -270,174 +277,254 @@ fun AddEditMealScreen(
         pickImageLauncher.launch("image/*")
     }
 
+    // Gradient background matching HomeScreen
+    val dietAndNutritionGradient = remember {
+        Brush.verticalGradient(listOf(Color(0x6103506C), Color(0xFF1644A0)))
+    }
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(if (isEditMode) "Edit Meal" else "Add New Meal") },
+            TopAppBar(
+                title = {
+                    Text(
+                        if (isEditMode) "Edit Meal" else "Add New Meal",
+                        color = Color.White
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        containerColor = Color.Transparent
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .background(dietAndNutritionGradient)
+                .padding(paddingValues)
         ) {
-            item {
-                SectionCard(title = if (isEditMode) "Meal Name" else "Describe Your Meal") {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        OutlinedTextField(
-                            value = foodName,
-                            onValueChange = { foodName = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text(if (!isEditMode) "e.g., 'A bowl of oatmeal with blueberries and a glass of orange juice'" else "Meal Name") },
-                            leadingIcon = { Icon(if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome, contentDescription = null) },
-                            minLines = if (!isEditMode) 3 else 1,
-                        )
-
-                        if (!isEditMode && imageUri != null) {
-                            Spacer(Modifier.height(16.dp))
-                            AsyncImage(
-                                model = imageUri,
-                                contentDescription = "Selected Meal Photo",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                contentScale = ContentScale.Crop
-                            )
-                            Spacer(Modifier.height(8.dp))
-
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    GlassmorphicCard {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "Selected: ${imageFileName ?: "Unknown File"}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface
+                                text = if (isEditMode) "Meal Name" else "Describe Your Meal",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.padding(bottom = 12.dp)
                             )
 
-                            if (isImageProcessing) {
-                                Spacer(Modifier.height(4.dp))
-                                LinearProgressIndicator(
-                                    modifier = Modifier.fillMaxWidth()
+                            OutlinedTextField(
+                                value = foodName,
+                                onValueChange = { foodName = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(
+                                        if (!isEditMode) "e.g., 'A bowl of oatmeal with blueberries and a glass of orange juice'" else "Meal Name",
+                                        color = Color.White.copy(alpha = 0.5f)
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.8f)
+                                    )
+                                },
+                                minLines = if (!isEditMode) 3 else 1,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                    cursorColor = Color.White
                                 )
+                            )
+
+                            if (!isEditMode && imageUri != null) {
+                                Spacer(Modifier.height(16.dp))
+                                AsyncImage(
+                                    model = imageUri,
+                                    contentDescription = "Selected Meal Photo",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(Modifier.height(8.dp))
+
                                 Text(
-                                    text = "Processing image for AI analysis...",
+                                    text = "Selected: ${imageFileName ?: "Unknown File"}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    color = Color.White.copy(alpha = 0.8f)
                                 )
-                            } else if (imageB64 != null) {
-                                Text(
-                                    text = "Image ready for AI analysis.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                Text(
-                                    text = "🚨 Failed to load image data for AI. Please try another photo or enter a description.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
+
+                                if (isImageProcessing) {
+                                    Spacer(Modifier.height(4.dp))
+                                    LinearProgressIndicator(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = Color.White,
+                                        trackColor = Color.White.copy(alpha = 0.3f)
+                                    )
+                                    Text(
+                                        text = "Processing image for AI analysis...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF90CAF9)
+                                    )
+                                } else if (imageB64 != null) {
+                                    Text(
+                                        text = "Image ready for AI analysis.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF81C784)
+                                    )
+                                } else {
+                                    Text(
+                                        text = "🚨 Failed to load image data for AI. Please try another photo or enter a description.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFFEF5350)
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (!isEditMode) {
-                item {
-                    ImageInputSection(
-                        onTakePhotoClick = onTakePhoto,
-                        onUploadPhotoClick = onUploadPhoto
-                    )
-                }
-            }
-
-            if (isEditMode) {
-                item {
-                    ServingAndCaloriesSection(
-                        servingAmountText = servingAmountText, onServingAmountChange = { servingAmountText = it },
-                        servingUnitText = servingUnitText, onServingUnitChange = { servingUnitText = it },
-                        caloriesText = caloriesText, onCaloriesChange = { caloriesText = it }
-                    )
-                }
-
-                item {
-                    MacronutrientsSection(
-                        proteinText = proteinText, onProteinChange = { proteinText = it },
-                        carbsText = carbsText, onCarbsChange = { carbsText = it },
-                        fatText = fatText, onFatChange = { fatText = it }
-                    )
-                }
-
-                item {
-                    MicronutrientsSection(
-                        fiberText = fiberText, onFiberChange = { fiberText = it },
-                        sugarText = sugarText, onSugarChange = { sugarText = it },
-                        sodiumText = sodiumText, onSodiumChange = { sodiumText = it },
-                        potassiumText = potassiumText, onPotassiumChange = { potassiumText = it },
-                        calciumText = calciumText, onCalciumChange = { calciumText = it },
-                        ironText = ironText, onIronChange = { ironText = it },
-                        vitaminCText = vitaminCText, onVitaminCChange = { vitaminCText = it }
-                    )
-                }
-            }
-
-            item {
-                DateTimePickerSection(
-                    selectedDateTimeState = selectedDateTimeState,
-                    onDateTimeUpdate = { selectedDateTimeState = it }
-                )
-            }
-
-            item {
-                val isButtonEnabled = if (isEditMode) {
-                    foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
-                } else {
-                    (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
-                }
-
-                SubmitMealButton(
-                    isEditMode = isEditMode,
-                    geminiResult = geminiResult,
-                    isButtonEnabled = isButtonEnabled
-                ) {
-                    if (isEditMode) {
-                        val calValue = caloriesText.toIntOrNull() ?: 0
-                        val mealTimestamp = Timestamp(selectedDateTimeState.time)
-                        if (mealToEdit != null) {
-                            foodLogViewModel.updateMeal(
-                                mealToEdit.id,
-                                newFoodName = foodName,
-                                newCalories = calValue,
-                                newServingAmount = servingAmountText,
-                                newServingUnit = servingUnitText,
-                                newTimestamp = mealTimestamp,
-                                newProtein = proteinText.toDoubleOrNull(),
-                                newCarbohydrates = carbsText.toDoubleOrNull(),
-                                newFat = fatText.toDoubleOrNull(),
-                                newFiber = fiberText.toDoubleOrNull(),
-                                newSugar = sugarText.toDoubleOrNull(),
-                                newSodium = sodiumText.toDoubleOrNull(),
-                                newPotassium = potassiumText.toDoubleOrNull(),
-                                newCalcium = calciumText.toDoubleOrNull(),
-                                newIron = ironText.toDoubleOrNull(),
-                                newVitaminC = vitaminCText.toDoubleOrNull()
-                            )
-                        }
-                        navController.popBackStack()
-                    } else {
-                        foodLogViewModel.analyzeImageWithGemini(
-                            foodName = foodName,
-                            imageB64 = imageB64
+                if (!isEditMode) {
+                    item {
+                        ImageInputSection(
+                            onTakePhotoClick = onTakePhoto,
+                            onUploadPhotoClick = onUploadPhoto
                         )
                     }
                 }
+
+                if (isEditMode) {
+                    item {
+                        ServingAndCaloriesSection(
+                            servingAmountText = servingAmountText, onServingAmountChange = { servingAmountText = it },
+                            servingUnitText = servingUnitText, onServingUnitChange = { servingUnitText = it },
+                            caloriesText = caloriesText, onCaloriesChange = { caloriesText = it }
+                        )
+                    }
+
+                    item {
+                        MacronutrientsSection(
+                            proteinText = proteinText, onProteinChange = { proteinText = it },
+                            carbsText = carbsText, onCarbsChange = { carbsText = it },
+                            fatText = fatText, onFatChange = { fatText = it }
+                        )
+                    }
+
+                    item {
+                        MicronutrientsSection(
+                            fiberText = fiberText, onFiberChange = { fiberText = it },
+                            sugarText = sugarText, onSugarChange = { sugarText = it },
+                            sodiumText = sodiumText, onSodiumChange = { sodiumText = it },
+                            potassiumText = potassiumText, onPotassiumChange = { potassiumText = it },
+                            calciumText = calciumText, onCalciumChange = { calciumText = it },
+                            ironText = ironText, onIronChange = { ironText = it },
+                            vitaminCText = vitaminCText, onVitaminCChange = { vitaminCText = it }
+                        )
+                    }
+                }
+
+                item {
+                    DateTimePickerSection(
+                        selectedDateTimeState = selectedDateTimeState,
+                        onDateTimeUpdate = { selectedDateTimeState = it }
+                    )
+                }
+
+                item {
+                    val isButtonEnabled = if (isEditMode) {
+                        foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
+                    } else {
+                        (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
+                    }
+
+                    SubmitMealButton(
+                        isEditMode = isEditMode,
+                        geminiResult = geminiResult,
+                        isButtonEnabled = isButtonEnabled
+                    ) {
+                        if (isEditMode) {
+                            val calValue = caloriesText.toIntOrNull() ?: 0
+                            val mealTimestamp = Timestamp(selectedDateTimeState.time)
+                            if (mealToEdit != null) {
+                                foodLogViewModel.updateMeal(
+                                    mealToEdit.id,
+                                    newFoodName = foodName,
+                                    newCalories = calValue,
+                                    newServingAmount = servingAmountText,
+                                    newServingUnit = servingUnitText,
+                                    newTimestamp = mealTimestamp,
+                                    newProtein = proteinText.toDoubleOrNull(),
+                                    newCarbohydrates = carbsText.toDoubleOrNull(),
+                                    newFat = fatText.toDoubleOrNull(),
+                                    newFiber = fiberText.toDoubleOrNull(),
+                                    newSugar = sugarText.toDoubleOrNull(),
+                                    newSodium = sodiumText.toDoubleOrNull(),
+                                    newPotassium = potassiumText.toDoubleOrNull(),
+                                    newCalcium = calciumText.toDoubleOrNull(),
+                                    newIron = ironText.toDoubleOrNull(),
+                                    newVitaminC = vitaminCText.toDoubleOrNull()
+                                )
+                            }
+                            navController.popBackStack()
+                        } else {
+                            foodLogViewModel.analyzeImageWithGemini(
+                                foodName = foodName,
+                                imageB64 = imageB64
+                            )
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun GlassmorphicCard(
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.2f),
+                RoundedCornerShape(16.dp)
+            )
+    ) {
+        // Background layer with glassmorphism effect
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassmorphism(shape = RoundedCornerShape(16.dp))
+        )
+
+        // Content layer
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            content()
         }
     }
 }
