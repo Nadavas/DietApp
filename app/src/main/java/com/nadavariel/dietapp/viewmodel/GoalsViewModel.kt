@@ -69,7 +69,7 @@ class GoalsViewModel : ViewModel() {
         )
 
         firestore.collection("users").document(userId)
-            .collection("user_answers").document("diet_habits")
+            .collection("user_answers").document("goals")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e("GoalsViewModel", "Error listening to user answers", e)
@@ -135,7 +135,7 @@ class GoalsViewModel : ViewModel() {
                 }
 
                 val userAnswersRef = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("diet_habits")
+                    .collection("user_answers").document("goals")
 
                 userAnswersRef.set(mapOf("answers" to userAnswersToSave)).await()
                 Log.d("GoalsViewModel", "Successfully saved user answers.")

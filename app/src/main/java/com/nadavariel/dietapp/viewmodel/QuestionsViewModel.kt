@@ -11,9 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-// A data class to represent the structure of the answers in Firestorm
 data class UserAnswer(
-    val question: String = "", // Add default values for Firestorm deserialization
+    val question: String = "",
     val answer: String = ""
 )
 
@@ -29,6 +28,7 @@ class QuestionsViewModel : ViewModel() {
         fetchUserAnswers()
     }
 
+    /** Fetch user's saved answers from Firestore **/
     private fun fetchUserAnswers() {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -38,16 +38,25 @@ class QuestionsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val docRef = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("diet_habits")
+                val docRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("user_answers")
+                    .document("diet_habits")
 
                 val snapshot = docRef.get().await()
                 if (snapshot.exists()) {
-                    @Suppress("UNCHECKED_CAST")
-                    val answersMap = snapshot.get("answers") as? List<Map<String, String>>
-                    if (answersMap != null) {
-                        _userAnswers.value = answersMap.map { UserAnswer(it["question"] ?: "", it["answer"] ?: "") }
-                        Log.d("QuestionsViewModel", "Successfully fetched user answers.")
+                    val answersList = snapshot.get("answers") as? List<Map<String, Any>>
+                    if (answersList != null) {
+                        val parsedAnswers = answersList.map {
+                            UserAnswer(
+                                question = it["question"]?.toString() ?: "",
+                                answer = it["answer"]?.toString() ?: ""
+                            )
+                        }
+                        _userAnswers.value = parsedAnswers
+                        Log.d("QuestionsViewModel", "Successfully fetched ${parsedAnswers.size} answers.")
+                    } else {
+                        Log.d("QuestionsViewModel", "Answers field missing or empty.")
                     }
                 } else {
                     Log.d("QuestionsViewModel", "No saved answers found for the user.")
@@ -58,7 +67,11 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    fun saveUserAnswers(questions: List<com.nadavariel.dietapp.screens.Question>, answers: List<String?>) {
+    /** Save user's answers to Firestore **/
+    fun saveUserAnswers(
+        questions: List<com.nadavariel.dietapp.screens.Question>,
+        answers: List<String?>
+    ) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("QuestionsViewModel", "Cannot save answers: User not logged in.")
@@ -66,18 +79,26 @@ class QuestionsViewModel : ViewModel() {
         }
 
         val userAnswersToSave = questions.mapIndexed { index, question ->
-            UserAnswer(question = question.text, answer = answers[index] ?: "")
+            mapOf(
+                "question" to question.text,
+                "answer" to (answers.getOrNull(index) ?: "")
+            )
         }
 
         viewModelScope.launch {
             try {
-                val userAnswersRef = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("diet_habits")
+                val userAnswersRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("user_answers")
+                    .document("diet_habits")
 
                 userAnswersRef.set(mapOf("answers" to userAnswersToSave)).await()
-                Log.d("QuestionsViewModel", "Successfully saved user answers.")
-            } catch (e: Exception)
-            {
+                _userAnswers.value = userAnswersToSave.map {
+                    UserAnswer(it["question"] as String, it["answer"] as String)
+                }
+
+                Log.d("QuestionsViewModel", "Successfully saved ${userAnswersToSave.size} user answers.")
+            } catch (e: Exception) {
                 Log.e("QuestionsViewModel", "Error saving user answers", e)
             }
         }
