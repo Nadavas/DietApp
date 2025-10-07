@@ -1,6 +1,5 @@
 package com.nadavariel.dietapp.ui.home
 
-import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -23,20 +21,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nadavariel.dietapp.util.AvatarConstants
 
-// A helper modifier for the glass effect. You can move this to a shared UI file.
+import androidx.compose.ui.unit.Dp
+
+/**
+ * A custom modifier to apply a "glassmorphism" effect
+ * with a semi-transparent fill and a subtle border.
+ */
 fun Modifier.glassmorphism(
     shape: RoundedCornerShape = RoundedCornerShape(16.dp),
-    color: Color = Color.White
-) = this
-    .then(
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            Modifier.blur(radius = 20.dp)
-        } else {
-            Modifier
-        }
-    )
-    .background(color.copy(alpha = 0.15f), shape)
-    .border(1.dp, color.copy(alpha = 0.2f), shape)
+    color: Color = Color.White.copy(alpha = 0.1f), // The fill color
+    borderColor: Color = Color.White.copy(alpha = 0.2f),
+    borderWidth: Dp = 1.dp
+): Modifier = this
+    .clip(shape)
+    .background(color) // Apply the fill
+    .border(borderWidth, borderColor, shape)
 
 @Composable
 fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
