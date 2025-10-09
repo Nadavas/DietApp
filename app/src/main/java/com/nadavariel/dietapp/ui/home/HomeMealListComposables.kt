@@ -8,16 +8,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -37,7 +49,6 @@ fun CalorieSummaryCard(totalCalories: Int, goalCalories: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            // FIX: Add the border back to the outer Box to make it visible.
             .border(
                 1.dp,
                 Color.White.copy(alpha = 0.2f),
@@ -96,7 +107,7 @@ fun MealSectionHeader(section: MealSection) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Transparent) // Make sticky header transparent
+            .background(Color.Transparent)
             .padding(horizontal = 4.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -125,17 +136,26 @@ fun MealItem(
     onDelete: (Meal) -> Unit,
     onEdit: (Meal) -> Unit
 ) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            // FIX: Add the border back to the outer Box to make it visible.
             .border(
                 1.dp,
                 Color.White.copy(alpha = 0.2f),
                 RoundedCornerShape(16.dp)
             )
-            .clickable { onToggleActions(meal.id) }
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .clickable {
+                onToggleActions(meal.id)
+                coroutineScope.launch {
+                    delay(250)
+                    bringIntoViewRequester.bringIntoView()
+                }
+            }
     ) {
         // 1. BACKGROUND LAYER: The blurred glass effect sits here.
         Box(
@@ -147,7 +167,7 @@ fun MealItem(
         // 2. CONTENT LAYER: This Column holds all the sharp text and icons.
         Column(
             modifier = Modifier
-                .fillMaxWidth() // Ensure content fills the Box
+                .fillMaxWidth()
                 .padding(16.dp)
                 .animateContentSize(animationSpec = spring())
         ) {
@@ -230,7 +250,16 @@ fun MealItem(
 
 @Composable
 fun NutritionDetailsTable(meal: Meal) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    var microNutrientsVisible by remember { mutableStateOf(false) }
+    val dividerColor = Color.White.copy(alpha = 0.2f)
+
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+        .bringIntoViewRequester(bringIntoViewRequester)
+    ) {
         Text(
             text = "Macronutrients (g)",
             style = MaterialTheme.typography.labelLarge,
@@ -246,31 +275,91 @@ fun NutritionDetailsTable(meal: Meal) {
             NutritionDetailItem("Carbs", meal.carbohydrates, "g")
             NutritionDetailItem("Fat", meal.fat, "g")
         }
-        Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.2f))
-        Text(
-            text = "Micronutrients & Fiber",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.White.copy(alpha = 0.8f),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+
+        // Section separator with show/hide button
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            NutritionDetailItem("Fiber", meal.fiber, "g")
-            NutritionDetailItem("Sugar", meal.sugar, "g")
-            NutritionDetailItem("Sodium", meal.sodium, "mg")
+            // Left Divider
+            Divider(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 4.dp),
+                color = dividerColor
+            )
+
+            // Show/Hide Button
+            IconButton(
+                onClick = {
+                    microNutrientsVisible = !microNutrientsVisible
+
+                    if (microNutrientsVisible) {
+                        coroutineScope.launch {
+                            delay(250)
+                            bringIntoViewRequester.bringIntoView()
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(dividerColor, CircleShape)
+                    .clip(CircleShape)
+                    .padding(4.dp)
+            ) {
+                Icon(
+                    imageVector = if (microNutrientsVisible) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (microNutrientsVisible) "Hide Micronutrients" else "Show Micronutrients",
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            // Right Divider
+            Divider(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp),
+                color = dividerColor
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
+
+        // Micronutrients Section (Toggleable)
+        AnimatedVisibility(
+            visible = microNutrientsVisible,
+            enter = expandVertically(expandFrom = Alignment.Top),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top)
         ) {
-            NutritionDetailItem("Potassium", meal.potassium, "mg")
-            NutritionDetailItem("Calcium", meal.calcium, "mg")
-            NutritionDetailItem("Iron", meal.iron, "mg")
-            NutritionDetailItem("Vit C", meal.vitaminC, "mg")
+            Column {
+                Text(
+                    text = "Micronutrients & Fiber",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    NutritionDetailItem("Fiber", meal.fiber, "g")
+                    NutritionDetailItem("Sugar", meal.sugar, "g")
+                    NutritionDetailItem("Sodium", meal.sodium, "mg")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    NutritionDetailItem("Potassium", meal.potassium, "mg")
+                    NutritionDetailItem("Calcium", meal.calcium, "mg")
+                    NutritionDetailItem("Iron", meal.iron, "mg")
+                    NutritionDetailItem("Vit C", meal.vitaminC, "mg")
+                }
+            }
         }
     }
 }

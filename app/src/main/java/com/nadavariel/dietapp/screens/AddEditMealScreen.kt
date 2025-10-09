@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,7 +41,6 @@ import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
-import com.nadavariel.dietapp.ui.meals.SectionCard
 import com.nadavariel.dietapp.ui.meals.DateTimePickerSection
 import com.nadavariel.dietapp.ui.meals.ServingAndCaloriesSection
 import com.nadavariel.dietapp.ui.meals.MacronutrientsSection
@@ -49,7 +49,6 @@ import com.nadavariel.dietapp.ui.meals.SubmitMealButton
 import com.nadavariel.dietapp.ui.meals.ImageInputSection
 import com.nadavariel.dietapp.ui.home.glassmorphism
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
@@ -92,6 +91,15 @@ fun AddEditMealScreen(
     var isImageProcessing by remember { mutableStateOf(false) }
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
+
+    fun clearImageState() {
+        imageUri = null
+        imageB64 = null
+        imageFileName = null
+        imageFile?.delete()
+        imageFile = null
+        foodName = ""
+    }
 
     fun uriToBase64(uri: Uri): String? {
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -149,10 +157,7 @@ fun AddEditMealScreen(
         if (success) {
             imageUri = imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
         } else {
-            imageFile?.delete()
-            imageFile = null
-            imageUri = null
-            imageFileName = null
+            clearImageState()
         }
     }
 
@@ -171,8 +176,7 @@ fun AddEditMealScreen(
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        imageFile?.delete()
-        imageFile = null
+        clearImageState()
         imageUri = uri
     }
 
@@ -212,10 +216,7 @@ fun AddEditMealScreen(
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
 
-            imageUri = null
-            imageFile = null
-            imageFileName = null
-            imageB64 = null
+            clearImageState()
         }
     }
 
@@ -252,10 +253,7 @@ fun AddEditMealScreen(
     }
 
     val onTakePhoto: () -> Unit = {
-        imageUri = null
-        imageB64 = null
-        imageFileName = null
-
+        clearImageState()
         when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
             PackageManager.PERMISSION_GRANTED -> {
                 val file = createImageFile(context)
@@ -269,15 +267,10 @@ fun AddEditMealScreen(
     }
 
     val onUploadPhoto: () -> Unit = {
-        imageUri = null
-        imageB64 = null
-        imageFileName = null
-        imageFile?.delete()
-        imageFile = null
+        clearImageState()
         pickImageLauncher.launch("image/*")
     }
 
-    // Gradient background matching HomeScreen
     val dietAndNutritionGradient = remember {
         Brush.verticalGradient(listOf(Color(0x6103506C), Color(0xFF1644A0)))
     }
@@ -320,89 +313,77 @@ fun AddEditMealScreen(
                     GlassmorphicCard {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = if (isEditMode) "Meal Name" else "Describe Your Meal",
+                                text = if (isEditMode) "Meal Name" else "Meal Input",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = Color.White.copy(alpha = 0.9f),
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
 
-                            OutlinedTextField(
-                                value = foodName,
-                                onValueChange = { foodName = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = {
-                                    Text(
-                                        if (!isEditMode) "e.g., 'A bowl of oatmeal with blueberries and a glass of orange juice'" else "Meal Name",
-                                        color = Color.White.copy(alpha = 0.5f)
+                            if (isEditMode || imageUri == null) {
+                                OutlinedTextField(
+                                    value = foodName,
+                                    onValueChange = { foodName = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = {
+                                        Text(
+                                            if (!isEditMode) "e.g., 'A bowl of oatmeal with blueberries and a glass of orange juice'" else "Meal Name",
+                                            color = Color.White.copy(alpha = 0.5f)
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = Color.White.copy(alpha = 0.8f)
+                                        )
+                                    },
+                                    minLines = if (!isEditMode) 3 else 1,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                        cursorColor = Color.White
                                     )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.8f)
-                                    )
-                                },
-                                minLines = if (!isEditMode) 3 else 1,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                                    cursorColor = Color.White
                                 )
-                            )
+                            }
 
                             if (!isEditMode && imageUri != null) {
                                 Spacer(Modifier.height(16.dp))
-                                AsyncImage(
-                                    model = imageUri,
-                                    contentDescription = "Selected Meal Photo",
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(200.dp)
-                                        .clip(RoundedCornerShape(12.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Spacer(Modifier.height(8.dp))
+                                        .clip(RoundedCornerShape(12.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = imageUri,
+                                        contentDescription = "Selected Meal Photo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
 
-                                Text(
-                                    text = "Selected: ${imageFileName ?: "Unknown File"}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.8f)
-                                )
-
-                                if (isImageProcessing) {
-                                    Spacer(Modifier.height(4.dp))
-                                    LinearProgressIndicator(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        color = Color.White,
-                                        trackColor = Color.White.copy(alpha = 0.3f)
-                                    )
-                                    Text(
-                                        text = "Processing image for AI analysis...",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF90CAF9)
-                                    )
-                                } else if (imageB64 != null) {
-                                    Text(
-                                        text = "Image ready for AI analysis.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF81C784)
-                                    )
-                                } else {
-                                    Text(
-                                        text = "🚨 Failed to load image data for AI. Please try another photo or enter a description.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFFEF5350)
-                                    )
+                                    IconButton(
+                                        onClick = { clearImageState() },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Color.Black.copy(alpha = 0.6f)),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove Photo",
+                                            tint = Color.White
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                if (!isEditMode) {
+                if (!isEditMode && imageUri == null) {
                     item {
                         ImageInputSection(
                             onTakePhotoClick = onTakePhoto,
@@ -511,14 +492,12 @@ fun GlassmorphicCard(
                 RoundedCornerShape(16.dp)
             )
     ) {
-        // Background layer with glassmorphism effect
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .glassmorphism(shape = RoundedCornerShape(16.dp))
         )
 
-        // Content layer
         Box(
             modifier = Modifier
                 .fillMaxWidth()
