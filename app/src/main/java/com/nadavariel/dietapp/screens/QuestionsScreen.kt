@@ -61,8 +61,11 @@ fun QuestionsScreen(
     var currentIndex by remember { mutableIntStateOf(0) }
     var answers by remember { mutableStateOf(mutableListOf<String?>().apply { repeat(questions.size) { add(null) } }) }
 
-    // STEP 1: Collect the diet plan result state from the ViewModel
     val dietPlanResult by questionsViewModel.dietPlanResult.collectAsState()
+
+    // Track if we should show the dialog
+    var showDietPlanDialog by remember { mutableStateOf(false) }
+    var currentDietPlan by remember { mutableStateOf<DietPlan?>(null) }
 
     // Sync Firestore answers
     LaunchedEffect(savedAnswers) {
@@ -71,6 +74,17 @@ fun QuestionsScreen(
                 savedAnswers.find { it.question == q.text }?.answer
             }.toMutableList()
             answers = newAnswers
+        }
+    }
+
+    // Handle diet plan result changes
+    LaunchedEffect(dietPlanResult) {
+        when (val result = dietPlanResult) {
+            is DietPlanResult.Success -> {
+                currentDietPlan = result.plan
+                showDietPlanDialog = true
+            }
+            else -> { /* handled separately */ }
         }
     }
 
@@ -125,33 +139,43 @@ fun QuestionsScreen(
         val q = questions[currentIndex]
         val context = LocalContext.current
 
-        // --- STEP 2: Handle displaying the result dialogs ---
-        when (val result = dietPlanResult) {
-            is DietPlanResult.Loading -> {
-                Dialog(onDismissRequest = {}) {
-                    Card {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.padding(32.dp)
+        // Handle loading state
+        if (dietPlanResult is DietPlanResult.Loading) {
+            Dialog(onDismissRequest = {}) {
+                Card {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             CircularProgressIndicator()
+                            Text("Generating your personalized diet plan...")
                         }
                     }
                 }
             }
-            is DietPlanResult.Success -> {
-                DietPlanSuccessDialog(
-                    plan = result.plan,
-                    onDismiss = { questionsViewModel.resetDietPlanResult() }
-                )
-            }
-            is DietPlanResult.Error -> {
-                DietPlanErrorDialog(
-                    message = result.message,
-                    onDismiss = { questionsViewModel.resetDietPlanResult() }
-                )
-            }
-            is DietPlanResult.Idle -> { /* Do nothing */ }
+        }
+
+        // Handle success dialog
+        if (showDietPlanDialog && currentDietPlan != null) {
+            DietPlanSuccessDialog(
+                plan = currentDietPlan!!,
+                onDismiss = {
+                    showDietPlanDialog = false
+                    // Don't reset the result - keep it as Success
+                }
+            )
+        }
+
+        // Handle error dialog
+        if (dietPlanResult is DietPlanResult.Error) {
+            DietPlanErrorDialog(
+                message = (dietPlanResult as DietPlanResult.Error).message,
+                onDismiss = { questionsViewModel.resetDietPlanResult() }
+            )
         }
 
 
@@ -165,7 +189,6 @@ fun QuestionsScreen(
 
             // Scrollable area for questions
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                // --- Question Rendering Logic (Remains the same) ---
                 when (q.text) {
 
                     // Date of Birth
@@ -294,8 +317,7 @@ fun QuestionsScreen(
                         }
                     }
 
-                    // ... [Your other complex question handlers remain unchanged] ...
-                    // Generic options
+                    // Generic options or text input
                     else -> {
                         if (q.options != null) {
                             q.options.forEach { opt ->
@@ -326,14 +348,36 @@ fun QuestionsScreen(
             }
 
 
-            // --- STEP 3: Add the "Get AI Assistance" button ---
-            // It only shows if answers have been saved before.
+            // AI Assistance Button (only shows if answers have been saved)
             if (savedAnswers.isNotEmpty()) {
-                Button(
-                    onClick = { questionsViewModel.generateDietPlan() },
-                    modifier = Modifier.fillMaxWidth()
+                val hasDietPlan = dietPlanResult is DietPlanResult.Success
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Get AI Dietary Assistance")
+                    Button(
+                        onClick = {
+                            if (hasDietPlan) {
+                                showDietPlanDialog = true
+                            } else {
+                                questionsViewModel.generateDietPlan()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (hasDietPlan) "View Diet Plan" else "Get AI Dietary Assistance")
+                    }
+
+                    // Show regenerate button if plan exists
+                    if (hasDietPlan) {
+                        OutlinedButton(
+                            onClick = { questionsViewModel.regenerateDietPlan() },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Regenerate")
+                        }
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -345,9 +389,6 @@ fun QuestionsScreen(
                     if (currentIndex < questions.lastIndex) currentIndex++
                     else {
                         questionsViewModel.saveUserAnswers(questions, answers)
-                        // Optionally, you could trigger the AI plan generation right after submitting
-                        // questionsViewModel.generateDietPlan()
-                        // Or just navigate back as it is now.
                         navController.popBackStack()
                     }
                 },
@@ -360,36 +401,109 @@ fun QuestionsScreen(
     }
 }
 
-// --- STEP 4: Helper composables for the dialogs ---
-
 @Composable
 fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Your Personalized Diet Plan") },
+        title = {
+            Text(
+                "Your Personalized Diet Plan",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Calorie Info Card
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Daily Calories Target",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            "${plan.dailyCalories} kcal",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                // Macros Card
+                Card {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Macronutrient Breakdown",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            MacroItem("Protein", plan.proteinGrams, "g")
+                            MacroItem("Carbs", plan.carbsGrams, "g")
+                            MacroItem("Fat", plan.fatGrams, "g")
+                        }
+                    }
+                }
+
+                // Recommendations Card
+                Card {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Recommendations",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            plan.recommendations,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // Disclaimer
                 Text(
-                    "Daily Calories: ${plan.dailyCalories} kcal",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold
+                    plan.disclaimer,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text("Protein: ${plan.proteinGrams} g")
-                Text("Carbohydrates: ${plan.carbsGrams} g")
-                Text("Fat: ${plan.fatGrams} g")
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("Recommendations:", fontWeight = FontWeight.Bold)
-                Text(plan.recommendations)
-                Spacer(Modifier.height(16.dp))
-                Text(plan.disclaimer, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("OK")
+                Text("Close")
             }
         }
     )
+}
+
+@Composable
+private fun MacroItem(label: String, value: Int, unit: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "$value$unit",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }
 
 @Composable
