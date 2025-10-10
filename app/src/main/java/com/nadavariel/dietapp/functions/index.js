@@ -26,15 +26,25 @@ function imageToGenerativePart(base64String, mimeType) {
  * @returns {string} The cleaned JSON string.
  */
 function extractJsonFromMarkdown(text) {
-  const jsonStart = text.indexOf('```json');
-  const jsonEnd = text.lastIndexOf('```');
+  if (!text) return "{}";
 
-  if (jsonStart !== -1 && jsonEnd > jsonStart) {
-    // Adjust start position to be after '```json\n'
-    return text.substring(text.indexOf('{', jsonStart), jsonEnd).trim();
+  // Try to locate a JSON block (handles ```json ... ``` and plain JSON)
+  const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (jsonMatch) {
+    const candidate = jsonMatch[0];
+    try {
+      JSON.parse(candidate); // sanity check
+      return candidate;
+    } catch {
+      // If it's close to JSON but invalid, try some basic cleanup
+      const cleaned = candidate
+        .replace(/[\u0000-\u001F]+/g, '') // remove control chars
+        .replace(/,\s*([}\]])/g, '$1');  // remove trailing commas
+      return cleaned;
+    }
   }
 
-  // If no markdown block is found, assume the whole text is the JSON
+  // Fallback: try parsing the entire thing
   return text.trim();
 }
 
