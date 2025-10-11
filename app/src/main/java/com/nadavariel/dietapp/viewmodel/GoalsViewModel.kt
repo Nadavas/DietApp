@@ -10,7 +10,6 @@ import com.nadavariel.dietapp.data.Goal
 import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -25,35 +24,12 @@ class GoalsViewModel : ViewModel() {
     private val _userWeight = MutableStateFlow(0f)
     val userWeight = _userWeight.asStateFlow()
 
-    // 🌟 New State: Tracks which goals are missing (e.g., ["Calorie", "Protein"])
-    private val _missingGoals = MutableStateFlow<List<String>>(emptyList())
-    val missingGoals = _missingGoals.asStateFlow()
+    private val _hasAiGeneratedGoals = MutableStateFlow(false)
+    val hasAiGeneratedGoals = _hasAiGeneratedGoals.asStateFlow()
 
     init {
         fetchUserGoals()
         fetchUserProfile()
-        // 🌟 Start monitoring for missing goals immediately
-        viewModelScope.launch {
-            goals.collect { currentGoals ->
-                updateMissingGoals(currentGoals)
-            }
-        }
-    }
-
-    private fun updateMissingGoals(currentGoals: List<Goal>) {
-        val missing = currentGoals
-            .filter { it.value.isNullOrBlank() || it.value == "0" }
-            .map { goal ->
-                when {
-                    goal.text.contains("calorie", ignoreCase = true) -> "Calorie"
-                    goal.text.contains("protein", ignoreCase = true) -> "Protein"
-                    // Add other goal types here if needed (e.g., Weight)
-                    else -> "Goal"
-                }
-            }
-            .distinct() // Ensure no duplicate names
-        _missingGoals.value = missing
-        Log.d("GoalsViewModel", "Missing goals updated: $missing")
     }
 
     private fun fetchUserGoals() {
@@ -79,6 +55,7 @@ class GoalsViewModel : ViewModel() {
                 if (snapshot != null && snapshot.exists()) {
                     @Suppress("UNCHECKED_CAST")
                     val answersMap = snapshot.get("answers") as? List<Map<String, String>>
+                    val aiGenerated = snapshot.getBoolean("aiGenerated") ?: false
 
                     val userAnswers = answersMap?.map {
                         it["question"] to it["answer"]
@@ -89,9 +66,11 @@ class GoalsViewModel : ViewModel() {
                     }
 
                     _goals.value = mergedGoals
-                    Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items")
+                    _hasAiGeneratedGoals.value = aiGenerated
+                    Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items, AI-generated: $aiGenerated")
                 } else {
                     _goals.value = allGoals
+                    _hasAiGeneratedGoals.value = false
                     Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
                 }
             }
@@ -120,7 +99,6 @@ class GoalsViewModel : ViewModel() {
             }
     }
 
-
     fun saveUserAnswers() {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -137,7 +115,15 @@ class GoalsViewModel : ViewModel() {
                 val userAnswersRef = firestore.collection("users").document(userId)
                     .collection("user_answers").document("goals")
 
-                userAnswersRef.set(mapOf("answers" to userAnswersToSave)).await()
+                // Preserve aiGenerated flag if it exists
+                val currentData = userAnswersRef.get().await()
+                val aiGenerated = currentData.getBoolean("aiGenerated") ?: false
+
+                userAnswersRef.set(mapOf(
+                    "answers" to userAnswersToSave,
+                    "aiGenerated" to aiGenerated
+                )).await()
+
                 Log.d("GoalsViewModel", "Successfully saved user answers.")
             } catch (e: Exception) {
                 Log.e("GoalsViewModel", "Error saving user answers", e)

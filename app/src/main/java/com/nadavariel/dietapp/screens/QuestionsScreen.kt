@@ -165,7 +165,12 @@ fun QuestionsScreen(
                 plan = currentDietPlan!!,
                 onDismiss = {
                     showDietPlanDialog = false
-                    // Don't reset the result - keep it as Success
+                },
+                onApplyToGoals = {
+                    // Apply diet plan to goals and navigate
+                    questionsViewModel.applyDietPlanToGoals(currentDietPlan!!)
+                    showDietPlanDialog = false
+                    navController.navigate("goals")
                 }
             )
         }
@@ -402,7 +407,11 @@ fun QuestionsScreen(
 }
 
 @Composable
-fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit) {
+fun DietPlanSuccessDialog(
+    plan: DietPlan,
+    onDismiss: () -> Unit,
+    onApplyToGoals: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -483,7 +492,12 @@ fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) {
+            Button(onClick = onApplyToGoals) {
+                Text("Apply to Goals")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
                 Text("Close")
             }
         }

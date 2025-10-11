@@ -242,6 +242,45 @@ class QuestionsViewModel : ViewModel() {
         generateDietPlan()
     }
 
+    /** NEW: Apply diet plan to goals **/
+    fun applyDietPlanToGoals(dietPlan: DietPlan) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.e("QuestionsViewModel", "Cannot apply diet plan: User not logged in.")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val goalsToSave = listOf(
+                    mapOf(
+                        "question" to "How many calories a day is your target?",
+                        "answer" to dietPlan.dailyCalories.toString()
+                    ),
+                    mapOf(
+                        "question" to "How many grams of protein a day is your target?",
+                        "answer" to dietPlan.proteinGrams.toString()
+                    )
+                )
+
+                val goalsRef = firestore.collection("users")
+                    .document(userId)
+                    .collection("user_answers")
+                    .document("goals")
+
+                goalsRef.set(mapOf(
+                    "answers" to goalsToSave,
+                    "aiGenerated" to true,
+                    "appliedAt" to com.google.firebase.Timestamp.now()
+                )).await()
+
+                Log.d("QuestionsViewModel", "Successfully applied diet plan to goals.")
+            } catch (e: Exception) {
+                Log.e("QuestionsViewModel", "Error applying diet plan to goals", e)
+            }
+        }
+    }
+
     /** Reset the state **/
     fun resetDietPlanResult() {
         _dietPlanResult.value = DietPlanResult.Idle

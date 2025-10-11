@@ -37,19 +37,31 @@ fun HomeScreen(
     goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController,
 ) {
-    // --- STATE AND DATA (No changes here) ---
+    // --- STATE AND DATA ---
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
     val goals by goalViewModel.goals.collectAsState()
-    val missingGoals by goalViewModel.missingGoals.collectAsState()
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
     val goalCalories = remember(goals) {
         goals.firstOrNull()?.value?.toIntOrNull() ?: 2000
+    }
+
+    // Check if goals are missing (empty or zero values)
+    val missingGoals = remember(goals) {
+        goals.filter { goal ->
+            goal.value.isNullOrBlank() || goal.value == "0"
+        }.map { goal ->
+            when {
+                goal.text.contains("calorie", ignoreCase = true) -> "Calorie"
+                goal.text.contains("protein", ignoreCase = true) -> "Protein"
+                else -> "Goal"
+            }
+        }.distinct()
     }
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
@@ -121,7 +133,6 @@ fun HomeScreen(
 
                 // --- DATE PICKER SECTION ---
                 item {
-                    // Assuming DatePickerSection is designed to work on a dark/gradient background
                     DatePickerSection(
                         currentWeekStartDate = currentWeekStartDate,
                         selectedDate = selectedDate,
