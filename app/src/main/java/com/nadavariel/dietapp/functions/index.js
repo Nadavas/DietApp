@@ -112,7 +112,7 @@ exports.analyzeFoodWithGemini = onCall(
           1. DECOMPOSITION: Minor components (e.g., sauces, small garnishes) that are part of a main dish should not be separated. For example, "pasta with tomato sauce" is one item.
           2. SEPARATION: Main components should be separated. For example, "rice with chicken breast" contains two separate main food items.
           3. SERVING AMOUNT: If a number is not specified for a main food item, use a common, natural serving size (e.g., "1 piece", "1 bowl"). Do not use fractional amounts unless specified.
-          4. UNIT SELECTION: For whole items, the unit should be "piece" or "unit" instead of "cup" or "grams".
+          4. UNIT SELECTION (Weight Priority: Grams): When specifying the weight unit, always use 'g' (grams) and never use 'ounce' or 'oz'. For whole items, the unit should be 'piece' or 'unit' instead of 'cup' or 'grams'.
 
           Return the data as a single JSON array containing an object for each main food item.
           If the food is not found, return an empty array: [].

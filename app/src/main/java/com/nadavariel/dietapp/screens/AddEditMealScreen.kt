@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +32,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -38,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
+import com.nadavariel.dietapp.data.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
@@ -56,6 +60,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private const val FILE_PROVIDER_AUTHORITY = "com.nadavariel.dietapp.provider"
+
+// REMOVED: The aggregateFoodInfo function is no longer needed
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +97,9 @@ fun AddEditMealScreen(
     var isImageProcessing by remember { mutableStateOf(false) }
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
+
+    // MODIFIED: State to hold the LIST of meals proposed by Gemini for the dialog
+    var proposedMealList by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
 
     fun clearImageState() {
         imageUri = null
@@ -220,37 +229,27 @@ fun AddEditMealScreen(
         }
     }
 
+    // --- MODIFIED: Set proposedMealList state with the full list ---
     LaunchedEffect(geminiResult) {
         if (geminiResult is GeminiResult.Success) {
             val successResult = geminiResult as GeminiResult.Success
-            val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
-            successResult.foodInfoList.forEach { foodInfo ->
-                val cal = foodInfo.calories?.toIntOrNull()
-                if (foodInfo.food_name != null && cal != null) {
-                    foodLogViewModel.logMeal(
-                        foodName = foodInfo.food_name,
-                        calories = cal,
-                        servingAmount = foodInfo.serving_amount,
-                        servingUnit = foodInfo.serving_unit,
-                        mealTime = mealTimestamp,
-                        protein = foodInfo.protein?.toDoubleOrNull(),
-                        carbohydrates = foodInfo.carbohydrates?.toDoubleOrNull(),
-                        fat = foodInfo.fat?.toDoubleOrNull(),
-                        fiber = foodInfo.fiber?.toDoubleOrNull(),
-                        sugar = foodInfo.sugar?.toDoubleOrNull(),
-                        sodium = foodInfo.sodium?.toDoubleOrNull(),
-                        potassium = foodInfo.potassium?.toDoubleOrNull(),
-                        calcium = foodInfo.calcium?.toDoubleOrNull(),
-                        iron = foodInfo.iron?.toDoubleOrNull(),
-                        vitaminC = foodInfo.vitaminC?.toDoubleOrNull()
-                    )
-                }
+            // Check if the list contains valid data (at least one item with a name and calories)
+            val validFoodInfoList = successResult.foodInfoList.filter {
+                !it.food_name.isNullOrBlank() && it.calories?.toIntOrNull() != null
             }
-            navController.popBackStack()
-            foodLogViewModel.resetGeminiResult()
+
+            if (validFoodInfoList.isNotEmpty()) {
+                // Set the state to trigger the dialog with the full list
+                proposedMealList = validFoodInfoList
+            } else {
+                // If parsing failed to get minimum data, reset result
+                foodLogViewModel.resetGeminiResult()
+                // You may want to show an error message here
+            }
         }
     }
+    // --- END MODIFIED ---
 
     val onTakePhoto: () -> Unit = {
         clearImageState()
@@ -476,6 +475,166 @@ fun AddEditMealScreen(
             }
         }
     }
+
+    // --- Confirmation Dialog Logic (MODIFIED) ---
+    if (proposedMealList != null) {
+        val confirmedMealList = proposedMealList!!
+
+        GeminiConfirmationDialog(
+            foodInfoList = confirmedMealList,
+            onAccept = {
+                // User accepts: log ALL meals separately and navigate back
+                val mealTimestamp = Timestamp(selectedDateTimeState.time)
+                foodLogViewModel.logMealsFromFoodInfoList(confirmedMealList, mealTimestamp)
+                proposedMealList = null
+                navController.popBackStack()
+            },
+            onDeny = {
+                // User denies: reset state and keep them on the screen with their input
+                foodLogViewModel.resetGeminiResult()
+                proposedMealList = null
+            },
+            onDismissRequest = {
+                // Dismissal is equivalent to denial for simplicity
+                foodLogViewModel.resetGeminiResult()
+                proposedMealList = null
+            }
+        )
+    }
+    // --- END Confirmation Dialog Logic ---
+}
+
+// MODIFIED: Dialog now accepts a list and uses a LazyColumn to display separate items
+@Composable
+fun GeminiConfirmationDialog(
+    foodInfoList: List<FoodNutritionalInfo>,
+    onAccept: () -> Unit,
+    onDeny: () -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    // Calculate the total calories once for the summary
+    val totalCalories = remember(foodInfoList) {
+        foodInfoList.sumOf { it.calories?.toIntOrNull() ?: 0 }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(
+                "Confirm Meal Components (${foodInfoList.size})",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.Start) {
+                Text(
+                    "Gemini recognized the following items. Each will be logged separately:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // List Container with Height Limit for Scrolling
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // Ensure the list doesn't exceed 250dp, making the list itself scrollable
+                        .heightIn(max = 250.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(foodInfoList) { index, foodInfo ->
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // Row 1: Item Name and Calories
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Item Name (with weight to take most space)
+                                Text(
+                                    text = "${index + 1}. ${foodInfo.food_name.orEmpty()}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    // Give it weight so the calorie count can be pushed to the right
+                                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                )
+                                // Item Calories
+                                Text(
+                                    text = "${foodInfo.calories.orEmpty()} kcal",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    // FIX: Prevent line wrapping on the calorie text
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip // Clip if it still can't fit
+                                )
+                            }
+
+                            // Row 2: Serving Unit
+                            val serving = if (foodInfo.serving_unit.isNullOrBlank()) "" else "${foodInfo.serving_amount.orEmpty()} ${foodInfo.serving_unit}"
+                            Text(
+                                text = serving,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            // Row 3: Macros (Protein | Carbs | Fat)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Protein: ${foodInfo.protein.orEmpty()} g",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    text = "Carbs: ${foodInfo.carbohydrates.orEmpty()} g",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    text = "Fat: ${foodInfo.fat.orEmpty()} g",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                        // Add a Divider, but not after the last item
+                        if (index < foodInfoList.lastIndex) {
+                            Divider(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Total Calories Summary
+                Text(
+                    text = "Total Calories to Log: $totalCalories kcal",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onAccept) {
+                Text("Accept & Log All")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDeny) {
+                Text("Deny & Edit")
+            }
+        }
+    )
 }
 
 @Composable

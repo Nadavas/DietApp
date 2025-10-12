@@ -16,7 +16,7 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nadavariel.dietapp.data.FoodNutritionalInfo
+import com.nadavariel.dietapp.data.FoodNutritionalInfo // <-- CORRECTED IMPORT
 import com.nadavariel.dietapp.data.GraphPreference
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
@@ -95,7 +95,6 @@ class FoodLogViewModel : ViewModel() {
     private val _caloriesByTimeOfDay = MutableStateFlow(
         mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     )
-
 
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
@@ -357,6 +356,7 @@ class FoodLogViewModel : ViewModel() {
 
     // --- Meal CRUD Operations ---
 
+    // Original logMeal function
     fun logMeal(
         foodName: String,
         calories: Int,
@@ -401,6 +401,39 @@ class FoodLogViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * NEW FUNCTION: Logs the meal after the user confirms the Gemini-parsed data.
+     */
+    fun logMealsFromFoodInfoList(
+        foodInfoList: List<FoodNutritionalInfo>, // Accepts the full list
+        mealTime: Timestamp
+    ) {
+        // Iterate through the list and log each one individually
+        for (foodInfo in foodInfoList) {
+            // Safely parse String fields from FoodNutritionalInfo to expected numerical types
+            logMeal(
+                foodName = foodInfo.food_name ?: "Unknown Meal", // Use the correct property
+                calories = foodInfo.calories?.toIntOrNull() ?: 0,
+                servingAmount = foodInfo.serving_amount,
+                servingUnit = foodInfo.serving_unit,
+                mealTime = mealTime,
+                protein = foodInfo.protein?.toDoubleOrNull(),
+                carbohydrates = foodInfo.carbohydrates?.toDoubleOrNull(),
+                fat = foodInfo.fat?.toDoubleOrNull(),
+                fiber = foodInfo.fiber?.toDoubleOrNull(),
+                sugar = foodInfo.sugar?.toDoubleOrNull(),
+                sodium = foodInfo.sodium?.toDoubleOrNull(),
+                potassium = foodInfo.potassium?.toDoubleOrNull(),
+                calcium = foodInfo.calcium?.toDoubleOrNull(),
+                iron = foodInfo.iron?.toDoubleOrNull(),
+                vitaminC = foodInfo.vitaminC?.toDoubleOrNull()
+            )
+        }
+        // Reset the Gemini result state immediately after acceptance
+        resetGeminiResult()
+    }
+
 
     fun updateMeal(
         mealId: String,
@@ -534,10 +567,8 @@ class FoodLogViewModel : ViewModel() {
 
     /**
      * Calls the Firebase function to analyze food, using text name or image data.
-     * @param foodName The food description (used for text input, or a fallback).
-     * @param imageB64 Optional Base64 string of the image for multimodal analysis.
      */
-    fun analyzeImageWithGemini(foodName: String, imageB64: String? = null) { // <-- PARAMETER ADDED
+    fun analyzeImageWithGemini(foodName: String, imageB64: String? = null) {
         _geminiResult.value = GeminiResult.Loading
         viewModelScope.launch {
             try {
@@ -586,6 +617,9 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Resets the Gemini result state.
+     */
     fun resetGeminiResult() {
         _geminiResult.value = GeminiResult.Idle
     }
