@@ -1,14 +1,18 @@
 package com.nadavariel.dietapp.screens
 
-import android.annotation.SuppressLint
 import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,446 +20,636 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.data.DietPlan
 import com.nadavariel.dietapp.viewmodel.DietPlanResult
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
-import java.text.SimpleDateFormat
 import java.util.*
 
-@SuppressLint("MutableCollectionMutableState")
+// --- Data Models ---
+enum class InputType { DOB, HEIGHT, WEIGHT, TEXT }
+data class Question(
+    val text: String,
+    val options: List<String>? = null,
+    val inputType: InputType? = null
+)
+
+// Define questions list outside the composable for reuse
+private val questions = listOf(
+    Question("What is your date of birth?", inputType = InputType.DOB),
+    Question("What is your gender?", options = listOf("Male", "Female", "Other / Prefer not to say")),
+    Question("What is your height?", inputType = InputType.HEIGHT),
+    Question("What is your current weight?", inputType = InputType.WEIGHT),
+    Question("What is your primary fitness goal?", options = listOf("Lose weight", "Gain muscle", "Maintain current weight", "Improve overall health")),
+    Question("Do you have a target weight or body composition goal in mind?", inputType = InputType.TEXT),
+    Question("How aggressive do you want to be with your fitness goal timeline?", options = listOf("Very aggressive (1–2 months)", "Moderate (3–6 months)", "Gradual (6+ months or no rush)")),
+    Question("How would you describe your daily activity level outside of exercise?", options = listOf("Sedentary", "Lightly active", "Moderately active", "Very active")),
+    Question("How many days per week do you engage in structured exercise?", options = listOf("0-1", "2-3", "4-5", "6-7")),
+    Question("What types of exercise do you typically perform?", inputType = InputType.TEXT)
+)
+
+// --- Screen State ---
+private enum class ScreenState { LANDING, EDITING, QUIZ_MODE }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuestionsScreen(
     navController: NavController,
     questionsViewModel: QuestionsViewModel = viewModel()
 ) {
-    // Questions
-    val questions = listOf(
-        Question("What is your date of birth?", inputType = InputType.DOB),
-        Question("What is your gender?", options = listOf("Male", "Female", "Other / Prefer not to say")),
-        Question("What is your height?", inputType = InputType.HEIGHT),
-        Question("What is your current weight?", inputType = InputType.WEIGHT),
-        Question(
-            "What is your primary fitness goal?",
-            options = listOf("Lose weight", "Gain muscle", "Maintain current weight", "Improve overall health")
-        ),
-        Question("Do you have a target weight or body composition goal in mind?"),
-        Question(
-            "How aggressive do you want to be with your fitness goal timeline?",
-            options = listOf("Very aggressive (1–2 months)", "Moderate (3–6 months)", "Gradual (6+ months or no rush)")
-        ),
-        Question(
-            "How would you describe your daily activity level outside of exercise?",
-            options = listOf("Sedentary", "Lightly active", "Moderately active", "Very active")
-        ),
-        Question("How many days per week do you engage in structured exercise?", options = listOf("0-1", "2-3", "4-5", "6-7")),
-        Question("What types of exercise do you typically perform?")
-    )
-
+    var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
-    var currentIndex by remember { mutableIntStateOf(0) }
-    var answers by remember { mutableStateOf(mutableListOf<String?>().apply { repeat(questions.size) { add(null) } }) }
 
-    val dietPlanResult by questionsViewModel.dietPlanResult.collectAsState()
+    // Separate state for quiz mode - this gets cleared when retaking
+    var quizAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
+    var quizCurrentIndex by remember { mutableStateOf(0) }
 
-    // Track if we should show the dialog
-    var showDietPlanDialog by remember { mutableStateOf(false) }
-    var currentDietPlan by remember { mutableStateOf<DietPlan?>(null) }
+    // Local answers for editing mode
+    var editAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
 
-    // Sync Firestore answers
-    LaunchedEffect(savedAnswers) {
-        if (savedAnswers.isNotEmpty()) {
-            val newAnswers = questions.map { q ->
+    // State for managing which question is being edited in a dialog
+    var questionToEditIndex by remember { mutableStateOf<Int?>(null) }
+
+    // Sync edit answers with saved answers from ViewModel when not in quiz mode
+    LaunchedEffect(savedAnswers, screenState) {
+        if (screenState != ScreenState.QUIZ_MODE && savedAnswers.isNotEmpty()) {
+            editAnswers = questions.map { q ->
                 savedAnswers.find { it.question == q.text }?.answer
-            }.toMutableList()
-            answers = newAnswers
-        }
-    }
-
-    // Handle diet plan result changes
-    LaunchedEffect(dietPlanResult) {
-        when (val result = dietPlanResult) {
-            is DietPlanResult.Success -> {
-                currentDietPlan = result.plan
-                showDietPlanDialog = true
             }
-            else -> { /* handled separately */ }
         }
     }
 
-    // Format helpers
-    fun isoToDisplay(iso: String?): String {
-        if (iso.isNullOrBlank()) return ""
-        return try {
-            val sdfIso = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val date = sdfIso.parse(iso)
-            val sdfDisplay = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-            sdfDisplay.format(date!!)
-        } catch (e: Exception) {
-            iso
-        }
-    }
-
-    fun displayToIso(year: Int, month: Int, day: Int): String =
-        String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day)
-
-    fun parseWeight(answer: String?): Pair<String, String> {
-        if (answer.isNullOrBlank()) return "" to "kg"
-        val trimmed = answer.trim()
-        return when {
-            trimmed.contains("kg", true) -> trimmed.replace("kg", "", true).trim() to "kg"
-            trimmed.contains("lb", true) -> trimmed.replace("lbs", "", true).replace("lb", "", true).trim() to "lbs"
-            else -> trimmed to "kg"
-        }
-    }
-
-    fun parseHeight(answer: String?): Pair<String, String> {
-        if (answer.isNullOrBlank()) return "" to "cm"
-        val trimmed = answer.trim()
-        return when {
-            trimmed.contains("cm", true) -> trimmed.replace("cm", "", true).trim() to "cm"
-            Regex("""^(\d+)'\s*(\d+)""").matches(trimmed) -> trimmed to "ft"
-            else -> trimmed to "cm"
-        }
-    }
+    // --- DIALOGS for API Results ---
+    HandleDietPlanResultDialogs(navController, questionsViewModel)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Questionnaire") },
+                title = {
+                    Text(when(screenState) {
+                        ScreenState.LANDING -> "Your Profile"
+                        ScreenState.EDITING -> "Edit Answers"
+                        ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
+                    })
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    IconButton(onClick = {
+                        when (screenState) {
+                            ScreenState.LANDING -> navController.popBackStack()
+                            ScreenState.QUIZ_MODE -> {
+                                // Go back to previous question or landing
+                                if (quizCurrentIndex > 0) {
+                                    quizCurrentIndex--
+                                } else {
+                                    quizAnswers = emptyList()
+                                    quizCurrentIndex = 0
+                                    screenState = ScreenState.LANDING
+                                }
+                            }
+                            else -> {
+                                screenState = ScreenState.LANDING
+                            }
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         }
-    ) { paddingVals ->
-        val q = questions[currentIndex]
-        val context = LocalContext.current
-
-        // Handle loading state
-        if (dietPlanResult is DietPlanResult.Loading) {
-            Dialog(onDismissRequest = {}) {
-                Card {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(32.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator()
-                            Text("Generating your personalized diet plan...")
+    ) { paddingValues ->
+        when (screenState) {
+            ScreenState.LANDING -> {
+                val allAnswered = editAnswers.isNotEmpty() && editAnswers.all { !it.isNullOrBlank() }
+                LandingContent(
+                    modifier = Modifier.padding(paddingValues),
+                    allQuestionsAnswered = allAnswered,
+                    onCompleteQuiz = {
+                        editAnswers = questions.map { q ->
+                            savedAnswers.find { it.question == q.text }?.answer
                         }
+                        screenState = ScreenState.EDITING
+                    },
+                    onEditAnswers = {
+                        editAnswers = questions.map { q ->
+                            savedAnswers.find { it.question == q.text }?.answer
+                        }
+                        screenState = ScreenState.EDITING
+                    },
+                    onRetakeQuiz = {
+                        // Initialize quiz with empty answers
+                        quizAnswers = List(questions.size) { null }
+                        quizCurrentIndex = 0
+                        screenState = ScreenState.QUIZ_MODE
                     }
-                }
+                )
             }
-        }
-
-        // Handle success dialog
-        if (showDietPlanDialog && currentDietPlan != null) {
-            DietPlanSuccessDialog(
-                plan = currentDietPlan!!,
-                onDismiss = {
-                    showDietPlanDialog = false
-                },
-                onApplyToGoals = {
-                    // Apply diet plan to goals and navigate
-                    questionsViewModel.applyDietPlanToGoals(currentDietPlan!!)
-                    showDietPlanDialog = false
-                    navController.navigate("goals")
-                }
-            )
-        }
-
-        // Handle error dialog
-        if (dietPlanResult is DietPlanResult.Error) {
-            DietPlanErrorDialog(
-                message = (dietPlanResult as DietPlanResult.Error).message,
-                onDismiss = { questionsViewModel.resetDietPlanResult() }
-            )
-        }
-
-
-        Column(
-            modifier = Modifier
-                .padding(paddingVals)
-                .padding(16.dp)
-                .fillMaxSize()
-        ) {
-            Text(q.text, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
-
-            // Scrollable area for questions
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                when (q.text) {
-
-                    // Date of Birth
-                    "What is your date of birth?" -> {
-                        val savedIso = answers[currentIndex] ?: ""
-                        var showPicker by remember { mutableStateOf(false) }
-
-                        LaunchedEffect(showPicker) {
-                            if (showPicker) {
-                                val cal = Calendar.getInstance()
-                                if (savedIso.isNotBlank()) {
-                                    val parts = savedIso.split("-").map { it.toInt() }
-                                    cal.set(parts[0], parts[1] - 1, parts[2])
-                                }
-                                val dpd = DatePickerDialog(
-                                    context,
-                                    { _, year, month, day ->
-                                        answers = answers.toMutableList().also {
-                                            it[currentIndex] = displayToIso(year, month, day)
-                                        }
-                                    },
-                                    cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)
-                                )
-                                dpd.setOnDismissListener { showPicker = false }
-                                dpd.show()
-                            }
-                        }
-
-                        OutlinedTextField(
-                            value = isoToDisplay(answers[currentIndex]),
-                            onValueChange = {},
-                            readOnly = true,
-                            placeholder = { Text("Tap to pick date of birth") },
-                            trailingIcon = {
-                                IconButton(onClick = { showPicker = true }) {
-                                    Icon(Icons.Filled.CalendarToday, contentDescription = "Pick date")
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+            ScreenState.EDITING -> {
+                EditingContent(
+                    modifier = Modifier.padding(paddingValues),
+                    answers = editAnswers,
+                    onEditClick = { index -> questionToEditIndex = index },
+                    onSaveAndGenerate = {
+                        questionsViewModel.saveAnswersAndRegeneratePlan(questions, editAnswers)
+                        screenState = ScreenState.LANDING
                     }
-
-                    // Height Input
-                    "What is your height?" -> {
-                        val (initialValue, initialUnit) = parseHeight(answers[currentIndex])
-                        var unit by remember(currentIndex) { mutableStateOf(initialUnit) }
-                        var value by remember(currentIndex) { mutableStateOf(initialValue) }
-
-                        Column {
-                            OutlinedTextField(
-                                value = value,
-                                onValueChange = {
-                                    val filtered = it.filter { ch -> ch.isDigit() }
-                                    if (filtered.length <= 3) {
-                                        value = filtered
-                                        answers = answers.toMutableList().also { list ->
-                                            list[currentIndex] = "$filtered $unit"
-                                        }
-                                    }
-                                },
-                                placeholder = { Text("Enter height") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("cm", "ft").forEach { u ->
-                                    FilterChip(
-                                        selected = unit == u,
-                                        onClick = {
-                                            unit = u
-                                            if (value.isNotBlank()) {
-                                                answers = answers.toMutableList().also {
-                                                    it[currentIndex] = "$value $u"
-                                                }
-                                            }
-                                        },
-                                        label = { Text(u) }
-                                    )
-                                }
-                            }
+                )
+            }
+            ScreenState.QUIZ_MODE -> {
+                QuizModeContent(
+                    modifier = Modifier.padding(paddingValues),
+                    currentIndex = quizCurrentIndex,
+                    question = questions[quizCurrentIndex],
+                    currentAnswer = quizAnswers.getOrNull(quizCurrentIndex),
+                    onAnswerChanged = { answer ->
+                        // Update the answer for current question
+                        quizAnswers = quizAnswers.toMutableList().apply {
+                            // Ensure list is big enough
+                            while (size <= quizCurrentIndex) add(null)
+                            set(quizCurrentIndex, answer)
                         }
-                    }
-
-                    // Weight Input
-                    "What is your current weight?" -> {
-                        val (initialValue, initialUnit) = parseWeight(answers[currentIndex])
-                        var unit by remember(currentIndex) { mutableStateOf(initialUnit) }
-                        var value by remember(currentIndex) { mutableStateOf(initialValue) }
-
-                        Column {
-                            OutlinedTextField(
-                                value = value,
-                                onValueChange = {
-                                    val filtered = it.filter { ch -> ch.isDigit() || ch == '.' }
-                                    if (filtered.length <= 6) {
-                                        value = filtered
-                                        answers = answers.toMutableList().also {
-                                            it[currentIndex] = "$filtered $unit"
-                                        }
-                                    }
-                                },
-                                placeholder = { Text("Enter weight") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("kg", "lbs").forEach { u ->
-                                    FilterChip(
-                                        selected = unit == u,
-                                        onClick = {
-                                            unit = u
-                                            if (value.isNotBlank()) {
-                                                answers = answers.toMutableList().also {
-                                                    it[currentIndex] = "$value $u"
-                                                }
-                                            }
-                                        },
-                                        label = { Text(u) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Generic options or text input
-                    else -> {
-                        if (q.options != null) {
-                            q.options.forEach { opt ->
-                                val selected = answers[currentIndex] == opt
-                                OutlinedButton(
-                                    onClick = { answers = answers.toMutableList().also { it[currentIndex] = opt } },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                        else MaterialTheme.colorScheme.surface
-                                    )
-                                ) { Text(opt) }
-                            }
+                    },
+                    onNext = {
+                        if (quizCurrentIndex < questions.lastIndex) {
+                            quizCurrentIndex++
                         } else {
-                            OutlinedTextField(
-                                value = answers[currentIndex] ?: "",
-                                onValueChange = { new ->
-                                    answers = answers.toMutableList().also { it[currentIndex] = new }
-                                },
-                                placeholder = { Text("Type your answer...") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            // Submit the quiz
+                            questionsViewModel.saveAnswersAndRegeneratePlan(questions, quizAnswers)
+                            quizAnswers = emptyList()
+                            quizCurrentIndex = 0
+                            screenState = ScreenState.LANDING
                         }
-                    }
-                }
+                    },
+                    canProceed = !quizAnswers.getOrNull(quizCurrentIndex).isNullOrBlank()
+                )
             }
+        }
 
-
-            // AI Assistance Button (only shows if answers have been saved)
-            if (savedAnswers.isNotEmpty()) {
-                val hasDietPlan = dietPlanResult is DietPlanResult.Success
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            if (hasDietPlan) {
-                                showDietPlanDialog = true
-                            } else {
-                                questionsViewModel.generateDietPlan()
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (hasDietPlan) "View Diet Plan" else "Get AI Dietary Assistance")
-                    }
-
-                    // Show regenerate button if plan exists
-                    if (hasDietPlan) {
-                        OutlinedButton(
-                            onClick = { questionsViewModel.regenerateDietPlan() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Regenerate")
-                        }
-                    }
+        if (questionToEditIndex != null) {
+            val index = questionToEditIndex!!
+            EditQuestionDialog(
+                question = questions[index],
+                currentAnswer = editAnswers.getOrNull(index),
+                onDismiss = { questionToEditIndex = null },
+                onSave = { newAnswer ->
+                    editAnswers = editAnswers.toMutableList().also { it[index] = newAnswer }
+                    questionToEditIndex = null
                 }
-                Spacer(Modifier.height(8.dp))
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun LandingContent(
+    modifier: Modifier = Modifier,
+    allQuestionsAnswered: Boolean,
+    onCompleteQuiz: () -> Unit,
+    onEditAnswers: () -> Unit,
+    onRetakeQuiz: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = if (allQuestionsAnswered) Icons.Default.Check else Icons.Default.Edit,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = if (allQuestionsAnswered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = if (allQuestionsAnswered) "Your profile is complete!" else "Your profile is incomplete",
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = if (allQuestionsAnswered) "You can edit your answers or retake the quiz to get an updated diet plan." else "Please complete the quiz to generate a personalized diet plan.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        if (allQuestionsAnswered) {
+            Button(onClick = onEditAnswers, modifier = Modifier.fillMaxWidth()) {
+                Text("Edit Answers")
             }
-
-
-            val isValid = !answers[currentIndex].isNullOrBlank()
-            Button(
-                onClick = {
-                    if (currentIndex < questions.lastIndex) currentIndex++
-                    else {
-                        questionsViewModel.saveUserAnswers(questions, answers)
-                        navController.popBackStack()
-                    }
-                },
-                enabled = isValid,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (currentIndex < questions.lastIndex) "Next" else "Submit")
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(onClick = onRetakeQuiz, modifier = Modifier.fillMaxWidth()) {
+                Text("Retake Whole Quiz")
+            }
+        } else {
+            Button(onClick = onRetakeQuiz, modifier = Modifier.fillMaxWidth()) {
+                Text("Complete Quiz")
             }
         }
     }
 }
 
 @Composable
-fun DietPlanSuccessDialog(
-    plan: DietPlan,
-    onDismiss: () -> Unit,
-    onApplyToGoals: () -> Unit
+private fun EditingContent(
+    modifier: Modifier = Modifier,
+    answers: List<String?>,
+    onEditClick: (Int) -> Unit,
+    onSaveAndGenerate: () -> Unit
 ) {
+    Column(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp)
+        ) {
+            item {
+                Text(
+                    "Tap on a question to provide or update your answer.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+            itemsIndexed(questions) { index, question ->
+                QuestionItem(
+                    question = question.text,
+                    answer = answers.getOrNull(index),
+                    onClick = { onEditClick(index) }
+                )
+                if (index < questions.lastIndex) {
+                    HorizontalDivider()
+                }
+            }
+        }
+
+        Button(
+            onClick = onSaveAndGenerate,
+            enabled = answers.size == questions.size && answers.all { !it.isNullOrBlank() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text("Save Changes & Get Plan")
+        }
+    }
+}
+
+@Composable
+private fun QuestionItem(question: String, answer: String?, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(question, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = if (answer.isNullOrBlank()) "Tap to answer" else answer,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (answer.isNullOrBlank()) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary,
+                fontWeight = if (answer.isNullOrBlank()) FontWeight.Normal else FontWeight.Bold
+            )
+        }
+        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun QuizModeContent(
+    modifier: Modifier = Modifier,
+    currentIndex: Int,
+    question: Question,
+    currentAnswer: String?,
+    onAnswerChanged: (String) -> Unit,
+    onNext: () -> Unit,
+    canProceed: Boolean
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Progress indicator
+        LinearProgressIndicator(
+            progress = { (currentIndex + 1).toFloat() / questions.size },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
+
+        Text(
+            question.text,
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Use key to force recomposition when question changes
+            key(currentIndex) {
+                QuestionInput(
+                    question = question,
+                    currentAnswer = currentAnswer,
+                    onSave = onAnswerChanged
+                )
+            }
+        }
+
+        Button(
+            onClick = onNext,
+            enabled = canProceed,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (currentIndex < questions.lastIndex) "Next" else "Submit & Get Plan")
+        }
+    }
+}
+
+@Composable
+private fun EditQuestionDialog(
+    question: Question,
+    currentAnswer: String?,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var tempAnswer by remember(currentAnswer) { mutableStateOf(currentAnswer ?: "") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Your Personalized Diet Plan",
-                style = MaterialTheme.typography.headlineSmall
+        title = { Text(question.text) },
+        text = {
+            QuestionInput(
+                question = question,
+                currentAnswer = tempAnswer,
+                onSave = { newAnswer ->
+                    if (question.inputType != InputType.TEXT) {
+                        // For non-text inputs (options, dates, etc), save immediately
+                        onSave(newAnswer)
+                    } else {
+                        // For text input, just update temp state
+                        tempAnswer = newAnswer
+                    }
+                }
             )
         },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (question.inputType == InputType.TEXT) {
+                        onSave(tempAnswer)
+                    }
+                    onDismiss()
+                }
+            ) {
+                Text(if (question.inputType == InputType.TEXT) "Save" else "Close")
+            }
+        },
+        dismissButton = {
+            if (question.inputType == InputType.TEXT) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    )
+}
+
+@Composable
+private fun QuestionInput(
+    question: Question,
+    currentAnswer: String?,
+    onSave: (String) -> Unit
+) {
+    when {
+        question.inputType == InputType.DOB -> DobInput(currentAnswer, onSave)
+        question.inputType == InputType.HEIGHT -> HeightInput(currentAnswer, onSave)
+        question.inputType == InputType.WEIGHT -> WeightInput(currentAnswer, onSave)
+        question.options != null -> OptionsInput(question.options, currentAnswer, onSave)
+        else -> TextInput(currentAnswer, onValueChange = onSave)
+    }
+}
+
+@Composable
+private fun TextInput(currentValue: String?, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = currentValue ?: "",
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("Type your answer...") }
+    )
+}
+
+@Composable
+private fun OptionsInput(options: List<String>, currentAnswer: String?, onSave: (String) -> Unit) {
+    Column {
+        options.forEach { opt ->
+            val selected = currentAnswer == opt
+            OutlinedButton(
+                onClick = { onSave(opt) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Text(opt)
+            }
+        }
+    }
+}
+
+@Composable
+fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
+    val context = LocalContext.current
+    val cal = Calendar.getInstance()
+
+    // Parse existing answer if available
+    if (!currentAnswer.isNullOrBlank()) {
+        try {
+            val parts = currentAnswer.split("-").map { it.toInt() }
+            cal.set(parts[0], parts[1] - 1, parts[2])
+        } catch (e: Exception) { /* Ignore */ }
+    }
+
+    OutlinedButton(
+        onClick = {
+            DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    val isoDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day)
+                    onSave(isoDate)
+                },
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH),
+                cal.get(Calendar.DAY_OF_MONTH)
+            ).show()
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date", modifier = Modifier.padding(end = 8.dp))
+        Text(if (currentAnswer.isNullOrBlank()) "Select Date of Birth" else currentAnswer)
+    }
+}
+
+@Composable
+private fun HeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
+    val (initialValue, initialUnit) = remember(currentAnswer) {
+        parseUnitValue(currentAnswer, "cm")
+    }
+
+    var value by remember(currentAnswer) { mutableStateOf(initialValue) }
+    var unit by remember(currentAnswer) { mutableStateOf(initialUnit) }
+
+    // Save whenever value or unit changes (but only if value is not blank)
+    LaunchedEffect(value, unit) {
+        if (value.isNotBlank()) {
+            onSave("$value $unit")
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newValue ->
+                value = newValue.filter { it.isDigit() }
+            },
+            placeholder = { Text("Enter height") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("cm", "ft").forEach { u ->
+                FilterChip(
+                    selected = unit == u,
+                    onClick = { unit = u },
+                    label = { Text(u) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
+    val (initialValue, initialUnit) = remember(currentAnswer) {
+        parseUnitValue(currentAnswer, "kg", "[^0-9.]")
+    }
+
+    var value by remember(currentAnswer) { mutableStateOf(initialValue) }
+    var unit by remember(currentAnswer) { mutableStateOf(initialUnit) }
+
+    // Save whenever value or unit changes (but only if value is not blank)
+    LaunchedEffect(value, unit) {
+        if (value.isNotBlank()) {
+            onSave("$value $unit")
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newValue ->
+                value = newValue.filter { it.isDigit() || it == '.' }
+            },
+            placeholder = { Text("Enter weight") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("kg", "lbs").forEach { u ->
+                FilterChip(
+                    selected = unit == u,
+                    onClick = { unit = u },
+                    label = { Text(u) }
+                )
+            }
+        }
+    }
+}
+
+private fun parseUnitValue(
+    answer: String?,
+    defaultUnit: String,
+    stripRegex: String = "[^0-9]"
+): Pair<String, String> {
+    if (answer.isNullOrBlank()) return "" to defaultUnit
+    val value = answer.replace(Regex(stripRegex), "")
+    val unit = Regex("[a-zA-Z]+").find(answer)?.value ?: defaultUnit
+    return value to unit
+}
+
+@Composable
+private fun HandleDietPlanResultDialogs(
+    navController: NavController,
+    questionsViewModel: QuestionsViewModel
+) {
+    val dietPlanResult by questionsViewModel.dietPlanResult.collectAsState()
+
+    when (val result = dietPlanResult) {
+        is DietPlanResult.Loading -> {
+            Dialog(onDismissRequest = {}) {
+                Card(modifier = Modifier.padding(32.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.width(16.dp))
+                        Text("Generating your plan...")
+                    }
+                }
+            }
+        }
+        is DietPlanResult.Success -> {
+            DietPlanSuccessDialog(
+                plan = result.plan,
+                onDismiss = { questionsViewModel.resetDietPlanResult() },
+                onApplyToGoals = {
+                    questionsViewModel.applyDietPlanToGoals(result.plan)
+                    questionsViewModel.resetDietPlanResult()
+                    navController.navigate("goals")
+                }
+            )
+        }
+        is DietPlanResult.Error -> {
+            DietPlanErrorDialog(
+                message = result.message,
+                onDismiss = { questionsViewModel.resetDietPlanResult() }
+            )
+        }
+        is DietPlanResult.Idle -> {}
+    }
+}
+
+@Composable
+fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Your Personalized Diet Plan") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Calorie Info Card
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Daily Calories Target",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            "${plan.dailyCalories} kcal",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        Text("Daily Calories Target", style = MaterialTheme.typography.labelLarge)
+                        Text("${plan.dailyCalories} kcal", style = MaterialTheme.typography.headlineMedium)
                     }
                 }
-
-                // Macros Card
                 Card {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Macronutrient Breakdown",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Macronutrient Breakdown", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -466,29 +660,14 @@ fun DietPlanSuccessDialog(
                         }
                     }
                 }
-
-                // Recommendations Card
                 Card {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Recommendations",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Recommendations", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
-                        Text(
-                            plan.recommendations,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text(plan.recommendations, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-
-                // Disclaimer
-                Text(
-                    plan.disclaimer,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(plan.disclaimer, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
@@ -507,16 +686,8 @@ fun DietPlanSuccessDialog(
 @Composable
 private fun MacroItem(label: String, value: Int, unit: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            "$value$unit",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        Text("$value$unit", style = MaterialTheme.typography.titleLarge)
     }
 }
 
@@ -532,15 +703,4 @@ fun DietPlanErrorDialog(message: String, onDismiss: () -> Unit) {
             }
         }
     )
-}
-
-
-data class Question(
-    val text: String,
-    val options: List<String>? = null,
-    val inputType: InputType? = null
-)
-
-enum class InputType {
-    DOB, HEIGHT, WEIGHT, NUMBER, TEXT
 }

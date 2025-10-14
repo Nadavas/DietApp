@@ -9,6 +9,7 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.nadavariel.dietapp.data.DietPlan
+import com.nadavariel.dietapp.screens.Question
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -40,41 +41,19 @@ class QuestionsViewModel : ViewModel() {
 
     init {
         fetchUserAnswers()
-        fetchSavedDietPlan() // Load saved diet plan on init
     }
 
-    /** Fetch user's saved answers from Firestore **/
     private fun fetchUserAnswers() {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("QuestionsViewModel", "Cannot fetch answers: User not logged in.")
-            return
-        }
-
+        val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                val docRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("user_answers")
-                    .document("diet_habits")
-
-                val snapshot = docRef.get().await()
+                val snapshot = firestore.collection("users").document(userId)
+                    .collection("user_answers").document("diet_habits").get().await()
                 if (snapshot.exists()) {
                     val answersList = snapshot.get("answers") as? List<Map<String, Any>>
-                    if (answersList != null) {
-                        val parsedAnswers = answersList.map {
-                            UserAnswer(
-                                question = it["question"]?.toString() ?: "",
-                                answer = it["answer"]?.toString() ?: ""
-                            )
-                        }
-                        _userAnswers.value = parsedAnswers
-                        Log.d("QuestionsViewModel", "Successfully fetched ${parsedAnswers.size} answers.")
-                    } else {
-                        Log.d("QuestionsViewModel", "Answers field missing or empty.")
-                    }
-                } else {
-                    Log.d("QuestionsViewModel", "No saved answers found for the user.")
+                    _userAnswers.value = answersList?.map {
+                        UserAnswer(it["question"].toString(), it["answer"].toString())
+                    } ?: emptyList()
                 }
             } catch (e: Exception) {
                 Log.e("QuestionsViewModel", "Error fetching user answers", e)
@@ -82,92 +61,34 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    /** NEW: Fetch saved diet plan from Firestore **/
-    private fun fetchSavedDietPlan() {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("QuestionsViewModel", "Cannot fetch diet plan: User not logged in.")
-            return
-        }
-
-        viewModelScope.launch {
-            try {
-                val docRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("diet_plans")
-                    .document("current_plan")
-
-                val snapshot = docRef.get().await()
-                if (snapshot.exists()) {
-                    val gson = Gson()
-                    val dietPlan = snapshot.toObject(DietPlan::class.java)
-
-                    if (dietPlan != null) {
-                        _dietPlanResult.value = DietPlanResult.Success(dietPlan)
-                        Log.d("QuestionsViewModel", "Successfully fetched saved diet plan.")
-                    }
-                } else {
-                    Log.d("QuestionsViewModel", "No saved diet plan found.")
-                }
-            } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error fetching saved diet plan", e)
-            }
-        }
-    }
-
-    /** Save user's answers to Firestore **/
-    fun saveUserAnswers(
-        questions: List<com.nadavariel.dietapp.screens.Question>,
+    private suspend fun saveUserAnswers(
+        questions: List<Question>,
         answers: List<String?>
     ) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("QuestionsViewModel", "Cannot save answers: User not logged in.")
-            return
-        }
+        val userId = auth.currentUser?.uid ?: return
 
         val userAnswersToSave = questions.mapIndexed { index, question ->
-            mapOf(
-                "question" to question.text,
-                "answer" to (answers.getOrNull(index) ?: "")
-            )
-        }
-
-        viewModelScope.launch {
-            try {
-                val userAnswersRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("user_answers")
-                    .document("diet_habits")
-
-                userAnswersRef.set(mapOf("answers" to userAnswersToSave)).await()
-                _userAnswers.value = userAnswersToSave.map {
-                    UserAnswer(it["question"] as String, it["answer"] as String)
-                }
-
-                Log.d("QuestionsViewModel", "Successfully saved ${userAnswersToSave.size} user answers.")
-            } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error saving user answers", e)
-            }
-        }
-    }
-
-    /** NEW: Save diet plan to Firestore **/
-    private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("QuestionsViewModel", "Cannot save diet plan: User not logged in.")
-            return
+            mapOf("question" to question.text, "answer" to (answers.getOrNull(index) ?: ""))
         }
 
         try {
-            val dietPlanRef = firestore.collection("users")
-                .document(userId)
-                .collection("diet_plans")
-                .document("current_plan")
+            firestore.collection("users").document(userId)
+                .collection("user_answers").document("diet_habits")
+                .set(mapOf("answers" to userAnswersToSave)).await()
 
-            // Add timestamp for tracking when the plan was generated
-            val planData = hashMapOf(
+            _userAnswers.value = userAnswersToSave.map {
+                UserAnswer(it["question"] as String, it["answer"] as String)
+            }
+            Log.d("QuestionsViewModel", "Successfully saved ${userAnswersToSave.size} user answers.")
+        } catch (e: Exception) {
+            Log.e("QuestionsViewModel", "Error saving user answers", e)
+        }
+    }
+
+    private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
+        val userId = auth.currentUser?.uid ?: return
+        try {
+            val planData = mapOf(
                 "dailyCalories" to dietPlan.dailyCalories,
                 "proteinGrams" to dietPlan.proteinGrams,
                 "carbsGrams" to dietPlan.carbsGrams,
@@ -176,112 +97,90 @@ class QuestionsViewModel : ViewModel() {
                 "disclaimer" to dietPlan.disclaimer,
                 "generatedAt" to com.google.firebase.Timestamp.now()
             )
-
-            dietPlanRef.set(planData).await()
-            Log.d("QuestionsViewModel", "Successfully saved diet plan to Firestore.")
+            firestore.collection("users").document(userId)
+                .collection("diet_plans").document("current_plan")
+                .set(planData).await()
         } catch (e: Exception) {
             Log.e("QuestionsViewModel", "Error saving diet plan to Firestore", e)
         }
     }
 
-    /** Generate or load cached diet plan **/
-    fun generateDietPlan() {
-        if (_userAnswers.value.isEmpty()) {
-            _dietPlanResult.value = DietPlanResult.Error("User answers are not available.")
-            return
-        }
-
-        // Check if we already have a saved plan
-        if (_dietPlanResult.value is DietPlanResult.Success) {
-            Log.d("QuestionsViewModel", "Using cached diet plan.")
-            return
-        }
-
-        _dietPlanResult.value = DietPlanResult.Loading
+    fun saveAnswersAndRegeneratePlan(questions: List<Question>, answers: List<String?>) {
         viewModelScope.launch {
-            val userProfile = _userAnswers.value.joinToString("\n") {
-                "Q: ${it.question}\nA: ${it.answer}"
-            }
+            saveUserAnswers(questions, answers)
+
+            _dietPlanResult.value = DietPlanResult.Loading
+            val userProfile = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
 
             try {
                 val data = hashMapOf("userProfile" to userProfile)
+                val result = functions.getHttpsCallable("generateDietPlan").call(data).await()
+                val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
 
-                val result = functions
-                    .getHttpsCallable("generateDietPlan")
-                    .call(data)
-                    .await()
-
-                val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response data is null or invalid.")
-                val success = responseData["success"] as? Boolean
-                val geminiData = responseData["data"]
-
-                if (success == true && geminiData != null) {
+                if (responseData["success"] == true) {
                     val gson = Gson()
-                    val jsonString = gson.toJson(geminiData)
-                    val dietPlan = gson.fromJson(jsonString, DietPlan::class.java)
-
-                    // Save to Firestore
+                    val dietPlan = gson.fromJson(gson.toJson(responseData["data"]), DietPlan::class.java)
                     saveDietPlanToFirestore(dietPlan)
-
                     _dietPlanResult.value = DietPlanResult.Success(dietPlan)
                 } else {
-                    val errorMsg = responseData["error"] as? String
-                    _dietPlanResult.value = DietPlanResult.Error(errorMsg ?: "Unknown API error occurred.")
+                    throw Exception(responseData["error"]?.toString() ?: "Unknown error from function")
                 }
-
             } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Gemini diet plan generation failed: ${e.message}", e)
-                _dietPlanResult.value = DietPlanResult.Error("Failed to generate diet plan: ${e.message}")
+                Log.e("QuestionsViewModel", "Error generating diet plan", e)
+                _dietPlanResult.value = DietPlanResult.Error(e.message ?: "An unexpected error occurred.")
             }
         }
     }
 
-    /** NEW: Force regenerate diet plan (ignoring cache) **/
-    fun regenerateDietPlan() {
-        _dietPlanResult.value = DietPlanResult.Idle
-        generateDietPlan()
-    }
-
-    /** NEW: Apply diet plan to goals **/
-    fun applyDietPlanToGoals(dietPlan: DietPlan) {
+    /**
+     * ✅ CORRECTED: This function now saves goals to the correct path and in the correct format
+     * that GoalsViewModel is listening to.
+     */
+    fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
-            Log.e("QuestionsViewModel", "Cannot apply diet plan: User not logged in.")
+            Log.e("QuestionsViewModel", "Cannot apply goals: User not logged in.")
             return
         }
 
         viewModelScope.launch {
             try {
+                // 1. Point to the correct Firestore document
+                val goalsRef = firestore.collection("users").document(userId)
+                    .collection("user_answers").document("goals")
+
+                // 2. Create the data in the format GoalsViewModel expects
+                // The "question" text MUST match the text in GoalsViewModel.
                 val goalsToSave = listOf(
                     mapOf(
                         "question" to "How many calories a day is your target?",
-                        "answer" to dietPlan.dailyCalories.toString()
+                        "answer" to plan.dailyCalories.toString()
                     ),
                     mapOf(
                         "question" to "How many grams of protein a day is your target?",
-                        "answer" to dietPlan.proteinGrams.toString()
+                        "answer" to plan.proteinGrams.toString()
                     )
                 )
 
-                val goalsRef = firestore.collection("users")
-                    .document(userId)
-                    .collection("user_answers")
-                    .document("goals")
-
-                goalsRef.set(mapOf(
+                // 3. Set the data along with the AI flag
+                val dataToSet = mapOf(
                     "answers" to goalsToSave,
-                    "aiGenerated" to true,
-                    "appliedAt" to com.google.firebase.Timestamp.now()
-                )).await()
+                    "aiGenerated" to true
+                )
 
-                Log.d("QuestionsViewModel", "Successfully applied diet plan to goals.")
+                goalsRef.set(dataToSet).await()
+
+                Log.d("QuestionsViewModel", "Successfully applied AI diet plan to goals.")
+
             } catch (e: Exception) {
                 Log.e("QuestionsViewModel", "Error applying diet plan to goals", e)
             }
         }
     }
 
-    /** Reset the state **/
+    // This helper function is no longer needed with the new logic
+    // private fun updateOrAddGoal(...)
+
     fun resetDietPlanResult() {
         _dietPlanResult.value = DietPlanResult.Idle
     }
