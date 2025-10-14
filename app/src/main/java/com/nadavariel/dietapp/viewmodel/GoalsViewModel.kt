@@ -12,11 +12,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.nadavariel.dietapp.data.DietPlan
 
 class GoalsViewModel : ViewModel() {
 
     private val auth = Firebase.auth
     private val firestore = Firebase.firestore
+
+    private val _currentDietPlan = MutableStateFlow<DietPlan?>(null)
+    val currentDietPlan = _currentDietPlan.asStateFlow()
 
     private val _goals = MutableStateFlow<List<Goal>>(emptyList())
     val goals = _goals.asStateFlow()
@@ -28,8 +32,34 @@ class GoalsViewModel : ViewModel() {
     val hasAiGeneratedGoals = _hasAiGeneratedGoals.asStateFlow()
 
     init {
+        fetchDietPlan()
         fetchUserGoals()
         fetchUserProfile()
+    }
+
+    private fun fetchDietPlan() {
+        val userId = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            try {
+                val snapshot = firestore.collection("users").document(userId)
+                    .collection("diet_plans").document("current_plan")
+                    .get().await()
+
+                if (snapshot.exists()) {
+                    val plan = DietPlan(
+                        dailyCalories = (snapshot.getLong("dailyCalories") ?: 0).toInt(),
+                        proteinGrams = (snapshot.getLong("proteinGrams") ?: 0).toInt(),
+                        carbsGrams = (snapshot.getLong("carbsGrams") ?: 0).toInt(),
+                        fatGrams = (snapshot.getLong("fatGrams") ?: 0).toInt(),
+                        recommendations = snapshot.getString("recommendations") ?: "",
+                        disclaimer = snapshot.getString("disclaimer") ?: "Consult a healthcare professional before making dietary changes."
+                    )
+                    _currentDietPlan.value = plan
+                }
+            } catch (e: Exception) {
+                Log.e("GoalsViewModel", "Error fetching diet plan", e)
+            }
+        }
     }
 
     private fun fetchUserGoals() {

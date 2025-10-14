@@ -392,12 +392,11 @@ private fun EditQuestionDialog(
                 question = question,
                 currentAnswer = tempAnswer,
                 onSave = { newAnswer ->
-                    if (question.inputType != InputType.TEXT) {
-                        // For non-text inputs (options, dates, etc), save immediately
-                        onSave(newAnswer)
-                    } else {
-                        // For text input, just update temp state
-                        tempAnswer = newAnswer
+                    when (question.inputType) {
+                        InputType.DOB -> onSave(newAnswer) // Save immediately for DOB
+                        InputType.TEXT -> tempAnswer = newAnswer // Wait for confirm
+                        InputType.HEIGHT, InputType.WEIGHT -> tempAnswer = newAnswer // Don't close dialog
+                        null -> onSave(newAnswer) // For options list, can save immediately
                     }
                 }
             )
@@ -405,19 +404,20 @@ private fun EditQuestionDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (question.inputType == InputType.TEXT) {
+                    // For text, height, or weight inputs, apply when pressing Save
+                    if (question.inputType == InputType.TEXT ||
+                        question.inputType == InputType.HEIGHT ||
+                        question.inputType == InputType.WEIGHT) {
                         onSave(tempAnswer)
                     }
                     onDismiss()
                 }
             ) {
-                Text(if (question.inputType == InputType.TEXT) "Save" else "Close")
+                Text("Save")
             }
         },
         dismissButton = {
-            if (question.inputType == InputType.TEXT) {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
