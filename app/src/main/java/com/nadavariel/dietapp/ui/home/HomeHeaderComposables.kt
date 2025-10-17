@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,42 +21,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nadavariel.dietapp.util.AvatarConstants
 
-import androidx.compose.ui.unit.Dp
-
-/**
- * A custom modifier to apply a "glassmorphism" effect
- * with a semi-transparent fill and a subtle border.
- */
-fun Modifier.glassmorphism(
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
-    color: Color = Color.White.copy(alpha = 0.1f), // The fill color
-    borderColor: Color = Color.White.copy(alpha = 0.2f),
-    borderWidth: Dp = 1.dp
-): Modifier = this
-    .clip(shape)
-    .background(color) // Apply the fill
-    .border(borderWidth, borderColor, shape)
+// Note: glassmorphism modifier is removed.
 
 @Composable
 fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, end = 16.dp), // Adjusted padding for TopAppBar
+            .padding(start = 4.dp, end = 4.dp), // Adjusted padding for TopAppBar
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
             Text(
-                text = "Welcome,",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White.copy(alpha = 0.8f) // Updated color
+                text = "Welcome back,",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Gray
             )
             Text(
-                text = userName.ifBlank { "Guest" },
-                style = MaterialTheme.typography.headlineMedium,
+                text = userName.ifBlank { "User" },
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White // Updated color
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         Image(
@@ -64,9 +50,9 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             contentDescription = "User Avatar",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(56.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .border(2.dp, Color.White.copy(alpha = 0.5f), CircleShape) // Replaced shadow with border
+                .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
                 .clickable(onClick = onAvatarClick)
         )
     }
@@ -75,48 +61,43 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
 @Composable
 fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit) {
     val missingListText = missingGoals.joinToString(" and ")
-    val message = "Your $missingListText goal${if (missingGoals.size > 1) "s" else ""} are missing."
+    val message = "Your $missingListText goal${if (missingGoals.size > 1) "s are" else " is"} missing."
 
-    // FIX: Use a Box to separate the blurred background from the sharp content.
-    Box(
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp)) // Clip the entire Box
+            .clickable { onSetGoalsClick() }
     ) {
-        // 1. BACKGROUND LAYER: A blurred, colored Box that sits behind the content.
-        Box(
-            modifier = Modifier
-                .fillMaxSize() // Match the size of the parent Box
-                .glassmorphism(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.error
-                )
-        )
-
-        // 2. CONTENT LAYER: The Row with your text and buttons, which is NOT blurred.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Icon(
-                    imageVector = Icons.Default.Error,
-                    contentDescription = "Warning",
-                    tint = Color.White, // Updated color
-                    modifier = Modifier.size(24.dp)
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Warning",
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "Set Your Goals!",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
-                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White // Updated color
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
             TextButton(onClick = onSetGoalsClick) {
-                Text("SET GOALS", color = Color.White, fontWeight = FontWeight.Bold) // Updated color
+                Text("SET", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
     }

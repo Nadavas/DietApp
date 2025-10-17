@@ -1,33 +1,28 @@
 package com.nadavariel.dietapp.ui.home
 
-import android.app.DatePickerDialog
 import android.os.Build
-import android.widget.DatePicker
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
-import java.util.Calendar
 import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -40,89 +35,50 @@ fun DatePickerSection(
     onDateSelected: (LocalDate) -> Unit,
     onGoToToday: () -> Unit
 ) {
-    val context = LocalContext.current
     val weekDays = remember(currentWeekStartDate) {
         (0..6).map { currentWeekStartDate.plusDays(it.toLong()) }
     }
+    val today = LocalDate.now()
+    val isTodayVisible = weekDays.any { it.isEqual(today) }
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        // Month/Year and navigation
+    Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onPreviousWeek) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Previous Week")
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous Week")
             }
-
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .clickable {
-                        val calendar = Calendar.getInstance()
-                        calendar.set(
-                            selectedDate.year,
-                            selectedDate.monthValue - 1,
-                            selectedDate.dayOfMonth
-                        )
-                        DatePickerDialog(
-                            context,
-                            { _: DatePicker, year, month, day ->
-                                onDateSelected(LocalDate.of(year, month + 1, day))
-                            },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
-                        ).show()
-                    }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = "Select Date",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = selectedDate.format(formatter),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
+            val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+            Text(
+                text = selectedDate.format(formatter),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
             IconButton(onClick = onNextWeek) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next Week")
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next Week")
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Days of the week selector
+        Spacer(modifier = Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             weekDays.forEach { date ->
                 DayOfWeekItem(
-                    modifier = Modifier.weight(1f),
                     date = date,
-                    isSelected = date == selectedDate,
+                    isSelected = date.isEqual(selectedDate),
+                    isToday = date.isEqual(today),
                     onClick = { onDateSelected(date) }
                 )
             }
         }
-
-        // Today button
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            TextButton(
-                onClick = onGoToToday,
-                enabled = selectedDate != LocalDate.now()
-            ) {
-                Text("Go to Today")
+        if (!isTodayVisible || !selectedDate.isEqual(today)) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                TextButton(onClick = onGoToToday) {
+                    Text("Go to Today")
+                }
             }
         }
     }
@@ -133,36 +89,35 @@ fun DatePickerSection(
 private fun DayOfWeekItem(
     date: LocalDate,
     isSelected: Boolean,
+    isToday: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        animationSpec = spring(), label = "day_background_color"
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = spring(), label = "day_content_color"
-    )
+    val accentColor = Color(0xFF4CAF50)
+    val backgroundColor = if (isSelected) accentColor else Color.Transparent
+    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+    val borderModifier = if (isToday && !isSelected) {
+        Modifier.border(2.dp, accentColor.copy(alpha = 0.6f), CircleShape)
+    } else Modifier
 
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
             .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            .then(borderModifier)
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) contentColor else Color.Gray
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = date.dayOfMonth.toString(),
-            style = MaterialTheme.typography.bodyLarge,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = contentColor
         )
