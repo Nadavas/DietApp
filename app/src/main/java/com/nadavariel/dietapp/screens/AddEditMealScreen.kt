@@ -35,7 +35,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,31 +54,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 private const val FILE_PROVIDER_AUTHORITY = "com.nadavariel.dietapp.provider"
-private val HealthyGreen = Color(0xFF4CAF50)
-private val LightGreyText = Color(0xFF757575)
-
-@Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.padding(start = 4.dp, top = 16.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(HealthyGreen, CircleShape) // CHANGED to HealthyGreen
-        )
-        Text(
-            text = title.uppercase(Locale.ROOT),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = LightGreyText,
-            letterSpacing = 1.2.sp
-        )
-    }
-}
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -203,6 +177,7 @@ fun AddEditMealScreen(
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
             }
         } else {
+            // Reset fields for "Add" mode, important for navigating back and forth
             foodName = ""
             caloriesText = ""
             proteinText = ""

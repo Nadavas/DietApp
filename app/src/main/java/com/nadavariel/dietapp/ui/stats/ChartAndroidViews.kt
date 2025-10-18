@@ -1,23 +1,27 @@
 package com.nadavariel.dietapp.ui.stats
 
 import android.graphics.Color
+import android.graphics.DashPathEffect
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Build
 import android.view.View
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.PieChart
-import com.github.mikephil.charting.components.LimitLine
-import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.components.Legend
 import com.github.mikephil.charting.components.LegendEntry
+import com.github.mikephil.charting.components.LimitLine
+import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.nadavariel.dietapp.util.RoundedBarChartRenderer
@@ -26,18 +30,24 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
 
+// Consistent Color Definitions
+private val HealthyGreenCompose = androidx.compose.ui.graphics.Color(0xFF4CAF50)
+private val AccentGreenCompose = androidx.compose.ui.graphics.Color(0xFF81C784)
+private val GridLineColor = Color.parseColor("#EEEEEE")
+private val AxisTextColor = Color.parseColor("#616161")
+private val TargetLineColor = Color.parseColor("#FF6E40") // Warm orange for target
+private val TargetBackgroundColor = Color.parseColor("#FFF3E0") // Light orange background
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BeautifulBarChart(
     weeklyData: Map<LocalDate, Int>,
-    primaryColor: Int,
     target: Int?,
     label: String
 ) {
+    val primaryColor = HealthyGreenCompose.toArgb()
+    val accentColor = AccentGreenCompose.toArgb()
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
-    val limitLineColor = MaterialTheme.colorScheme.error.toArgb()
-    val accentColor = MaterialTheme.colorScheme.tertiary.toArgb()
 
     val sortedDates = weeklyData.keys.sorted()
     val dayLabels = sortedDates.map { it.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
@@ -46,22 +56,21 @@ fun BeautifulBarChart(
     }
 
     AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp),
         factory = { context ->
             BarChart(context).apply {
                 setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-
                 val renderer = RoundedBarChartRenderer(this, animator, viewPortHandler)
-                renderer.setCornerRadius(25f)
+                renderer.setCornerRadius(15f)
                 this.renderer = renderer
-                setExtraOffsets(10f, 10f, 10f, 20f)
-
+                setExtraOffsets(5f, 15f, 5f, 15f)
                 description.isEnabled = false
                 legend.isEnabled = false
                 setDrawGridBackground(false)
                 setDrawBorders(false)
                 setBackgroundColor(Color.TRANSPARENT)
-
                 setTouchEnabled(true)
                 setPinchZoom(false)
                 isDoubleTapToZoomEnabled = false
@@ -72,8 +81,9 @@ fun BeautifulBarChart(
                     setDrawGridLines(false)
                     setDrawAxisLine(false)
                     granularity = 1f
-                    textColor = onSurfaceVariantColor
-                    textSize = 12f
+                    textColor = AxisTextColor
+                    textSize = 11f
+                    typeface = Typeface.DEFAULT_BOLD
                     valueFormatter = object : ValueFormatter() {
                         override fun getFormattedValue(value: Float): String {
                             val index = value.toInt()
@@ -84,60 +94,68 @@ fun BeautifulBarChart(
 
                 axisLeft.apply {
                     setDrawGridLines(true)
-                    enableGridDashedLine(10f, 10f, 0f)
-                    gridColor = onSurfaceVariantColor
-                    setLabelCount(5, true)
+                    enableGridDashedLine(8f, 8f, 0f)
+                    gridColor = GridLineColor
+                    setLabelCount(4, true)
                     axisMinimum = 0f
                     setDrawAxisLine(false)
-                    textColor = onSurfaceVariantColor
-                    textSize = 12f
+                    textColor = AxisTextColor
+                    textSize = 11f
 
                     val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
                     val targetValue = target?.toFloat() ?: 0f
-
-                    axisMaximum = maxOf(maxBar, targetValue) * 1.15f
+                    axisMaximum = maxOf(maxBar * 1.1f, targetValue * 1.2f, 100f)
 
                     target?.let {
-                        val targetLine = LimitLine(it.toFloat(), "Target: $it $label").apply {
-                            lineWidth = 2f
-                            lineColor = limitLineColor
-                            textColor = limitLineColor
-                            textSize = 12f
-                            enableDashedLine(10f, 10f, 0f)
+                        // Create a beautiful target line with enhanced styling
+                        val targetLine = LimitLine(it.toFloat(), "").apply {
+                            lineWidth = 3f
+                            lineColor = TargetLineColor
+                            enableDashedLine(15f, 10f, 0f)
+
+                            // Custom label styling
+                            textColor = TargetLineColor
+                            textSize = 11f
+                            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                             labelPosition = LimitLine.LimitLabelPosition.RIGHT_TOP
                         }
+
                         removeAllLimitLines()
                         addLimitLine(targetLine)
+                        setDrawLimitLinesBehindData(false)
                     } ?: run {
                         removeAllLimitLines()
                     }
                 }
-
                 axisRight.isEnabled = false
             }
         },
         update = { chart ->
             val todayIndex = sortedDates.indexOf(LocalDate.now())
 
-            val dataSet = BarDataSet(barEntries, "Weekly Data").apply {
+            val dataSet = BarDataSet(barEntries, "Data").apply {
                 colors = barEntries.indices.map { i ->
                     if (i == todayIndex) accentColor else primaryColor
                 }
-
                 setDrawValues(true)
                 valueTextColor = onSurfaceColor
-                valueTextSize = 11f
+                valueTextSize = 10f
                 valueFormatter = object : ValueFormatter() {
                     override fun getFormattedValue(value: Float): String {
                         return if (value > 0) value.toInt().toString() else ""
                     }
                 }
-
                 highLightColor = primaryColor
-                highLightAlpha = 100
+                highLightAlpha = 80
             }
 
-            chart.data = BarData(dataSet).apply { barWidth = 0.6f }
+            chart.data = BarData(dataSet).apply { barWidth = 0.5f }
+
+            // Add custom target label if target exists
+            target?.let {
+                chart.axisLeft.limitLines.firstOrNull()?.label = "Goal: $it $label"
+            }
+
             chart.invalidate()
             chart.animateY(800, com.github.mikephil.charting.animation.Easing.EaseOutCubic)
         }
@@ -146,15 +164,16 @@ fun BeautifulBarChart(
 
 @Composable
 fun BeautifulPieChart(
-    data: Map<String, Float>,
-    primaryColor: Int,
-    onSurfaceColor: Int
+    data: Map<String, Float>
 ) {
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val centerTextColor = HealthyGreenCompose.toArgb()
+
     val macroColors = remember {
         listOf(
-            androidx.compose.ui.graphics.Color(0xFF4CAF50).toArgb(), // Protein (Green)
-            androidx.compose.ui.graphics.Color(0xFF2196F3).toArgb(), // Carbs (Blue)
-            androidx.compose.ui.graphics.Color(0xFFFF9800).toArgb(), // Fat (Orange)
+            HealthyGreenCompose.toArgb(),
+            Color.parseColor("#42A5F5"),
+            Color.parseColor("#FFA726")
         )
     }
 
@@ -167,82 +186,80 @@ fun BeautifulPieChart(
             "Protein" -> macroColors[0]
             "Carbs" -> macroColors[1]
             "Fat" -> macroColors[2]
-            else -> primaryColor // Fallback
+            else -> macroColors.random()
         }
     }
 
     AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp),
         factory = { context ->
             PieChart(context).apply {
                 setLayerType(View.LAYER_TYPE_SOFTWARE, null)
                 description.isEnabled = false
                 setBackgroundColor(Color.TRANSPARENT)
-
-                setExtraOffsets(0f, 0f, 35f, 0f)
-
+                setExtraOffsets(5f, 5f, 35f, 5f)
                 setUsePercentValues(true)
 
-                legend.isEnabled = true
                 legend.apply {
-                    verticalAlignment = Legend.LegendVerticalAlignment.TOP
+                    verticalAlignment = Legend.LegendVerticalAlignment.CENTER
                     horizontalAlignment = Legend.LegendHorizontalAlignment.RIGHT
                     orientation = Legend.LegendOrientation.VERTICAL
                     setDrawInside(false)
-                    yEntrySpace = 5f
-                    xOffset = 10f
-                    textColor = onSurfaceColor
-                    textSize = 14f
+                    yEntrySpace = 6f
+                    xOffset = 5f
+                    textColor = AxisTextColor
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    isWordWrapEnabled = true
                 }
 
                 isDrawHoleEnabled = true
                 setHoleColor(Color.TRANSPARENT)
-                holeRadius = 60f
-                transparentCircleRadius = 65f
+                holeRadius = 55f
+                transparentCircleRadius = 60f
                 setDrawCenterText(true)
                 centerText = "Macros"
-                setCenterTextSize(14f)
-                setCenterTextColor(primaryColor)
+                setCenterTextSize(16f)
+                setCenterTextTypeface(Typeface.DEFAULT_BOLD)
+                setCenterTextColor(centerTextColor)
 
                 isRotationEnabled = false
-                isHighlightPerTapEnabled = false
+                isHighlightPerTapEnabled = true
                 setDrawEntryLabels(false)
             }
         },
         update = { chart ->
-            val dataSet = PieDataSet(entries, "Macronutrients").apply {
+            val dataSet = PieDataSet(entries, "").apply {
                 this.colors = entryColors
-                sliceSpace = 3f
-                valueTextColor = onSurfaceColor
-                valueTextSize = 12f
+                sliceSpace = 2f
+                valueTextColor = Color.WHITE
+                valueTextSize = 11f
                 valueTypeface = Typeface.DEFAULT_BOLD
-
                 yValuePosition = PieDataSet.ValuePosition.INSIDE_SLICE
                 xValuePosition = PieDataSet.ValuePosition.INSIDE_SLICE
+
                 valueLinePart1Length = 0f
                 valueLinePart2Length = 0f
+                valueLineColor = Color.TRANSPARENT
             }
 
             val pieData = PieData(dataSet).apply {
                 setValueFormatter(object : ValueFormatter() {
-                    private val format = DecimalFormat("###,##0.0")
-
-                    override fun getFormattedValue(value: Float): String {
-                        return "${format.format(value)}%"
-                    }
-
-                    override fun getPieLabel(value: Float, pieEntry: PieEntry?): String {
-                        return getFormattedValue(value)
-                    }
+                    private val format = DecimalFormat("##0")
+                    override fun getFormattedValue(value: Float): String = "${format.format(value)}%"
+                    override fun getPieLabel(value: Float, pieEntry: PieEntry?): String = ""
                 })
+                setDrawValues(true)
             }
 
             chart.legend.setCustom(entries.mapIndexed { index, entry ->
                 LegendEntry(
-                    entry.label,
-                    com.github.mikephil.charting.components.Legend.LegendForm.SQUARE,
+                    "${entry.label} ${DecimalFormat("##0").format(entry.value)}%",
+                    Legend.LegendForm.CIRCLE,
                     10f,
-                    2f,
+                    Float.NaN,
                     null,
                     entryColors[index]
                 )
@@ -250,7 +267,7 @@ fun BeautifulPieChart(
 
             chart.data = pieData
             chart.invalidate()
-            chart.animateY(800, com.github.mikephil.charting.animation.Easing.EaseOutCubic)
+            chart.animateY(900, com.github.mikephil.charting.animation.Easing.EaseInOutQuad)
         }
     )
 }

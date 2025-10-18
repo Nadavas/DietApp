@@ -1,20 +1,23 @@
 package com.nadavariel.dietapp.ui.stats
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.nadavariel.dietapp.data.GraphPreference
+import com.nadavariel.dietapp.data.GraphPreference // Ensure this import is correct
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 
 @Composable
 fun GraphSortBottomSheet(
@@ -22,109 +25,99 @@ fun GraphSortBottomSheet(
     onPreferencesUpdated: (List<GraphPreference>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Note: The move logic in the IconButtons doesn't work for reordering graphs,
-    // as you mentioned in our stored conversation. Only show/hide is functional.
-    var mutablePreferences by remember { mutableStateOf(preferences.sortedBy { it.order }.toMutableList()) }
+    // Use mutableStateOf to hold the list state for reordering
+    val prefsState = remember { mutableStateOf(preferences.sortedBy { it.order }) }
+
+    val reorderableState = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            prefsState.value = prefsState.value.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+        },
+        // Optional: Add onDragEnd if you want to save immediately after drag
+        // onDragEnd = { startIndex, endIndex ->
+        //     val finalPreferences = prefsState.value.mapIndexed { index, pref ->
+        //         pref.copy(order = index)
+        //     }
+        //     onPreferencesUpdated(finalPreferences)
+        // }
+    )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .navigationBarsPadding() // Add padding for gesture navigation
     ) {
-        Text(
-            text = "Edit Graph Order & Visibility",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Use the consistent SectionHeader
+        SectionHeader(title = "Organize Charts")
 
         LazyColumn(
+            state = reorderableState.listState,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 400.dp)
+                .weight(1f) // Allow list to scroll if many items
+                .reorderable(reorderableState)
         ) {
-            items(mutablePreferences, key = { it.id }) { pref ->
-                val currentIndex = mutablePreferences.indexOf(pref)
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Switch(
-                            checked = pref.isVisible,
-                            onCheckedChange = { isChecked ->
-                                // Update isVisible state locally
-                                mutablePreferences = mutablePreferences.map {
-                                    if (it.id == pref.id) it.copy(isVisible = isChecked) else it
-                                }.toMutableList()
-                            }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = pref.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (pref.isMacro) FontWeight.SemiBold else FontWeight.Normal
-                        )
-                    }
-
-                    // Order Control Arrows (Functionality noted as non-working by user)
-                    Row {
-                        IconButton(
-                            onClick = {
-                                if (currentIndex > 0) {
-                                    val newIndex = currentIndex - 1
-                                    mutablePreferences.add(newIndex, mutablePreferences.removeAt(currentIndex))
-                                }
-                            },
-                            enabled = currentIndex > 0
+            items(prefsState.value, key = { it.id }) { item ->
+                ReorderableItem(reorderableState, key = item.id) { isDragging ->
+                    // Use FormCard style for the list items
+                    FormCard { // Wrap item content in FormCard
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                // Reduced padding inside the card row
+                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.ArrowUpward, contentDescription = "Move Up")
-                        }
-
-                        IconButton(
-                            onClick = {
-                                if (currentIndex < mutablePreferences.size - 1) {
-                                    // Move element down by adding it AFTER the element it's swapping with
-                                    val newIndex = currentIndex + 1
-                                    mutablePreferences.add(newIndex + 1, mutablePreferences.removeAt(currentIndex))
-                                }
-                            },
-                            enabled = currentIndex < mutablePreferences.size - 1
-                        ) {
-                            Icon(Icons.Default.ArrowDownward, contentDescription = "Move Down")
+                            Icon(
+                                imageVector = Icons.Default.DragHandle,
+                                contentDescription = "Drag to reorder",
+                                modifier = Modifier
+                                    .detectReorderAfterLongPress(reorderableState)
+                                    .padding(horizontal = 8.dp), // Padding around handle
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                                fontWeight = if (item.isMacro) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            Switch(
+                                checked = item.isVisible,
+                                onCheckedChange = { isChecked ->
+                                    prefsState.value = prefsState.value.map {
+                                        if (it.id == item.id) it.copy(isVisible = isChecked) else it
+                                    }
+                                },
+                                // Apply consistent coloring
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = HealthyGreen,
+                                    checkedTrackColor = HealthyGreen.copy(alpha = 0.5f)
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp)) // Ensure padding after switch
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp)) // Spacing between cards
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Save Button
-        Button(
+        // Use the consistent AppSubmitButton
+        AppSubmitButton(
+            text = "Save Preferences",
             onClick = {
-                // Set the 'order' based on the current list index before saving
-                val finalPreferences = mutablePreferences.mapIndexed { index, pref ->
+                val finalPreferences = prefsState.value.mapIndexed { index, pref ->
                     pref.copy(order = index)
                 }
-
                 onPreferencesUpdated(finalPreferences)
                 onDismiss()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Save Preferences")
-        }
-        Spacer(modifier = Modifier.height(32.dp))
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp)) // Add padding below button if needed
     }
 }

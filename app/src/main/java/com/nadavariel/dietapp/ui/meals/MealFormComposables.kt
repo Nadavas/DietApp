@@ -33,11 +33,11 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-// --- DEFINED TO MATCH YOUR HOME SCREEN DESIGN ---
-private val VibrantGreen = Color(0xFF4CAF50)
+// --- DESIGN TOKENS TO MATCH YOUR HOME SCREEN DESIGN ---
+private val HealthyGreen = Color(0xFF4CAF50)
 private val LightGreyText = Color(0xFF757575)
 
-// --- A perfect match for the "MORNING" header on your home screen ---
+// --- THIS IS NOW THE ONLY SectionHeader ---
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Row(
@@ -48,8 +48,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                // v-- THIS IS THE CHANGE --v
-                .background(VibrantGreen, CircleShape) // Changed from orange to green
+                .background(HealthyGreen, CircleShape) // Using the correct green
         )
         Text(
             text = title.uppercase(Locale.ROOT),
@@ -76,7 +75,7 @@ fun FormCard(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-// --- A reusable, consistently styled text field ---
+// --- The reusable, consistently styled text field ---
 @Composable
 fun ThemedOutlinedTextField(
     value: String,
@@ -99,9 +98,9 @@ fun ThemedOutlinedTextField(
         minLines = minLines,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = VibrantGreen,
-            focusedLabelColor = VibrantGreen,
-            cursorColor = VibrantGreen,
+            focusedBorderColor = HealthyGreen,
+            focusedLabelColor = HealthyGreen,
+            cursorColor = HealthyGreen,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
         )
     )
@@ -175,7 +174,6 @@ fun MicronutrientsSection(
 
 @Composable
 private fun NutrientTextField(label: String, value: String, onValueChange: (String) -> Unit) {
-    // Uses the new themed field for consistency
     ThemedOutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -248,7 +246,7 @@ private fun DateTimePickerRow(icon: ImageVector, label: String, value: String, o
         Text(
             text = value, style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = VibrantGreen,
+            color = HealthyGreen,
             textAlign = TextAlign.End
         )
     }
