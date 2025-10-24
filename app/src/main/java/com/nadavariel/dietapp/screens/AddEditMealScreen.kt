@@ -88,6 +88,10 @@ fun AddEditMealScreen(
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
     var proposedMealList by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
 
+    // NEW: State for checking if the selected time is in the future
+    val isFutureTimeSelected by foodLogViewModel.isFutureTimeSelected.collectAsState()
+
+
     fun clearImageState() {
         imageUri = null
         imageB64 = null
@@ -145,6 +149,11 @@ fun AddEditMealScreen(
         imageUri = uri
     }
 
+    // NEW: Trigger the future-time check whenever the date/time changes
+    LaunchedEffect(selectedDateTimeState.time) {
+        foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
+    }
+
     LaunchedEffect(imageUri) {
         if (imageUri != null) {
             isImageProcessing = true
@@ -175,6 +184,8 @@ fun AddEditMealScreen(
                 ironText = it.iron?.toString() ?: ""
                 vitaminCText = it.vitaminC?.toString() ?: ""
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
+                // Manually trigger the initial check for edit mode
+                foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
             }
         } else {
             // Reset fields for "Add" mode, important for navigating back and forth
@@ -194,6 +205,8 @@ fun AddEditMealScreen(
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
             clearImageState()
+            // Manually trigger the initial check for add mode
+            foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
         }
     }
 
@@ -299,19 +312,42 @@ fun AddEditMealScreen(
                 item { MicronutrientsSection(fiberText, { fiberText = it }, sugarText, { sugarText = it }, sodiumText, { sodiumText = it }, potassiumText, { potassiumText = it }, calciumText, { calciumText = it }, ironText, { ironText = it }, vitaminCText, { vitaminCText = it }) }
             }
 
+            // The date time picker section should update selectedDateTimeState
             item { DateTimePickerSection(selectedDateTimeState) { selectedDateTimeState = it } }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                val isButtonEnabled = if (isEditMode) {
+
+                // Base check for button enablement (fields, loading status)
+                val baseButtonEnabled = if (isEditMode) {
                     foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
                 } else {
                     (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
                 }
+
+                // NEW: Final check includes the future time state (only relevant in edit mode)
+                val isButtonEnabled = if (isEditMode) {
+                    baseButtonEnabled && !isFutureTimeSelected
+                } else {
+                    baseButtonEnabled // Future time check is less critical for a new log, but can be added if required
+                }
+
+                // NEW: Show error message when editing and time is in the future
+                if (isEditMode && isFutureTimeSelected) {
+                    Text(
+                        text = "⚠️ Cannot update meal to a time in the future. Please adjust the time or date.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+                }
+
                 SubmitMealButton(isEditMode, geminiResult, isButtonEnabled) {
                     if (isEditMode) {
                         val calValue = caloriesText.toIntOrNull() ?: 0
                         val mealTimestamp = Timestamp(selectedDateTimeState.time)
+
+                        // We do not need to check isFutureTimeSelected here because the button is disabled if it's true
                         if (mealToEdit != null) {
                             foodLogViewModel.updateMeal(
                                 mealToEdit.id, newFoodName = foodName, newCalories = calValue,

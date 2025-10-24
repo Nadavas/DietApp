@@ -105,6 +105,10 @@ class FoodLogViewModel : ViewModel() {
     private val _shouldResetDateOnResume = MutableStateFlow(true)
     val shouldResetDateOnResume = _shouldResetDateOnResume.asStateFlow() // Added getter
 
+    // NEW: State to check if the selected date/time is in the future
+    private val _isFutureTimeSelected = MutableStateFlow(false)
+    val isFutureTimeSelected = _isFutureTimeSelected.asStateFlow()
+
 
     init {
         val today = LocalDate.now()
@@ -142,6 +146,13 @@ class FoodLogViewModel : ViewModel() {
         _weeklyVitaminC.value = emptyMap()
         _graphPreferences.value = emptyList()
         _caloriesByTimeOfDay.value = mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
+        _isFutureTimeSelected.value = false // NEW: Reset new state
+    }
+
+    // NEW: Function to check if selected time is in the future
+    fun updateDateTimeCheck(selectedTime: Date) {
+        // Check if the selected time is strictly after the current time
+        _isFutureTimeSelected.value = selectedTime.after(Date())
     }
 
     // --- Graph Preference Methods ---
@@ -444,7 +455,8 @@ class FoodLogViewModel : ViewModel() {
         newVitaminC: Double?
     ) {
         val userId = auth.currentUser?.uid ?: return
-        if (newTimestamp.toDate().after(Date())) return
+        // REMOVED: Future date check is now handled by the UI (isFutureTimeSelected state)
+        // if (newTimestamp.toDate().after(Date())) return
 
         val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         val updatedData = mapOf(
