@@ -2,11 +2,9 @@ package com.nadavariel.dietapp.screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,7 +48,7 @@ fun StatisticsScreen(
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
-    val yesterdayMacroPercentages by foodLogViewModel.yesterdayMacroPercentages.collectAsState()
+    val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsState()
     val weeklyFiber by foodLogViewModel.weeklyFiber.collectAsState()
     val weeklySugar by foodLogViewModel.weeklySugar.collectAsState()
     val weeklySodium by foodLogViewModel.weeklySodium.collectAsState()
@@ -95,7 +93,7 @@ fun StatisticsScreen(
                 // Hero Card - Macros Overview
                 item {
                     MacroHeroCard(
-                        macroPercentages = yesterdayMacroPercentages
+                        macroPercentages = weeklyMacroPercentages
                     )
                 }
 
@@ -277,13 +275,6 @@ private fun MacroHeroCard(macroPercentages: Map<String, Float>) {
                     modifier = Modifier.size(24.dp)
                 )
             }
-
-            Text(
-                text = "Yesterday's distribution",
-                fontSize = 13.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
-            )
 
             val hasMacroData = macroPercentages.values.any { it > 0f }
             if (!hasMacroData) {

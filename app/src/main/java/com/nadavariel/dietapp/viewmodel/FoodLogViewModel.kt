@@ -16,7 +16,7 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nadavariel.dietapp.data.FoodNutritionalInfo // <-- CORRECTED IMPORT
+import com.nadavariel.dietapp.data.FoodNutritionalInfo
 import com.nadavariel.dietapp.data.GraphPreference
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
@@ -59,7 +59,7 @@ class FoodLogViewModel : ViewModel() {
     private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
     val graphPreferences = _graphPreferences.asStateFlow()
 
-    // Weekly Nutrient States (Int for grams/milligrams, or calories)
+    // Weekly Nutrient States
     private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyCalories = _weeklyCalories.asStateFlow()
 
@@ -87,19 +87,23 @@ class FoodLogViewModel : ViewModel() {
     private val _weeklyVitaminC = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyVitaminC = _weeklyVitaminC.asStateFlow()
 
-    private val _yesterdayMacroPercentages = MutableStateFlow(
+    // RENAMED: This now holds the 7-day macro percentage
+    private val _weeklyMacroPercentages = MutableStateFlow(
         mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
     )
-    val yesterdayMacroPercentages = _yesterdayMacroPercentages.asStateFlow()
+    val weeklyMacroPercentages = _weeklyMacroPercentages.asStateFlow()
 
     private val _caloriesByTimeOfDay = MutableStateFlow(
         mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     )
+    val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow() // Added getter
+
 
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
 
     private val _shouldResetDateOnResume = MutableStateFlow(true)
+    val shouldResetDateOnResume = _shouldResetDateOnResume.asStateFlow() // Added getter
 
 
     init {
@@ -128,7 +132,7 @@ class FoodLogViewModel : ViewModel() {
         _mealsForSelectedDateState.value = emptyList()
         _weeklyCalories.value = emptyMap()
         _weeklyProtein.value = emptyMap()
-        _yesterdayMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
+        _weeklyMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f) // RENAMED
         _weeklyFiber.value = emptyMap()
         _weeklySugar.value = emptyMap()
         _weeklySodium.value = emptyMap()
@@ -137,6 +141,7 @@ class FoodLogViewModel : ViewModel() {
         _weeklyIron.value = emptyMap()
         _weeklyVitaminC.value = emptyMap()
         _graphPreferences.value = emptyList()
+        _caloriesByTimeOfDay.value = mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     }
 
     // --- Graph Preference Methods ---
@@ -144,7 +149,8 @@ class FoodLogViewModel : ViewModel() {
     private fun getDefaultGraphPreferences(): List<GraphPreference> = listOf(
         GraphPreference("calories", "Weekly Calorie Intake", 0, true, true),
         GraphPreference("protein", "Weekly Protein Intake", 1, true, true),
-        GraphPreference("macros_pie", "Yesterday's Macronutrient Distribution", 2, true, true),
+        // UPDATED ID: Changed from "macros_pie" to "weekly_macros_pie"
+        GraphPreference("weekly_macros_pie", "Weekly Macronutrient Distribution", 2, true, true),
         GraphPreference("fiber", "Weekly Fiber Intake", 3, true, false),
         GraphPreference("sugar", "Weekly Sugar Intake", 4, true, false),
         GraphPreference("sodium", "Weekly Sodium Intake", 5, true, false),
@@ -261,18 +267,9 @@ class FoodLogViewModel : ViewModel() {
 
                 processCaloriesByTimeOfDay(meals)
 
-                // 2. Fetch Meals for Yesterday (for Macro Pie Chart)
-                val yesterday = LocalDate.now().minusDays(1)
-                val yesterdayStart = Date.from(yesterday.atStartOfDay(ZoneId.systemDefault()).toInstant())
-                val todayStart = Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                // 2. Process 7-Day Macro Percentages (using the 'meals' list)
+                processWeeklyMacroPercentages(meals)
 
-                val yesterdaySnapshot = firestore.collection("users").document(userId).collection("meals")
-                    .whereGreaterThanOrEqualTo("timestamp", yesterdayStart)
-                    .whereLessThan("timestamp", todayStart)
-                    .get()
-                    .await()
-                val yesterdayMeals = yesterdaySnapshot.toObjects(Meal::class.java)
-                processYesterdayMacroPercentages(yesterdayMeals)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
             }
@@ -281,7 +278,6 @@ class FoodLogViewModel : ViewModel() {
 
     /**
      * Replaces all individual weekly nutrient processing functions.
-     * Uses Kotlin Reflection (KProperty1) to access the correct nutrient field dynamically.
      */
     private fun processWeeklyNutrient(
         meals: List<Meal>,
@@ -289,16 +285,12 @@ class FoodLogViewModel : ViewModel() {
         stateFlow: MutableStateFlow<Map<LocalDate, Int>>
     ) {
         val today = LocalDate.now()
-        // Initialize the map with the last 7 days and zero value
         val nutrientByDay = (0..6).associate {
             today.minusDays(it.toLong()) to 0
         }.toMutableMap()
 
         for (meal in meals) {
             val mealDate = meal.timestamp.toDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-
-            // Get the nutrient value using reflection, safely converting to Int
-            // Calories is Int, others are Double?
             val nutrientValue = nutrientProperty.get(meal)?.toInt() ?: 0
 
             if (nutrientByDay.containsKey(mealDate)) {
@@ -328,7 +320,9 @@ class FoodLogViewModel : ViewModel() {
         _caloriesByTimeOfDay.value = finalTimeBuckets
     }
 
-    private fun processYesterdayMacroPercentages(meals: List<Meal>) {
+    // RENAMED: Changed from 'Yesterday' to 'Weekly'
+    private fun processWeeklyMacroPercentages(meals: List<Meal>) {
+        // Now sums macros from the entire 7-day 'meals' list
         val proteinGrams = meals.sumOf { it.protein ?: 0.0 }
         val carbsGrams = meals.sumOf { it.carbohydrates ?: 0.0 }
         val fatGrams = meals.sumOf { it.fat ?: 0.0 }
@@ -343,7 +337,8 @@ class FoodLogViewModel : ViewModel() {
 
         val totalMacroCalories = proteinCalories + carbCalories + fatCalories
 
-        _yesterdayMacroPercentages.value = if (totalMacroCalories > 0) {
+        // Updates the new StateFlow
+        _weeklyMacroPercentages.value = if (totalMacroCalories > 0) {
             mapOf(
                 "Protein" to (proteinCalories / totalMacroCalories * 100).toFloat(),
                 "Carbs" to (carbCalories / totalMacroCalories * 100).toFloat(),
@@ -356,7 +351,6 @@ class FoodLogViewModel : ViewModel() {
 
     // --- Meal CRUD Operations ---
 
-    // Original logMeal function
     fun logMeal(
         foodName: String,
         calories: Int,
@@ -396,24 +390,21 @@ class FoodLogViewModel : ViewModel() {
             try {
                 firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 fetchMealsForLastSevenDays()
+                // ADDED: Ensure the listener for the current day is refreshed
+                listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
         }
     }
 
-    /**
-     * NEW FUNCTION: Logs the meal after the user confirms the Gemini-parsed data.
-     */
     fun logMealsFromFoodInfoList(
-        foodInfoList: List<FoodNutritionalInfo>, // Accepts the full list
+        foodInfoList: List<FoodNutritionalInfo>,
         mealTime: Timestamp
     ) {
-        // Iterate through the list and log each one individually
         for (foodInfo in foodInfoList) {
-            // Safely parse String fields from FoodNutritionalInfo to expected numerical types
             logMeal(
-                foodName = foodInfo.food_name ?: "Unknown Meal", // Use the correct property
+                foodName = foodInfo.food_name ?: "Unknown Meal",
                 calories = foodInfo.calories?.toIntOrNull() ?: 0,
                 servingAmount = foodInfo.serving_amount,
                 servingUnit = foodInfo.serving_unit,
@@ -430,7 +421,6 @@ class FoodLogViewModel : ViewModel() {
                 vitaminC = foodInfo.vitaminC?.toDoubleOrNull()
             )
         }
-        // Reset the Gemini result state immediately after acceptance
         resetGeminiResult()
     }
 
@@ -454,7 +444,7 @@ class FoodLogViewModel : ViewModel() {
         newVitaminC: Double?
     ) {
         val userId = auth.currentUser?.uid ?: return
-        if (newTimestamp.toDate().after(Date())) return // Prevent logging future meals
+        if (newTimestamp.toDate().after(Date())) return
 
         val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         val updatedData = mapOf(
@@ -478,6 +468,8 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.update(updatedData).await()
                 fetchMealsForLastSevenDays()
+                // ADDED: Ensure the listener for the current day is refreshed
+                listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -491,6 +483,8 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.delete().await()
                 fetchMealsForLastSevenDays()
+                // ADDED: Ensure the listener for the current day is refreshed
+                listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }
@@ -559,20 +553,17 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
+    // RENAMED from getMealById
     fun getMealById(mealId: String): Meal? {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
 
     // --- Gemini API Methods ---
 
-    /**
-     * Calls the Firebase function to analyze food, using text name or image data.
-     */
     fun analyzeImageWithGemini(foodName: String, imageB64: String? = null) {
         _geminiResult.value = GeminiResult.Loading
         viewModelScope.launch {
             try {
-                // Construct data payload, only including imageB64 if it's not null
                 val data = hashMapOf<String, Any>(
                     "foodName" to foodName
                 )
@@ -580,7 +571,6 @@ class FoodLogViewModel : ViewModel() {
                     data["imageB64"] = imageB64
                 }
 
-                // Validate input before API call
                 if (foodName.isBlank() && imageB64 == null) {
                     _geminiResult.value = GeminiResult.Error("Please enter a food name or select an image.")
                     return@launch
@@ -617,9 +607,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Resets the Gemini result state.
-     */
     fun resetGeminiResult() {
         _geminiResult.value = GeminiResult.Idle
     }
