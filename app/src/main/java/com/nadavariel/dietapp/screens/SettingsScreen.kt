@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications // NEW: Import for notifications icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -79,6 +80,21 @@ fun SettingsScreen(
                     )
                 },
                 modifier = Modifier.fillMaxWidth()
+            )
+            HorizontalDivider()
+
+            // NEW: Notifications
+            ListItem(
+                headlineContent = { Text("Notifications") },
+                leadingContent = {
+                    Icon(Icons.Default.Notifications, contentDescription = "Meal Reminder Notifications")
+                },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Notifications")
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate(NavRoutes.NOTIFICATIONS) } // NEW: Navigation action
             )
             HorizontalDivider()
 

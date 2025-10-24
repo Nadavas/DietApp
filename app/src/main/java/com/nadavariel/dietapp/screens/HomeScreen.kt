@@ -10,8 +10,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Notifications // REQUIRED: Import Notifications Icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -38,7 +40,7 @@ fun HomeScreen(
     goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController,
 ) {
-    // --- STATE AND DATA (No changes here) ---
+    // --- STATE AND DATA ---
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
@@ -82,20 +84,33 @@ fun HomeScreen(
             .toSortedMap(compareBy { it.ordinal })
     }
 
-    // --- NEW CLEAN & MOTIVATING THEME ---
-    val screenBackgroundColor = Color(0xFFF7F9FC) // A light, clean background
-    val primaryActionColor = Color(0xFF4CAF50) // A vibrant green for motivation
+    // --- THEME ---
+    val screenBackgroundColor = Color(0xFFF7F9FC)
+    val primaryActionColor = Color(0xFF4CAF50)
 
     // --- UI ---
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
+                    // RESTORED: Original HeaderSection logic
                     HeaderSection(
                         userName = userProfile.name ?: "User",
                         avatarId = userProfile.avatarId,
                         onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                     )
+                },
+                // NEW: Use actions slot to place a button on the right, left of the avatar logic.
+                actions = {
+                    IconButton(
+                        onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
+                    ) {
+                        Icon(
+                            Icons.Filled.Notifications,
+                            contentDescription = "Notifications",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = screenBackgroundColor,

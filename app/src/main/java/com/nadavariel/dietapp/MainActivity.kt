@@ -48,7 +48,8 @@ import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.theme.DietAppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.ThreadViewModel // <<< already imported
+import com.nadavariel.dietapp.viewmodel.ThreadViewModel
+import com.nadavariel.dietapp.viewmodel.NotificationViewModel // NEW: Import NotificationViewModel
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -73,9 +74,13 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 FoodLogViewModel() as T
                             }
-                            modelClass.isAssignableFrom(ThreadViewModel::class.java) -> { // <<<
+                            modelClass.isAssignableFrom(ThreadViewModel::class.java) -> {
                                 @Suppress("UNCHECKED_CAST")
-                                ThreadViewModel() as T // <<<
+                                ThreadViewModel() as T
+                            }
+                            modelClass.isAssignableFrom(NotificationViewModel::class.java) -> { // NEW: Add NotificationViewModel
+                                @Suppress("UNCHECKED_CAST")
+                                NotificationViewModel(application) as T
                             }
                             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
                         }
@@ -85,7 +90,8 @@ class MainActivity : ComponentActivity() {
 
             val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
-            val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory) // <<<
+            val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory)
+            val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory) // NEW: Instantiate NotificationViewModel
 
             val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
             val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
@@ -329,6 +335,13 @@ class MainActivity : ComponentActivity() {
                                 SettingsScreen(
                                     navController = navController,
                                     authViewModel = authViewModel
+                                )
+                            }
+                            // NEW: Add the Notifications Screen destination
+                            composable(NavRoutes.NOTIFICATIONS) {
+                                NotificationScreen(
+                                    navController = navController,
+                                    notificationViewModel = notificationViewModel
                                 )
                             }
                             composable(NavRoutes.QUESTIONS) {
