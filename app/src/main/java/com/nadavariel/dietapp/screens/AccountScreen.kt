@@ -1,5 +1,12 @@
 package com.nadavariel.dietapp.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,86 +26,192 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.account.ImageIcon
-import com.nadavariel.dietapp.ui.account.ProfileHeader
 import com.nadavariel.dietapp.ui.account.ReauthDialog
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.util.AvatarConstants
+
+// --- DESIGN TOKENS (matching HomeScreen) ---
+private val VibrantGreen = Color(0xFF4CAF50)
+private val DarkGreyText = Color(0xFF333333)
+private val LightGreyText = Color(0xFF757575)
+private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 
 /**
- * A custom modifier to apply a "glassmorphism" effect.
- * This creates a transparent container with a subtle border.
+ * Enhanced profile header with better visual hierarchy and spacing
  */
-fun Modifier.glassmorphism(
-    shape: Shape = RoundedCornerShape(16.dp),
-    borderColor: Color = Color.White.copy(alpha = 0.2f),
-    borderWidth: Dp = 1.dp,
-    color: Color
-): Modifier = this
-    .clip(shape)
-    .border(borderWidth, borderColor, shape)
+@Composable
+fun AccountHeaderInfo(
+    name: String,
+    email: String,
+    avatarId: String?,
+    modifier: Modifier = Modifier,
+    onAvatarClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Avatar with subtle pulse effect suggestion
+            Box(contentAlignment = Alignment.Center) {
+                // Background circle for depth
+                Box(
+                    modifier = Modifier
+                        .size(112.dp)
+                        .background(VibrantGreen.copy(alpha = 0.1f), CircleShape)
+                )
+                Image(
+                    painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
+                    contentDescription = "Profile Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .border(3.dp, VibrantGreen, CircleShape)
+                        .clickable { onAvatarClick() }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = DarkGreyText
+            )
+            Text(
+                text = email,
+                style = MaterialTheme.typography.bodyLarge,
+                color = LightGreyText
+            )
+        }
+    }
+}
 
 /**
- * A composable for a single row item in the account menu.
+ * Redesigned menu row with modern card styling
  */
 @Composable
 private fun MenuRow(
     title: String,
+    subtitle: String? = null,
     leadingIcon: @Composable () -> Unit,
     onClick: () -> Unit,
     hasNotification: Boolean = false
 ) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon container with subtle background
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(VibrantGreen.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                CompositionLocalProvider(LocalContentColor provides VibrantGreen) {
+                    leadingIcon()
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DarkGreyText
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = LightGreyText
+                    )
+                }
+            }
+
+            if (hasNotification) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(MaterialTheme.colorScheme.error, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
+            Icon(
+                imageVector = Icons.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = LightGreyText,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Section divider with label
+ */
+@Composable
+private fun SectionDivider(text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Use LocalContentColor to tint the icon white by default
-        CompositionLocalProvider(LocalContentColor provides Color.White) {
-            leadingIcon()
-        }
-        Spacer(modifier = Modifier.width(16.dp))
         Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
-            modifier = Modifier.weight(1f)
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = LightGreyText,
+            modifier = Modifier.padding(end = 12.dp)
         )
-        if (hasNotification) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-        }
-        Icon(
-            imageVector = Icons.Filled.ArrowForwardIos,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(16.dp)
+        Divider(
+            modifier = Modifier.weight(1f),
+            color = LightGreyText.copy(alpha = 0.3f)
         )
     }
 }
 
 /**
- * Refactored action buttons with a glassmorphic design.
+ * Enhanced action buttons with better styling
  */
 @Composable
 fun AccountActionButtons(
@@ -110,78 +223,55 @@ fun AccountActionButtons(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Sign Out Button
-        Row(
+        // Sign Out Button - Outlined style
+        OutlinedButton(
+            onClick = onSignOutClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .glassmorphism(color = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)) // Applies the default semi-transparent white fill
-                .clip(RoundedCornerShape(16.dp)) // for ripple effect
-                .clickable { onSignOutClick() }
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = LightGreyText
+            ),
+            border = BorderStroke(1.5.dp, LightGreyText.copy(alpha = 0.5f))
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Sign Out",
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Sign Out",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White
-                )
-            }
             Icon(
-                imageVector = Icons.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(16.dp)
+                imageVector = Icons.AutoMirrored.Filled.Logout,
+                contentDescription = "Sign Out",
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Sign Out",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
-// Delete Account Button
-        Row(
+        // Delete Account Button - Filled error style
+        Button(
+            onClick = onDeleteClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .glassmorphism(
-                    // Add this line to give the button a reddish fill
-                    color = MaterialTheme.colorScheme.error.copy(alpha = 1f),
-                    borderColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
-                )
-                .clip(RoundedCornerShape(16.dp))
-                .clickable { onDeleteClick() }
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError
+            )
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Account",
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Delete Account",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White
-                )
-            }
             Icon(
-                imageVector = Icons.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(16.dp)
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete Account",
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Delete Account",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,11 +289,6 @@ fun AccountScreen(
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
-
-    // --- Constants ---
-    val dietAndNutritionGradient = remember {
-        Brush.verticalGradient(listOf(Color(0x6103506C), Color(0xFF1644A0)))
-    }
 
     // --- Side Effects (Auth Result Handling) ---
     LaunchedEffect(authResult) {
@@ -237,106 +322,134 @@ fun AccountScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Account", fontWeight = FontWeight.Bold, color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                title = {
+                    Text(
+                        "My Account",
+                        fontWeight = FontWeight.Bold,
+                        color = DarkGreyText
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ScreenBackgroundColor
+                ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            "Back",
+                            tint = DarkGreyText
+                        )
                     }
                 }
             )
         },
-        containerColor = Color.Transparent
+        containerColor = ScreenBackgroundColor
     ) { paddingValues ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(dietAndNutritionGradient)
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Profile Header
-                item {
-                    ProfileHeader(
-                        name = currentUser?.displayName ?: "User",
-                        email = currentUser?.email ?: "No email"
-                    )
-                }
+            // Profile Header Card
+            item {
+                AccountHeaderInfo(
+                    name = currentUser?.displayName ?: "User",
+                    email = currentUser?.email ?: "No email",
+                    avatarId = authViewModel.currentAvatarId,
+                    onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
+                )
+            }
 
-                // Menu Items
+            // Settings Section
+            item {
+                SectionDivider("SETTINGS")
+            }
+
+            item {
+                MenuRow(
+                    title = "Profile",
+                    subtitle = if (hasMissingDetails) "Complete your profile" else "Manage your information",
+                    leadingIcon = { Icon(Icons.Filled.Person, "My Profile", modifier = Modifier.size(24.dp)) },
+                    hasNotification = hasMissingDetails,
+                    onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
+                )
+            }
+
+            item {
+                MenuRow(
+                    title = "Questions",
+                    subtitle = "View your dietary preferences",
+                    leadingIcon = {
+                        ImageIcon(
+                            painterResource(id = R.drawable.ic_query_filled),
+                            "Questions"
+                        )
+                    },
+                    onClick = { navController.navigate(NavRoutes.QUESTIONS) }
+                )
+            }
+
+            item {
+                MenuRow(
+                    title = "Goals",
+                    subtitle = "Set your nutrition targets",
+                    leadingIcon = {
+                        ImageIcon(
+                            painterResource(id = R.drawable.ic_goals),
+                            "Goals"
+                        )
+                    },
+                    onClick = { navController.navigate(NavRoutes.GOALS) }
+                )
+            }
+
+            item {
+                MenuRow(
+                    title = "Settings",
+                    subtitle = "App preferences",
+                    leadingIcon = { Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.size(24.dp)) },
+                    onClick = { navController.navigate(NavRoutes.SETTINGS) }
+                )
+            }
+
+            // Account Actions Section
+            item {
+                SectionDivider("ACCOUNT ACTIONS")
+            }
+
+            item {
+                AccountActionButtons(
+                    onSignOutClick = { showSignOutDialog = true },
+                    onDeleteClick = { showDeleteConfirmationDialog = true }
+                )
+            }
+
+            // Error message
+            errorMessage?.let {
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .glassmorphism(
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                            )
-                            .clip(RoundedCornerShape(24.dp))
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        MenuRow(
-                            title = "Profile",
-                            leadingIcon = { Icon(Icons.Filled.Person, "My Profile") },
-                            hasNotification = hasMissingDetails,
-                            onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = Color.White.copy(alpha = 0.2f)
-                        )
-                        MenuRow(
-                            title = "Questions",
-                            leadingIcon = { ImageIcon(painterResource(id = R.drawable.ic_query_filled), "Questions") },
-                            onClick = { navController.navigate(NavRoutes.QUESTIONS) }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = Color.White.copy(alpha = 0.2f)
-                        )
-                        MenuRow(
-                            title = "Goals",
-                            leadingIcon = { ImageIcon(painterResource(id = R.drawable.ic_goals), "Goals") },
-                            onClick = { navController.navigate(NavRoutes.GOALS) }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 0.5.dp,
-                            color = Color.White.copy(alpha = 0.2f)
-                        )
-                        MenuRow(
-                            title = "Settings",
-                            leadingIcon = { Icon(Icons.Filled.Settings, "Settings") },
-                            onClick = { navController.navigate(NavRoutes.SETTINGS) }
-                        )
-                    }
-                }
-
-                // Action Buttons
-                item {
-                    AccountActionButtons(
-                        onSignOutClick = { showSignOutDialog = true },
-                        onDeleteClick = { showDeleteConfirmationDialog = true }
-                    )
-                }
-
-                errorMessage?.let {
-                    item {
                         Text(
                             text = it,
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
                 }
             }
+
+            // Bottom spacing
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 

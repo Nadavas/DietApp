@@ -76,6 +76,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val _isLoadingProfile = MutableStateFlow(true) //
     val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
 
+    val currentAvatarId: String? get() = userProfile.value?.avatarId
     init {
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
