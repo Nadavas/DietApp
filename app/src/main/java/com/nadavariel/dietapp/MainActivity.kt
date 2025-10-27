@@ -42,6 +42,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
@@ -375,7 +376,12 @@ class MainActivity : ComponentActivity() {
                                     isNewUser = isNewUser
                                 )
                             }
-                            composable(NavRoutes.ADD_EDIT_MEAL) {
+                            composable(
+                                route = NavRoutes.ADD_EDIT_MEAL,
+                                deepLinks = listOf(
+                                    navDeepLink { uriPattern = "dietapp://add_meal" }
+                                )
+                            ) {
                                 AddEditMealScreen(
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController,

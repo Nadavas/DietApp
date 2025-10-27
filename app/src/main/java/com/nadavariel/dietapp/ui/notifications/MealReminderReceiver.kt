@@ -6,11 +6,13 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri // NEW: Import
 import android.os.Build
-import android.util.Log // NEW: Import for debugging
+import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.nadavariel.dietapp.MainActivity // Assuming your main activity is named MainActivity
-import com.nadavariel.dietapp.R // Make sure you have an R file with drawables/strings
+import androidx.core.app.TaskStackBuilder // NEW: Import
+import com.nadavariel.dietapp.MainActivity
+import com.nadavariel.dietapp.R
 
 class MealReminderReceiver : BroadcastReceiver() {
 
@@ -24,7 +26,6 @@ class MealReminderReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        // STEP 2 DEBUGGING: Log immediately to confirm the receiver was triggered by the system
         Log.i(TAG, "MealReminderReceiver: onReceive triggered. Intent action: ${intent?.action}")
 
         val notificationId = intent?.getIntExtra(NOTIFICATION_ID_EXTRA, 0) ?: 0
@@ -40,28 +41,41 @@ class MealReminderReceiver : BroadcastReceiver() {
 
         createNotificationChannel(context)
 
-        // Create an intent to launch your app when the notification is tapped
-        val tapIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
+        // --- NEW: Create a deep link intent with a back stack ---
+
+        // 1. Create the deep link Intent for the AddEditMealScreen
+        val addMealIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("dietapp://add_meal"), // The custom URI we defined
             context,
-            notificationId,
-            tapIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            MainActivity::class.java // The activity that hosts the NavGraph
         )
+
+        // 2. Use TaskStackBuilder to create a proper back stack (so "back" goes to Home)
+        val pendingIntent: PendingIntent? = TaskStackBuilder.create(context).run {
+            // This reads the manifest and adds the parent (MainActivity) automatically
+            addNextIntentWithParentStack(addMealIntent)
+
+            // Create the PendingIntent
+            getPendingIntent(
+                notificationId,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
+
+        // --- End of new intent logic ---
+
 
         val notification = try {
             NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground) // Use your app's notification icon here
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle("Meal Logging Reminder")
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
+                .setContentIntent(pendingIntent) // Use the new deep link pendingIntent
                 .setAutoCancel(true)
                 .build()
         } catch (e: Exception) {
-            // STEP 3 DEBUGGING: Catch common errors like missing icon resource (R.drawable.ic_launcher_foreground)
             Log.e(TAG, "Error building notification: ${e.message}", e)
             return
         }
@@ -69,13 +83,7 @@ class MealReminderReceiver : BroadcastReceiver() {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, notification)
 
-        // NEW LOG: Confirm notification has been posted to the manager
         Log.i(TAG, "Notification successfully posted with ID: $notificationId")
-
-        // Note on "ONCE" alarms:
-        // If the alarm was set using setExact... (for ONCE), you should also explicitly cancel it here,
-        // as exact alarms don't automatically cancel themselves after firing once on newer APIs.
-        // However, for now, we leave this logic out to focus on the initial failure.
     }
 
     private fun createNotificationChannel(context: Context) {
