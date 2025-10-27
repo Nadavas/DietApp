@@ -1,7 +1,11 @@
 package com.nadavariel.dietapp.screens
 
+import android.Manifest // NEW: Import
+import android.content.pm.PackageManager // NEW: Import
 import android.os.Build
 import android.widget.TimePicker
+import androidx.activity.compose.rememberLauncherForActivityResult // NEW: Import
+import androidx.activity.result.contract.ActivityResultContracts // NEW: Import
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,9 +20,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalContext // NEW: Import
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat // NEW: Import
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.NotificationPreference
@@ -33,9 +38,37 @@ fun NotificationScreen(
     notificationViewModel: NotificationViewModel = viewModel()
 ) {
     val notifications by notificationViewModel.notifications.collectAsState()
-
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
+
+    // --- NEW: Runtime Permission Handling ---
+    val context = LocalContext.current
+    var hasNotificationPermission by remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            )
+        } else {
+            mutableStateOf(true) // Always true for older Android versions
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            hasNotificationPermission = isGranted
+        }
+    )
+
+    LaunchedEffect(key1 = true) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    // --- End of Permission Handling ---
 
     Scaffold(
         topBar = {
@@ -49,35 +82,63 @@ fun NotificationScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = {
+                // Request permission *again* if they try to add one without permission
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    showAddDialog = true
+                }
+            }) {
                 Icon(Icons.Filled.Add, "Add New Reminder")
             }
         }
     ) { paddingValues ->
-        if (notifications.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No reminders set yet. Tap '+' to add one.")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(notifications, key = { it.id }) { pref ->
-                    NotificationItem(
-                        preference = pref,
-                        onToggle = { enabled -> notificationViewModel.toggleNotification(pref, enabled) },
-                        onEdit = { selectedPreference = pref; showAddDialog = true },
-                        onDelete = { notificationViewModel.deleteNotification(pref) }
+
+        // --- NEW: Show a warning if permission is denied ---
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (!hasNotificationPermission) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
+                ) {
+                    Text(
+                        text = "Notifications are disabled. Please grant permission in your device settings to receive reminders.",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            if (notifications.isEmpty()) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No reminders set yet. Tap '+' to add one.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(notifications, key = { it.id }) { pref ->
+                        NotificationItem(
+                            preference = pref,
+                            onToggle = { enabled -> notificationViewModel.toggleNotification(pref, enabled) },
+                            onEdit = { selectedPreference = pref; showAddDialog = true },
+                            onDelete = { notificationViewModel.deleteNotification(pref) }
+                        )
+                    }
                 }
             }
         }
@@ -91,6 +152,8 @@ fun NotificationScreen(
         )
     }
 }
+
+// ... (NotificationItem and AddEditNotificationDialog composables remain exactly the same) ...
 
 @Composable
 fun NotificationItem(
