@@ -25,7 +25,7 @@ import com.nadavariel.dietapp.model.NotificationPreference
 import com.nadavariel.dietapp.viewmodel.NotificationViewModel
 import java.util.Calendar
 
-@RequiresApi(Build.VERSION_CODES.O) // Assuming your app supports modern Android versions
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
@@ -35,7 +35,7 @@ fun NotificationScreen(
     val notifications by notificationViewModel.notifications.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
-    var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) } // for editing
+    var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
 
     Scaffold(
         topBar = {
@@ -205,7 +205,7 @@ fun AddEditNotificationDialog(
                         minute = minute,
                         repetition = repetition,
                         message = message,
-                        isEnabled = true // Always enabled when saved/updated
+                        isEnabled = true
                     )
                     viewModel.saveNotification(finalPref)
                     onDismiss()

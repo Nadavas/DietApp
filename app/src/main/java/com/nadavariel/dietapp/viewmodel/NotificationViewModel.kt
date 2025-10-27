@@ -47,12 +47,15 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
                 doc.toObject<NotificationPreference>()?.copy(id = doc.id)
             } ?: emptyList()
 
+            // FIX: The listener ONLY updates the UI state.
+            // It no longer triggers any alarm logic. This stops the race condition.
             _notifications.value = fetchedList
-            // Reschedule/cancel all alarms based on the fetched state
-            updateAllAlarms(fetchedList)
+            // REMOVED: updateAllAlarms(fetchedList)
         }
     }
 
+    // This function is no longer called by the listener,
+    // but can be used by other parts of the app if needed (e.g., BootReceiver).
     private fun updateAllAlarms(preferences: List<NotificationPreference>) {
         preferences.forEach { pref ->
             if (pref.isEnabled) {
@@ -63,25 +66,34 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    // Encapsulated save logic
+    private suspend fun writeNotificationToFirestore(preference: NotificationPreference) {
+        if (preference.id.isBlank()) {
+            val newDoc = preferencesCollection.add(preference).await()
+            // Immediately update the Firestore document with its own ID
+            preferencesCollection.document(newDoc.id).set(preference.copy(id = newDoc.id)).await()
+        } else {
+            preferencesCollection.document(preference.id).set(preference).await()
+        }
+    }
+
+    // FIX: saveNotification (from the dialog) must now handle its own scheduling.
     fun saveNotification(preference: NotificationPreference) = viewModelScope.launch {
         if (userId == null) return@launch
-
         try {
+            var prefToSave = preference
             if (preference.id.isBlank()) {
-                // New notification: Firestore assigns ID
                 val newDoc = preferencesCollection.add(preference).await()
-                // Update the scheduler with the new ID
-                scheduler.schedule(preference.copy(id = newDoc.id))
+                prefToSave = preference.copy(id = newDoc.id)
+                // Write again to set the ID
+                preferencesCollection.document(prefToSave.id).set(prefToSave).await()
             } else {
-                // Existing notification: Update
                 preferencesCollection.document(preference.id).set(preference).await()
+            }
 
-                // Always reschedule after update to pick up new time/status
-                if (preference.isEnabled) {
-                    scheduler.schedule(preference)
-                } else {
-                    scheduler.cancel(preference)
-                }
+            // Manually schedule the new/edited item
+            if (prefToSave.isEnabled) {
+                scheduler.schedule(prefToSave)
             }
         } catch (e: Exception) {
             Log.e("NotifVM", "Error saving notification: ${e.message}")
@@ -92,18 +104,52 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         if (userId == null || preference.id.isBlank()) return@launch
 
         try {
-            // 1. Cancel the active alarm
+            // Manually cancel the alarm
             scheduler.cancel(preference)
-
-            // 2. Delete from Firestore
             preferencesCollection.document(preference.id).delete().await()
         } catch (e: Exception) {
             Log.e("NotifVM", "Error deleting notification: ${e.message}")
         }
     }
 
+    // FIX: toggleNotification now handles the UI update and scheduling *once*.
     fun toggleNotification(preference: NotificationPreference, isEnabled: Boolean) {
         val updatedPref = preference.copy(isEnabled = isEnabled)
-        saveNotification(updatedPref) // Save will trigger fetch, which will call updateAllAlarms
+
+        // 1. OPTIMISTIC UI UPDATE:
+        // Immediately update the local StateFlow. This makes the Switch
+        // in the UI respond instantly, preventing the "snap back".
+        _notifications.value = _notifications.value.map {
+            if (it.id == preference.id) updatedPref else it
+        }
+
+        // 2. IMMEDIATE ALARM ACTION (This is now the *only* call):
+        if (isEnabled) {
+            scheduler.schedule(updatedPref)
+        } else {
+            scheduler.cancel(updatedPref)
+        }
+
+        // 3. PERSISTENCE (Async):
+        // Launch a coroutine to save this change to Firestore. The listener
+        // will get this update but will *only* update the state, not
+        // re-run the alarm logic.
+        viewModelScope.launch {
+            try {
+                writeNotificationToFirestore(updatedPref)
+            } catch (e: Exception) {
+                Log.e("NotifVM", "Error toggling notification: ${e.message}")
+                // If the save fails, revert the optimistic update
+                _notifications.value = _notifications.value.map {
+                    if (it.id == preference.id) preference else it
+                }
+                // And revert the alarm action
+                if (preference.isEnabled) {
+                    scheduler.schedule(preference)
+                } else {
+                    scheduler.cancel(preference)
+                }
+            }
+        }
     }
 }
