@@ -1,11 +1,11 @@
 package com.nadavariel.dietapp.screens
 
-import android.Manifest // NEW: Import
-import android.content.pm.PackageManager // NEW: Import
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.TimePicker
-import androidx.activity.compose.rememberLauncherForActivityResult // NEW: Import
-import androidx.activity.result.contract.ActivityResultContracts // NEW: Import
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,10 +20,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext // NEW: Import
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat // NEW: Import
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.NotificationPreference
@@ -41,7 +41,6 @@ fun NotificationScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
 
-    // --- NEW: Runtime Permission Handling ---
     val context = LocalContext.current
     var hasNotificationPermission by remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -52,7 +51,7 @@ fun NotificationScreen(
                 ) == PackageManager.PERMISSION_GRANTED
             )
         } else {
-            mutableStateOf(true) // Always true for older Android versions
+            mutableStateOf(true)
         }
     }
 
@@ -68,7 +67,6 @@ fun NotificationScreen(
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    // --- End of Permission Handling ---
 
     Scaffold(
         topBar = {
@@ -83,7 +81,6 @@ fun NotificationScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                // Request permission *again* if they try to add one without permission
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
@@ -94,8 +91,6 @@ fun NotificationScreen(
             }
         }
     ) { paddingValues ->
-
-        // --- NEW: Show a warning if permission is denied ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -153,8 +148,6 @@ fun NotificationScreen(
     }
 }
 
-// ... (NotificationItem and AddEditNotificationDialog composables remain exactly the same) ...
-
 @Composable
 fun NotificationItem(
     preference: NotificationPreference,
@@ -194,11 +187,21 @@ fun AddEditNotificationDialog(
     onDismiss: () -> Unit
 ) {
     val isEdit = preferenceToEdit != null
-    val currentCalendar = preferenceToEdit?.getNextScheduledCalendar() ?: Calendar.getInstance()
 
-    var hour by remember { mutableStateOf(currentCalendar.get(Calendar.HOUR_OF_DAY)) }
-    var minute by remember { mutableStateOf(currentCalendar.get(Calendar.MINUTE)) }
-    var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "DAILY") }
+    val initialHour = if (isEdit) {
+        preferenceToEdit!!.hour
+    } else {
+        Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    }
+    val initialMinute = if (isEdit) {
+        preferenceToEdit!!.minute
+    } else {
+        Calendar.getInstance().get(Calendar.MINUTE)
+    }
+
+    var hour by remember { mutableStateOf(initialHour) }
+    var minute by remember { mutableStateOf(initialMinute) }
+    var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") } // Default is "ONCE"
     var message by remember { mutableStateOf(preferenceToEdit?.message ?: "Time to log your next meal!") }
 
     AlertDialog(
@@ -206,51 +209,59 @@ fun AddEditNotificationDialog(
         title = { Text(if (isEdit) "Edit Reminder" else "Add New Reminder") },
         text = {
             Column(horizontalAlignment = Alignment.Start) {
-                // Time Picker (using AndroidView for simplicity with TimePicker)
+
+                // Restored embedded TimePicker
                 AndroidView(
                     modifier = Modifier.fillMaxWidth(),
                     factory = { context ->
                         TimePicker(context).apply {
                             setIs24HourView(true)
+
+                            // Set initial view state *before* the listener
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                this.hour = initialHour
+                                this.minute = initialMinute
+                            }
+
+                            // Set the listener
                             setOnTimeChangedListener { _, h, m ->
                                 hour = h
                                 minute = m
                             }
-                            // Set initial values
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                hour = currentCalendar.get(Calendar.HOUR_OF_DAY)
-                                minute = currentCalendar.get(Calendar.MINUTE)
-                            }
                         }
                     },
                     update = { view ->
+                        // Guard the update block
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            view.hour = hour
-                            view.minute = minute
+                            if (view.hour != hour) {
+                                view.hour = hour
+                            }
+                            if (view.minute != minute) {
+                                view.minute = minute
+                            }
                         }
                     }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Repetition Options
                 Text("Repetition", style = MaterialTheme.typography.labelLarge)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = repetition == "DAILY",
-                        onClick = { repetition = "DAILY" },
-                        label = { Text("Every Day") }
-                    )
+                    // Swapped order and changed default
                     FilterChip(
                         selected = repetition == "ONCE",
                         onClick = { repetition = "ONCE" },
                         label = { Text("One Time") }
                     )
+                    FilterChip(
+                        selected = repetition == "DAILY",
+                        onClick = { repetition = "DAILY" },
+                        label = { Text("Every Day") }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Message Field
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },

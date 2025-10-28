@@ -63,7 +63,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
 import com.nadavariel.dietapp.model.Gender
-import com.nadavariel.dietapp.model.ActivityLevel
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MenuAnchorType
@@ -86,13 +85,10 @@ fun UpdateProfileScreen(
     var weightInput by remember(userProfile.weight) { mutableStateOf(if (userProfile.weight > 0f) userProfile.weight.toString() else "") }
     var heightInput by remember(userProfile.height) { mutableStateOf(if (userProfile.height > 0f) userProfile.height.toString() else "") }
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
-    var targetWeightInput by remember(userProfile.targetWeight) { mutableStateOf(if (userProfile.targetWeight > 0f) userProfile.targetWeight.toString() else "") }
     var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
     var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
-    var selectedActivityLevel by remember(userProfile.activityLevel) { mutableStateOf(userProfile.activityLevel) }
     var showAvatarDialog by remember { mutableStateOf(false) }
     var isGenderDropdownExpanded by remember { mutableStateOf(false) }
-    var isActivityLevelDropdownExpanded by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
@@ -102,10 +98,8 @@ fun UpdateProfileScreen(
             weight = weightInput,
             height = heightInput,
             dateOfBirth = dateOfBirthInput,
-            targetWeight = targetWeightInput,
             avatarId = selectedAvatarId,
-            gender = selectedGender,
-            activityLevel = selectedActivityLevel
+            gender = selectedGender
         )
         if (isNewUser) {
             navController.navigate(NavRoutes.HOME) {
@@ -126,7 +120,6 @@ fun UpdateProfileScreen(
         }
         selectedAvatarId = userProfile.avatarId
         selectedGender = userProfile.gender
-        selectedActivityLevel = userProfile.activityLevel
     }
 
     Scaffold(
@@ -226,22 +219,6 @@ fun UpdateProfileScreen(
             )
 
             OutlinedTextField(
-                value = targetWeightInput,
-                onValueChange = { newValue ->
-                    if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                        targetWeightInput = newValue
-                    }
-                },
-                label = { Text("Target Weight (kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next), // Changed to Next
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                singleLine = true
-            )
-
-
-            OutlinedTextField(
                 value = dateOfBirthInput?.let { dateFormatter.format(it) } ?: "",
                 onValueChange = { /* Read-only, no direct text input */ },
                 label = { Text("Date of Birth") },
@@ -326,41 +303,6 @@ fun UpdateProfileScreen(
                             onClick = {
                                 selectedGender = genderOption
                                 isGenderDropdownExpanded = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-
-            ExposedDropdownMenuBox(
-                expanded = isActivityLevelDropdownExpanded,
-                onExpandedChange = { isActivityLevelDropdownExpanded = !isActivityLevelDropdownExpanded },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-            ) {
-                OutlinedTextField(
-                    value = selectedActivityLevel.displayName,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Activity Level") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isActivityLevelDropdownExpanded) },
-                    modifier = Modifier
-                        .exposedDropdownSize()
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = isActivityLevelDropdownExpanded,
-                    onDismissRequest = { isActivityLevelDropdownExpanded = false }
-                ) {
-                    ActivityLevel.entries.forEach { levelOption ->
-                        DropdownMenuItem(
-                            text = { Text(levelOption.displayName) },
-                            onClick = {
-                                selectedActivityLevel = levelOption
-                                isActivityLevelDropdownExpanded = false
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
