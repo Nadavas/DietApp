@@ -69,9 +69,11 @@ class GoalsViewModel : ViewModel() {
             return
         }
 
+        // Added "Target Weight" goal with a unique ID
         val allGoals = listOf(
-            Goal(text = "How many calories a day is your target?"),
-            Goal(text = "How many grams of protein a day is your target?"),
+            Goal(id = "calories", text = "How many calories a day is your target?"),
+            Goal(id = "protein", text = "How many grams of protein a day is your target?"),
+            Goal(id = "target_weight", text = "What is your target weight (in kg)?") // Added new goal
         )
 
         firestore.collection("users").document(userId)
@@ -91,6 +93,7 @@ class GoalsViewModel : ViewModel() {
                         it["question"] to it["answer"]
                     }?.toMap() ?: emptyMap()
 
+                    // Ensure all defined goals are present, merged with saved answers
                     val mergedGoals = allGoals.map { goal ->
                         goal.copy(value = userAnswers[goal.text])
                     }
@@ -99,6 +102,7 @@ class GoalsViewModel : ViewModel() {
                     _hasAiGeneratedGoals.value = aiGenerated
                     Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items, AI-generated: $aiGenerated")
                 } else {
+                    // If no saved data, ensure all base goals are shown
                     _goals.value = allGoals
                     _hasAiGeneratedGoals.value = false
                     Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
@@ -138,6 +142,7 @@ class GoalsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // Ensure we save using the current state of goals
                 val userAnswersToSave = _goals.value.map { goal ->
                     mapOf("question" to goal.text, "answer" to (goal.value ?: ""))
                 }
@@ -145,7 +150,6 @@ class GoalsViewModel : ViewModel() {
                 val userAnswersRef = firestore.collection("users").document(userId)
                     .collection("user_answers").document("goals")
 
-                // Preserve aiGenerated flag if it exists
                 val currentData = userAnswersRef.get().await()
                 val aiGenerated = currentData.getBoolean("aiGenerated") ?: false
 

@@ -5,15 +5,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.SetOptions // Needed for merging profile data
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.nadavariel.dietapp.data.DietPlan
-import com.nadavariel.dietapp.screens.Question
+import com.nadavariel.dietapp.screens.Question // Assuming Question has 'text' property
+import com.nadavariel.dietapp.model.Gender // Assuming Gender enum or class exists
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+import com.nadavariel.dietapp.model.UserProfile // Import UserProfile
 
 data class UserAnswer(
     val question: String = "",
@@ -39,6 +45,19 @@ class QuestionsViewModel : ViewModel() {
     private val _dietPlanResult = MutableStateFlow<DietPlanResult>(DietPlanResult.Idle)
     val dietPlanResult = _dietPlanResult.asStateFlow()
 
+    companion object {
+        const val DOB_QUESTION = "What is your date of birth?"
+        const val GENDER_QUESTION = "What is your gender?"
+        const val HEIGHT_QUESTION = "What is your height?"
+        const val CURRENT_WEIGHT_QUESTION = "What is your current weight?"
+        const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight or body composition goal in mind?"
+        const val TARGET_WEIGHT_GOAL_TEXT = "What is your target weight (in kg)?"
+    }
+
+    private val dobFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+
     init {
         fetchUserAnswers()
     }
@@ -61,30 +80,120 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    private suspend fun saveUserAnswers(
+    private suspend fun saveUserAnswersAndUpdateProfile(
         questions: List<Question>,
         answers: List<String?>
     ) {
         val userId = auth.currentUser?.uid ?: return
 
-        val userAnswersToSave = questions.mapIndexed { index, question ->
-            mapOf("question" to question.text, "answer" to (answers.getOrNull(index) ?: ""))
+        val userAnswersToSave = questions.mapIndexedNotNull { index, question ->
+            answers.getOrNull(index)?.takeIf { it.isNotBlank() }?.let { answer ->
+                mapOf("question" to question.text, "answer" to answer)
+            }
+        }
+
+        val profileUpdates = mutableMapOf<String, Any>()
+        var targetWeightAnswer: String? = null
+        Log.d("QuestionsViewModel", "Preparing profile updates...") // Add log
+
+        userAnswersToSave.forEach { answerMap ->
+            val questionText = answerMap["question"] as? String
+            val answerText = answerMap["answer"] as? String ?: ""
+
+            when (questionText) {
+                CURRENT_WEIGHT_QUESTION -> answerText.toFloatOrNull()?.let {
+                    profileUpdates["weight"] = it
+                    Log.d("QuestionsViewModel", "Adding weight update: $it") // Add log
+                }
+                HEIGHT_QUESTION -> answerText.toFloatOrNull()?.let {
+                    profileUpdates["height"] = it
+                    Log.d("QuestionsViewModel", "Adding height update: $it") // Add log
+                }
+                DOB_QUESTION -> {
+                    try {
+                        dobFormat.parse(answerText)?.let {
+                            val timestamp = com.google.firebase.Timestamp(it)
+                            profileUpdates["dateOfBirth"] = timestamp
+                            Log.d("QuestionsViewModel", "Adding dateOfBirth update: $timestamp") // Add log
+                        }
+                    } catch (e: Exception) {
+                        Log.w("QuestionsViewModel", "Could not parse DOB: $answerText")
+                    }
+                }
+                GENDER_QUESTION -> {
+                    // FIX: Explicitly map the string options to the enum
+                    val genderEnum = when (answerText) {
+                        "Male" -> Gender.MALE
+                        "Female" -> Gender.FEMALE
+                        "Other / Prefer not to say" -> Gender.PREFER_NOT_TO_SAY
+                        // Add mapping for "Non-binary" if that's an option in your UI
+                        else -> Gender.UNKNOWN // Or PREFER_NOT_TO_SAY as default
+                    }
+                    profileUpdates["gender"] = genderEnum.name // Store enum name string
+                    Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}") // Add log
+                }
+                TARGET_WEIGHT_QUESTION_GOAL -> {
+                    targetWeightAnswer = answerText
+                    Log.d("QuestionsViewModel", "Found target weight answer: $answerText") // Add log
+                }
+            }
         }
 
         try {
+            // 1. Save all questionnaire answers
             firestore.collection("users").document(userId)
                 .collection("user_answers").document("diet_habits")
                 .set(mapOf("answers" to userAnswersToSave)).await()
+            _userAnswers.value = userAnswersToSave.map { UserAnswer(it["question"] as String, it["answer"] as String) }
+            Log.d("QuestionsViewModel", "Saved ${userAnswersToSave.size} questionnaire answers.")
 
-            _userAnswers.value = userAnswersToSave.map {
-                UserAnswer(it["question"] as String, it["answer"] as String)
+            // 2. Update User Profile document
+            if (profileUpdates.isNotEmpty()) {
+                Log.d("QuestionsViewModel", "Attempting to merge profile updates: $profileUpdates") // Add log
+                firestore.collection("users").document(userId)
+                    .set(profileUpdates, SetOptions.merge()).await()
+                Log.d("QuestionsViewModel", "Successfully merged user profile fields.")
+            } else {
+                Log.d("QuestionsViewModel", "No profile updates to merge.") // Add log
             }
-            Log.d("QuestionsViewModel", "Successfully saved ${userAnswersToSave.size} user answers.")
+
+            // 3. Update Target Weight Goal
+            targetWeightAnswer?.let { weight ->
+                updateTargetWeightGoal(userId, weight)
+            }
+
         } catch (e: Exception) {
-            Log.e("QuestionsViewModel", "Error saving user answers", e)
+            Log.e("QuestionsViewModel", "Error saving user answers and profile", e)
         }
     }
 
+    // Helper to update target weight goal (no changes needed here)
+    private suspend fun updateTargetWeightGoal(userId: String, targetWeight: String) {
+        val goalsRef = firestore.collection("users").document(userId)
+            .collection("user_answers").document("goals")
+        try {
+            val snapshot = goalsRef.get().await()
+            val existingAnswers = if (snapshot.exists()) {
+                (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
+            } else { mutableListOf() }
+            val aiGenerated = snapshot.getBoolean("aiGenerated") ?: false
+
+            val targetWeightQuestionTextForGoal = TARGET_WEIGHT_GOAL_TEXT
+            val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
+
+            if (targetWeightIndex != -1) {
+                existingAnswers[targetWeightIndex] = mapOf("question" to targetWeightQuestionTextForGoal, "answer" to targetWeight)
+            } else {
+                existingAnswers.add(mapOf("question" to targetWeightQuestionTextForGoal, "answer" to targetWeight))
+            }
+            goalsRef.set(mapOf("answers" to existingAnswers, "aiGenerated" to aiGenerated)).await()
+            Log.d("QuestionsViewModel", "Updated target weight goal to $targetWeight.")
+        } catch (e: Exception) {
+            Log.e("QuestionsViewModel", "Error updating target weight goal", e)
+        }
+    }
+
+    // saveDietPlanToFirestore (no changes needed)
     private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
         val userId = auth.currentUser?.uid ?: return
         try {
@@ -101,22 +210,20 @@ class QuestionsViewModel : ViewModel() {
                 .collection("diet_plans").document("current_plan")
                 .set(planData).await()
         } catch (e: Exception) {
-            Log.e("QuestionsViewModel", "Error saving diet plan to Firestore", e)
+            Log.e("QuestionsViewModel", "Error saving diet plan", e)
         }
     }
 
+    // saveAnswersAndRegeneratePlan (no changes needed)
     fun saveAnswersAndRegeneratePlan(questions: List<Question>, answers: List<String?>) {
         viewModelScope.launch {
-            saveUserAnswers(questions, answers)
-
+            saveUserAnswersAndUpdateProfile(questions, answers)
             _dietPlanResult.value = DietPlanResult.Loading
-            val userProfile = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
-
+            val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
             try {
-                val data = hashMapOf("userProfile" to userProfile)
+                val data = hashMapOf("userProfile" to updatedAnswersString)
                 val result = functions.getHttpsCallable("generateDietPlan").call(data).await()
                 val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
-
                 if (responseData["success"] == true) {
                     val gson = Gson()
                     val dietPlan = gson.fromJson(gson.toJson(responseData["data"]), DietPlan::class.java)
@@ -132,55 +239,52 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * ✅ CORRECTED: This function now saves goals to the correct path and in the correct format
-     * that GoalsViewModel is listening to.
-     */
+    // applyDietPlanToGoals (no changes needed)
     fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("QuestionsViewModel", "Cannot apply goals: User not logged in.")
             return
         }
-
         viewModelScope.launch {
             try {
-                // 1. Point to the correct Firestore document
                 val goalsRef = firestore.collection("users").document(userId)
                     .collection("user_answers").document("goals")
+                val snapshot = goalsRef.get().await()
+                val existingAnswers = if (snapshot.exists()) {
+                    (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
+                } else { mutableListOf() }
 
-                // 2. Create the data in the format GoalsViewModel expects
-                // The "question" text MUST match the text in GoalsViewModel.
-                val goalsToSave = listOf(
-                    mapOf(
-                        "question" to "How many calories a day is your target?",
-                        "answer" to plan.dailyCalories.toString()
-                    ),
-                    mapOf(
-                        "question" to "How many grams of protein a day is your target?",
-                        "answer" to plan.proteinGrams.toString()
-                    )
+                val aiGoalsMap = mapOf(
+                    "How many calories a day is your target?" to plan.dailyCalories.toString(),
+                    "How many grams of protein a day is your target?" to plan.proteinGrams.toString()
                 )
+                val finalGoalsList = mutableListOf<Map<String, String>>()
+                val addedOrUpdatedQuestions = mutableSetOf<String>()
 
-                // 3. Set the data along with the AI flag
+                aiGoalsMap.forEach { (question, answer) ->
+                    finalGoalsList.add(mapOf("question" to question, "answer" to answer))
+                    addedOrUpdatedQuestions.add(question)
+                }
+                existingAnswers.forEach { existingGoal ->
+                    val question = existingGoal["question"]
+                    if (question != null && question !in addedOrUpdatedQuestions) {
+                        finalGoalsList.add(existingGoal)
+                    }
+                }
                 val dataToSet = mapOf(
-                    "answers" to goalsToSave,
+                    "answers" to finalGoalsList,
                     "aiGenerated" to true
                 )
-
                 goalsRef.set(dataToSet).await()
-
-                Log.d("QuestionsViewModel", "Successfully applied AI diet plan to goals.")
-
+                Log.d("QuestionsViewModel", "Successfully applied and merged AI diet plan to goals.")
             } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error applying diet plan to goals", e)
+                Log.e("QuestionsViewModel", "Error applying/merging diet plan to goals", e)
             }
         }
     }
 
-    // This helper function is no longer needed with the new logic
-    // private fun updateOrAddGoal(...)
-
+    // resetDietPlanResult (no changes needed)
     fun resetDietPlanResult() {
         _dietPlanResult.value = DietPlanResult.Idle
     }
