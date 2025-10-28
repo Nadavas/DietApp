@@ -5,13 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.SetOptions // Needed for merging profile data
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.nadavariel.dietapp.data.DietPlan
-import com.nadavariel.dietapp.screens.Question // Assuming Question has 'text' property
-import com.nadavariel.dietapp.model.Gender // Assuming Gender enum or class exists
+import com.nadavariel.dietapp.screens.Question
+import com.nadavariel.dietapp.model.Gender
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -19,7 +19,7 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-import com.nadavariel.dietapp.model.UserProfile // Import UserProfile
+import com.nadavariel.dietapp.model.UserProfile
 
 data class UserAnswer(
     val question: String = "",
@@ -54,7 +54,8 @@ class QuestionsViewModel : ViewModel() {
         const val TARGET_WEIGHT_GOAL_TEXT = "What is your target weight (in kg)?"
     }
 
-    private val dobFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply {
+    // FIX: Changed date format to match input "yyyy-MM-dd"
+    private val dobFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
@@ -94,47 +95,56 @@ class QuestionsViewModel : ViewModel() {
 
         val profileUpdates = mutableMapOf<String, Any>()
         var targetWeightAnswer: String? = null
-        Log.d("QuestionsViewModel", "Preparing profile updates...") // Add log
+        Log.d("QuestionsViewModel", "Preparing profile updates...")
 
         userAnswersToSave.forEach { answerMap ->
             val questionText = answerMap["question"] as? String
             val answerText = answerMap["answer"] as? String ?: ""
 
             when (questionText) {
-                CURRENT_WEIGHT_QUESTION -> answerText.toFloatOrNull()?.let {
-                    profileUpdates["weight"] = it
-                    Log.d("QuestionsViewModel", "Adding weight update: $it") // Add log
+                CURRENT_WEIGHT_QUESTION -> {
+                    Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'") // ADDED log
+                    // Attempt to parse after removing potential non-numeric characters (like kg)
+                    val numericWeight = answerText.filter { it.isDigit() || it == '.' }
+                    numericWeight.toFloatOrNull()?.let {
+                        profileUpdates["weight"] = it
+                        Log.d("QuestionsViewModel", "Adding weight update: $it")
+                    } ?: Log.w("QuestionsViewModel", "Could not parse weight: '$answerText'")
                 }
-                HEIGHT_QUESTION -> answerText.toFloatOrNull()?.let {
-                    profileUpdates["height"] = it
-                    Log.d("QuestionsViewModel", "Adding height update: $it") // Add log
+                HEIGHT_QUESTION -> {
+                    Log.d("QuestionsViewModel", "Received height answer string: '$answerText'") // ADDED log
+                    // Attempt to parse after removing potential non-numeric characters (like cm)
+                    val numericHeight = answerText.filter { it.isDigit() || it == '.' }
+                    numericHeight.toFloatOrNull()?.let {
+                        profileUpdates["height"] = it
+                        Log.d("QuestionsViewModel", "Adding height update: $it")
+                    } ?: Log.w("QuestionsViewModel", "Could not parse height: '$answerText'")
                 }
                 DOB_QUESTION -> {
                     try {
                         dobFormat.parse(answerText)?.let {
                             val timestamp = com.google.firebase.Timestamp(it)
                             profileUpdates["dateOfBirth"] = timestamp
-                            Log.d("QuestionsViewModel", "Adding dateOfBirth update: $timestamp") // Add log
+                            Log.d("QuestionsViewModel", "Adding dateOfBirth update: $timestamp")
                         }
                     } catch (e: Exception) {
-                        Log.w("QuestionsViewModel", "Could not parse DOB: $answerText")
+                        // Log format error specifically
+                        Log.w("QuestionsViewModel", "Could not parse DOB: '$answerText'. Expected format yyyy-MM-dd", e)
                     }
                 }
                 GENDER_QUESTION -> {
-                    // FIX: Explicitly map the string options to the enum
                     val genderEnum = when (answerText) {
                         "Male" -> Gender.MALE
                         "Female" -> Gender.FEMALE
                         "Other / Prefer not to say" -> Gender.PREFER_NOT_TO_SAY
-                        // Add mapping for "Non-binary" if that's an option in your UI
-                        else -> Gender.UNKNOWN // Or PREFER_NOT_TO_SAY as default
+                        else -> Gender.UNKNOWN
                     }
-                    profileUpdates["gender"] = genderEnum.name // Store enum name string
-                    Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}") // Add log
+                    profileUpdates["gender"] = genderEnum.name
+                    Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}")
                 }
                 TARGET_WEIGHT_QUESTION_GOAL -> {
                     targetWeightAnswer = answerText
-                    Log.d("QuestionsViewModel", "Found target weight answer: $answerText") // Add log
+                    Log.d("QuestionsViewModel", "Found target weight answer: $answerText")
                 }
             }
         }
@@ -149,12 +159,12 @@ class QuestionsViewModel : ViewModel() {
 
             // 2. Update User Profile document
             if (profileUpdates.isNotEmpty()) {
-                Log.d("QuestionsViewModel", "Attempting to merge profile updates: $profileUpdates") // Add log
+                Log.d("QuestionsViewModel", "Attempting to merge profile updates: $profileUpdates")
                 firestore.collection("users").document(userId)
                     .set(profileUpdates, SetOptions.merge()).await()
                 Log.d("QuestionsViewModel", "Successfully merged user profile fields.")
             } else {
-                Log.d("QuestionsViewModel", "No profile updates to merge.") // Add log
+                Log.d("QuestionsViewModel", "No profile updates to merge.")
             }
 
             // 3. Update Target Weight Goal
@@ -167,7 +177,7 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // Helper to update target weight goal (no changes needed here)
+    // Helper to update target weight goal (no changes)
     private suspend fun updateTargetWeightGoal(userId: String, targetWeight: String) {
         val goalsRef = firestore.collection("users").document(userId)
             .collection("user_answers").document("goals")
@@ -193,7 +203,7 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // saveDietPlanToFirestore (no changes needed)
+    // saveDietPlanToFirestore (no changes)
     private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
         val userId = auth.currentUser?.uid ?: return
         try {
@@ -214,7 +224,7 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // saveAnswersAndRegeneratePlan (no changes needed)
+    // saveAnswersAndRegeneratePlan (no changes)
     fun saveAnswersAndRegeneratePlan(questions: List<Question>, answers: List<String?>) {
         viewModelScope.launch {
             saveUserAnswersAndUpdateProfile(questions, answers)
@@ -239,7 +249,7 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // applyDietPlanToGoals (no changes needed)
+    // applyDietPlanToGoals (no changes)
     fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -284,7 +294,7 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // resetDietPlanResult (no changes needed)
+    // resetDietPlanResult (no changes)
     fun resetDietPlanResult() {
         _dietPlanResult.value = DietPlanResult.Idle
     }

@@ -19,6 +19,7 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration // Import ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.R
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
+import android.util.Log // Import Log
 
 sealed class AuthResult {
     data object Success : AuthResult()
@@ -72,20 +74,25 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val _hasMissingPrimaryProfileDetails = MutableStateFlow(false)
     val hasMissingPrimaryProfileDetails: StateFlow<Boolean> = _hasMissingPrimaryProfileDetails.asStateFlow()
 
-    private val _isLoadingProfile = MutableStateFlow(true) //
+    private val _isLoadingProfile = MutableStateFlow(true)
     val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
 
     val currentAvatarId: String? get() = userProfile.value.avatarId
+
+    // Variable to hold the listener registration so we can remove it later
+    private var userProfileListener: ListenerRegistration? = null
+
     init {
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
-            viewModelScope.launch {
-                _isLoadingProfile.value = true
-                if (currentUser != null) {
-                    loadUserProfile()
-                } else {
-                    _userProfile.value = UserProfile()
-                }
+            // Remove previous listener if user changes or logs out
+            userProfileListener?.remove()
+            if (currentUser != null) {
+                // If user is logged in, attach the persistent listener
+                attachUserProfileListener()
+            } else {
+                // If user logged out, reset profile and loading state
+                _userProfile.value = UserProfile()
                 _isLoadingProfile.value = false
             }
         }
@@ -99,65 +106,82 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
         }
 
+        // Combine flow for missing details (no changes needed here)
         _userProfile.combine(snapshotFlow { currentUser }) { profile, user ->
-            val missing: Boolean = if (user == null) {
-                false // If no user, no profile to be missing
+            if (user == null) {
+                false
             } else {
-                val isNameMissing = profile.name.isBlank()
-                val isWeightMissing = profile.weight <= 0f
-                val isHeightMissing = profile.height <= 0f // Check for missing height
-
-                val detailsMissing = isNameMissing || isWeightMissing || isHeightMissing
-
-                detailsMissing
+                profile.name.isBlank() || profile.weight <= 0f || profile.height <= 0f
             }
-            missing
         }
             .distinctUntilChanged()
-            .onEach { hasMissing ->
-                _hasMissingPrimaryProfileDetails.value = hasMissing
-            }
+            .onEach { hasMissing -> _hasMissingPrimaryProfileDetails.value = hasMissing }
             .launchIn(viewModelScope)
     }
 
-    private suspend fun loadUserProfile() {
+    // FIX: Replaced loadUserProfile with a persistent listener
+    private fun attachUserProfileListener() {
         val userId = auth.currentUser?.uid
         if (userId != null) {
-            try {
-                val userDoc = firestore.collection("users").document(userId).get().await()
-                if (userDoc.exists()) {
-                    val name = userDoc.getString("name") ?: ""
-                    val weight = (userDoc.get("weight") as? Number)?.toFloat() ?: 0f
-                    val height = (userDoc.get("height") as? Number)?.toFloat() ?: 0f
-                    val dateOfBirth = userDoc.getDate("dateOfBirth")
-                    val avatarId = userDoc.getString("avatarId")
-                    val genderString = userDoc.getString("gender")
-
-                    val gender = try {
-                        genderString?.let { Gender.valueOf(it) } ?: Gender.UNKNOWN
-                    } catch (e: IllegalArgumentException) {
-                        Gender.UNKNOWN
+            _isLoadingProfile.value = true // Start loading
+            userProfileListener = firestore.collection("users").document(userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("AuthViewModel", "Error listening to user profile", error)
+                        _userProfile.value = UserProfile() // Reset on error
+                        _isLoadingProfile.value = false
+                        return@addSnapshotListener
                     }
 
-                    _userProfile.value = UserProfile(
-                        name = name,
-                        weight = weight,
-                        height = height,
-                        dateOfBirth = dateOfBirth,
-                        avatarId = avatarId,
-                        gender = gender,
-                    )
-                } else {
-                    _userProfile.value = UserProfile()
+                    if (snapshot != null && snapshot.exists()) {
+                        try {
+                            // Parse data from snapshot
+                            val name = snapshot.getString("name") ?: ""
+                            val weight = (snapshot.get("weight") as? Number)?.toFloat() ?: 0f
+                            val height = (snapshot.get("height") as? Number)?.toFloat() ?: 0f
+                            val dateOfBirth = snapshot.getDate("dateOfBirth")
+                            val avatarId = snapshot.getString("avatarId")
+                            val genderString = snapshot.getString("gender")
+                            val gender = try {
+                                genderString?.let { Gender.valueOf(it) } ?: Gender.UNKNOWN
+                            } catch (e: IllegalArgumentException) {
+                                Gender.UNKNOWN
+                            }
+
+                            // Update the StateFlow
+                            _userProfile.value = UserProfile(
+                                name = name,
+                                weight = weight,
+                                height = height,
+                                dateOfBirth = dateOfBirth,
+                                avatarId = avatarId,
+                                gender = gender,
+                            )
+                            Log.d("AuthViewModel", "User profile updated from listener.")
+                        } catch (e: Exception) {
+                            Log.e("AuthViewModel", "Error parsing profile snapshot", e)
+                            _userProfile.value = UserProfile() // Reset on parsing error
+                        }
+                    } else {
+                        Log.d("AuthViewModel", "User profile document does not exist.")
+                        _userProfile.value = UserProfile() // Reset if document deleted
+                    }
+                    _isLoadingProfile.value = false // Stop loading
                 }
-            } catch (e: Exception) {
-                _userProfile.value = UserProfile()
-            }
         } else {
+            // Should not happen if currentUser is not null, but handle anyway
             _userProfile.value = UserProfile()
+            _isLoadingProfile.value = false
         }
     }
 
+    // Call this when the ViewModel is cleared to prevent leaks
+    override fun onCleared() {
+        super.onCleared()
+        userProfileListener?.remove() // Detach the listener
+    }
+
+    // saveUserProfile is still needed for initial profile creation and manual updates
     private suspend fun saveUserProfile(profile: UserProfile) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
@@ -167,12 +191,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 "height" to profile.height,
                 "dateOfBirth" to profile.dateOfBirth,
                 "avatarId" to profile.avatarId,
-                "gender" to profile.gender.name
+                "gender" to profile.gender.name // Save enum name as string
             )
+            // Use set without merge here, assuming we want to overwrite fully on save
             firestore.collection("users").document(userId).set(userProfileMap).await()
-            _userProfile.value = profile
+            // No need to manually update _userProfile.value here, listener will handle it
+            // _userProfile.value = profile
+            Log.d("AuthViewModel", "saveUserProfile called.")
         }
     }
+
+    // --- Other functions (signIn, signUp, signOut, etc.) remain unchanged ---
+    // Make sure they call saveUserProfile or rely on the listener appropriately.
+    // Specifically, ensure that after Google Sign-In, if loadUserProfile was called,
+    // it's now handled by the listener being attached.
 
     fun isUserSignedIn(): Boolean {
         return auth.currentUser != null
@@ -198,14 +230,17 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+                        // Create initial profile
                         val newProfile = UserProfile(
                             name = auth.currentUser?.displayName ?: emailState.value.substringBefore("@"),
+                            // Set other fields to defaults or leave unset
+                            weight = 0f,
+                            height = 0f,
                             dateOfBirth = null,
                             avatarId = null,
-                            height = 0f,
-                            gender = Gender.UNKNOWN,
+                            gender = Gender.UNKNOWN
                         )
-                        saveUserProfile(newProfile)
+                        saveUserProfile(newProfile) // This write will be picked up by the listener
                     }
                     onSuccess()
                     clearInputFields()
@@ -232,6 +267,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+                        // Listener will handle profile loading via AuthStateListener
                     }
                     onSuccess()
                     clearInputFields()
@@ -241,19 +277,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 }
             }
     }
-
     fun signIn(onSuccess: () -> Unit) {
         signIn(emailState.value, passwordState.value, onSuccess)
     }
 
     fun signOut() {
+        userProfileListener?.remove() // Detach listener on sign out
+        userProfileListener = null
         auth.signOut()
         _authResult.value = AuthResult.Idle
         viewModelScope.launch {
             if (!rememberMeState.value) {
                 preferencesRepository.saveUserPreferences("", false)
             }
-            _userProfile.value = UserProfile()
+            // _userProfile is reset by AuthStateListener
         }
         clearInputFields()
     }
@@ -278,6 +315,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return GoogleSignIn.getClient(context, gso)
     }
 
+    // Simplified Google Sign In - relies on AuthStateListener to trigger listener attachment
     fun firebaseAuthWithGoogle(idToken: String, onSuccess: () -> Unit) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(idToken, null)
@@ -286,23 +324,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
                     viewModelScope.launch {
+                        // Check if profile exists, create if not
                         val userId = auth.currentUser?.uid
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
                                 val newProfile = UserProfile(
                                     name = task.result.user?.displayName ?: "",
-                                    dateOfBirth = null,
-                                    avatarId = null,
-                                    height = 0f,
-                                    gender = Gender.UNKNOWN,
+                                    // other defaults
                                 )
-                                saveUserProfile(newProfile)
-                            } else {
-                                loadUserProfile()
+                                saveUserProfile(newProfile) // Listener will pick this up
                             }
+                            // Listener already attached by AuthStateListener, no need to load manually
                         }
-                        onSuccess()
+                        onSuccess() // Call onSuccess after checking/creating profile
                     }
                 } else {
                     val errorMessage = task.exception?.message ?: "Google sign-in failed."
@@ -311,6 +346,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
+    // Simplified Google Sign In Result Handler
     fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: () -> Unit) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
@@ -324,23 +360,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+                        // Check if profile exists, create if not
                         val userId = auth.currentUser?.uid
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
                                 val newProfile = UserProfile(
                                     name = account.displayName ?: "",
-                                    dateOfBirth = null,
-                                    avatarId = null,
-                                    height = 0f,
-                                    gender = Gender.UNKNOWN,
+                                    // other defaults
                                 )
-                                saveUserProfile(newProfile)
-                            } else {
-                                loadUserProfile()
+                                saveUserProfile(newProfile) // Listener will pick this up
                             }
+                            // Listener already attached by AuthStateListener, no need to load manually
                         }
-                        onSuccess()
+                        onSuccess() // Call onSuccess after checking/creating profile
                     }
                 } else {
                     val errorMessage = task.exception?.message ?: "Google sign-in failed."
@@ -348,6 +381,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 }
             }
     }
+
 
     fun updateProfile(
         name: String,
@@ -358,8 +392,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         gender: Gender,
     ) {
         viewModelScope.launch {
-            val parsedWeight = weight.toFloatOrNull() ?: 0f
-            val parsedHeight = height.toFloatOrNull() ?: 0f
+            val parsedWeight = weight.toFloatOrNull() ?: _userProfile.value.weight // Keep old if invalid
+            val parsedHeight = height.toFloatOrNull() ?: _userProfile.value.height // Keep old if invalid
 
             val updatedProfile = _userProfile.value.copy(
                 name = name,
@@ -369,9 +403,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 avatarId = avatarId,
                 gender = gender,
             )
+            // Save using the existing method, listener will update the state flow
             saveUserProfile(updatedProfile)
         }
     }
+
+    // changePassword, deleteCurrentUser, toggleDarkMode remain unchanged
 
     fun changePassword(newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
@@ -406,16 +443,17 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
         if (user != null) {
+            val userId = user.uid // Capture UID before deletion attempt
             _authResult.value = AuthResult.Loading
             user.delete()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         viewModelScope.launch {
                             try {
-                                firestore.collection("users").document(user.uid).delete().await()
-                                _authResult.value = AuthResult.Success
-                                _userProfile.value = UserProfile()
+                                firestore.collection("users").document(userId).delete().await()
+                                // No need to reset _userProfile, AuthStateListener handles it
                                 preferencesRepository.clearUserPreferences()
+                                _authResult.value = AuthResult.Success // Set success after Firestore delete
                                 onSuccess()
                             } catch (e: Exception) {
                                 val firestoreError = "Account deleted, but failed to delete associated data: ${e.message}"
