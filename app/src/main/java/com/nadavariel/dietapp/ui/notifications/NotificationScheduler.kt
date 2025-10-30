@@ -12,11 +12,24 @@ class NotificationScheduler(private val context: Context) {
     private val TAG = "ALARM_DEBUG"
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    private fun getPendingIntent(preference: NotificationPreference, flags: Int): PendingIntent {
-        val intent = Intent(context, MealReminderReceiver::class.java).apply {
-            putExtra(MealReminderReceiver.NOTIFICATION_ID_EXTRA, preference.uniqueId)
-            putExtra(MealReminderReceiver.NOTIFICATION_MESSAGE_EXTRA, preference.message)
-            putExtra(MealReminderReceiver.NOTIFICATION_REPETITION_EXTRA, preference.repetition)
+    // Updated to accept a generic receiver class
+    private fun getPendingIntent(
+        preference: NotificationPreference,
+        flags: Int,
+        receiverClass: Class<*> // e.g., MealReminderReceiver::class.java
+    ): PendingIntent {
+
+        // Use the correct receiver class
+        val intent = Intent(context, receiverClass).apply {
+            // Use different extras for different receivers to avoid conflicts
+            if (receiverClass == MealReminderReceiver::class.java) {
+                putExtra(MealReminderReceiver.NOTIFICATION_ID_EXTRA, preference.uniqueId)
+                putExtra(MealReminderReceiver.NOTIFICATION_MESSAGE_EXTRA, preference.message)
+                putExtra(MealReminderReceiver.NOTIFICATION_REPETITION_EXTRA, preference.repetition)
+            } else {
+                putExtra(WeightReminderReceiver.WEIGHT_NOTIF_ID_EXTRA, preference.uniqueId)
+                putExtra(WeightReminderReceiver.WEIGHT_MESSAGE_EXTRA, preference.message)
+            }
         }
 
         return PendingIntent.getBroadcast(
@@ -27,23 +40,31 @@ class NotificationScheduler(private val context: Context) {
         )
     }
 
+    // Overload the old schedule function to default to MealReminderReceiver (keeps old code working)
     fun schedule(preference: NotificationPreference) {
+        schedule(preference, MealReminderReceiver::class.java)
+    }
+
+    // Overload the old cancel function
+    fun cancel(preference: NotificationPreference) {
+        cancel(preference, MealReminderReceiver::class.java)
+    }
+
+    // New schedule function that accepts the receiver class
+    fun schedule(preference: NotificationPreference, receiverClass: Class<*>) {
         if (!preference.isEnabled) {
             Log.d(TAG, "Not scheduling alarm for ID ${preference.uniqueId}: Disabled.")
             return
         }
 
-        // Flags must match for scheduling and canceling
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        val pendingIntent = getPendingIntent(preference, flags)
+        val pendingIntent = getPendingIntent(preference, flags, receiverClass)
         val triggerTime = preference.getNextScheduledCalendar().timeInMillis
 
         val readableTime = preference.getNextScheduledCalendar().time.toString()
-        Log.i(TAG, "Scheduling alarm for ID: ${preference.uniqueId}. Next trigger: $readableTime")
+        Log.i(TAG, "Scheduling ${receiverClass.simpleName} for ID: ${preference.uniqueId}. Next trigger: $readableTime")
 
         if (preference.repetition == "DAILY") {
-            // BEST PRACTICE: Use setInexactRepeating for recurring non-critical alarms.
-            // This is battery-friendly and does not require special permissions.
             alarmManager.setInexactRepeating(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
@@ -52,9 +73,6 @@ class NotificationScheduler(private val context: Context) {
             )
             Log.d(TAG, "Scheduled DAILY (inexact) alarm.")
         } else { // "ONCE"
-            // FIX: Replaced setExactAndAllowWhileIdle (which crashes) with setAndAllowWhileIdle.
-            // setAndAllowWhileIdle is inexact but allows the alarm to fire even in Doze mode,
-            // which is suitable for a single-time meal reminder without requiring the special exact alarm permission.
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
@@ -64,11 +82,12 @@ class NotificationScheduler(private val context: Context) {
         }
     }
 
-    fun cancel(preference: NotificationPreference) {
+    // New cancel function that accepts the receiver class
+    fun cancel(preference: NotificationPreference, receiverClass: Class<*>) {
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        val pendingIntent = getPendingIntent(preference, flags)
+        val pendingIntent = getPendingIntent(preference, flags, receiverClass)
 
         alarmManager.cancel(pendingIntent)
-        Log.i(TAG, "Canceled alarm for ID: ${preference.uniqueId}")
+        Log.i(TAG, "Canceled ${receiverClass.simpleName} for ID: ${preference.uniqueId}")
     }
 }

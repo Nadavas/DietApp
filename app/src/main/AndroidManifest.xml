@@ -46,12 +46,18 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="dietapp" android:host="add_meal" />
+                <data android:scheme="dietapp" android:host="home" />
             </intent-filter>
 
         </activity>
 
         <receiver
             android:name=".ui.notifications.MealReminderReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ui.notifications.WeightReminderReceiver"
             android:enabled="true"
             android:exported="false" />
 

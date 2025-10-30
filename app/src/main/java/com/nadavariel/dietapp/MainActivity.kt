@@ -42,14 +42,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import com.nadavariel.dietapp.data.UserPreferencesRepository
+import com.nadavariel.dietapp.data.UserPreferencesRepository // This will be renamed
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.DietAppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
-import com.nadavariel.dietapp.viewmodel.NotificationViewModel // NEW: Import NotificationViewModel
+import com.nadavariel.dietapp.viewmodel.NotificationViewModel
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
+            // You will need to rename this to UserPreferences(applicationContext) after your file merge
             val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
 
             val appViewModelFactory = remember {
@@ -78,7 +79,7 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 ThreadViewModel() as T
                             }
-                            modelClass.isAssignableFrom(NotificationViewModel::class.java) -> { // NEW: Add NotificationViewModel
+                            modelClass.isAssignableFrom(NotificationViewModel::class.java) -> {
                                 @Suppress("UNCHECKED_CAST")
                                 NotificationViewModel(application) as T
                             }
@@ -91,7 +92,7 @@ class MainActivity : ComponentActivity() {
             val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
             val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory)
-            val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory) // NEW: Instantiate NotificationViewModel
+            val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory)
 
             val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
             val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
@@ -129,9 +130,7 @@ class MainActivity : ComponentActivity() {
                                 selectedRoute == NavRoutes.ACCOUNT
                             ) {
                                 NavigationBar(
-                                    // Use a dark, semi-transparent purple that blends beautifully with the background gradient.
                                     containerColor = Color(0xFF4CAF50),
-                                    // The default content color can remain a soft white for readability.
                                     contentColor = Color.White.copy(alpha = 0.9f)
                                 ) {
                                     NavigationBarItem(
@@ -145,13 +144,12 @@ class MainActivity : ComponentActivity() {
                                         },
                                         icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
                                         label = { Text("Home") },
-                                        // Define colors for selected and unselected states
                                         colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White, // Make selected icon fully white
-                                            selectedTextColor = Color.White, // Make selected text fully white
-                                            unselectedIconColor = Color.White.copy(alpha = 0.6f), // Softer white for unselected
+                                            selectedIconColor = Color.White,
+                                            selectedTextColor = Color.White,
+                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
                                             unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                            indicatorColor = Color.White.copy(alpha = 0.15f) // Subtle indicator background
+                                            indicatorColor = Color.White.copy(alpha = 0.15f)
                                         )
                                     )
                                     NavigationBarItem(
@@ -253,7 +251,6 @@ class MainActivity : ComponentActivity() {
                             startDestination = startDestination,
                             modifier = Modifier.padding(innerPadding)
                         ) {
-                            // --- Existing routes ---
                             composable(NavRoutes.LANDING) {
                                 authViewModel.resetAuthResult()
                                 Greeting(
@@ -307,13 +304,30 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
-                            composable(NavRoutes.HOME) {
+                            // --- UPDATED HOME ROUTE ---
+                            composable(
+                                route = "${NavRoutes.HOME}?openWeightLog={openWeightLog}",
+                                arguments = listOf(
+                                    navArgument("openWeightLog") {
+                                        type = NavType.BoolType
+                                        defaultValue = false
+                                    }
+                                ),
+                                deepLinks = listOf(
+                                    navDeepLink { uriPattern = "dietapp://home?openWeightLog={openWeightLog}" }
+                                )
+                            ) { backStackEntry ->
+                                val openWeightLog = backStackEntry.arguments?.getBoolean("openWeightLog") == true
+
                                 HomeScreen(
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController,
+                                    openWeightLog = openWeightLog // Pass the new parameter
                                 )
                             }
+                            // --- END OF UPDATED HOME ROUTE ---
+
                             composable(NavRoutes.STATISTICS) {
                                 StatisticsScreen(
                                     navController = navController
@@ -337,7 +351,6 @@ class MainActivity : ComponentActivity() {
                                     authViewModel = authViewModel
                                 )
                             }
-                            // NEW: Add the Notifications Screen destination
                             composable(NavRoutes.NOTIFICATIONS) {
                                 NotificationScreen(
                                     navController = navController,
@@ -367,7 +380,7 @@ class MainActivity : ComponentActivity() {
                                 })
                             ) { backStackEntry ->
                                 val isNewUserString = backStackEntry.arguments?.getString(NavRoutes.IS_NEW_USER_ARG)
-                                val isNewUser = isNewUserString?.toBooleanStrictOrNull() ?: false
+                                val isNewUser = isNewUserString?.toBooleanStrictOrNull() == true
                                 UpdateProfileScreen(
                                     authViewModel = authViewModel,
                                     navController = navController,

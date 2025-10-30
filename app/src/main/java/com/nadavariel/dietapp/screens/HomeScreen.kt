@@ -15,10 +15,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add // Import Add icon
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Delete // Import Delete icon
-import androidx.compose.material.icons.filled.Edit // Import Edit icon
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -66,6 +66,7 @@ fun HomeScreen(
     foodLogViewModel: FoodLogViewModel,
     goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController,
+    openWeightLog: Boolean = false // Added this parameter
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
@@ -76,7 +77,6 @@ fun HomeScreen(
     val weightHistory by foodLogViewModel.weightHistory.collectAsState()
     val targetWeight by foodLogViewModel.targetWeight.collectAsState()
 
-    // State for all dialogs
     var showLogWeightDialog by remember { mutableStateOf(false) }
     var showManageWeightDialog by remember { mutableStateOf(false) }
     var weightEntryToEdit by remember { mutableStateOf<WeightEntry?>(null) }
@@ -111,6 +111,13 @@ fun HomeScreen(
         }
     }
 
+    // Handle the deep link argument to open the dialog
+    LaunchedEffect(openWeightLog) {
+        if (openWeightLog) {
+            showLogWeightDialog = true
+        }
+    }
+
     val groupedMeals = remember(mealsForSelectedDate) {
         mealsForSelectedDate
             .groupBy { meal -> MealSection.getMealSection(meal.timestamp.toDate()) }
@@ -119,14 +126,12 @@ fun HomeScreen(
 
     val screenBackgroundColor = Color(0xFFF7F9FC)
 
-    // --- DIALOGS ---
-
     if (showLogWeightDialog) {
         LogWeightDialog(
-            entryToEdit = weightEntryToEdit, // Pass the entry to edit (if any)
+            entryToEdit = weightEntryToEdit,
             onDismiss = {
                 showLogWeightDialog = false
-                weightEntryToEdit = null // Clear edit state on dismiss
+                weightEntryToEdit = null
             },
             onSave = { weight, date ->
                 foodLogViewModel.addWeightEntry(weight, date)
@@ -146,9 +151,9 @@ fun HomeScreen(
             history = weightHistory,
             onDismiss = { showManageWeightDialog = false },
             onEdit = { entry ->
-                weightEntryToEdit = entry // Set the entry to edit
-                showManageWeightDialog = false // Close manage dialog
-                showLogWeightDialog = true // Open log/edit dialog
+                weightEntryToEdit = entry
+                showManageWeightDialog = false
+                showLogWeightDialog = true
             },
             onDelete = { entry ->
                 foodLogViewModel.deleteWeightEntry(entry.id)
@@ -167,7 +172,6 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    // Removed weight icon from here
                     IconButton(
                         onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
                     ) {
@@ -211,11 +215,11 @@ fun HomeScreen(
                     startingWeight = userProfile.startingWeight,
                     targetWeight = targetWeight,
                     history = weightHistory,
-                    onAddClick = { // Pass lambda for + button
-                        weightEntryToEdit = null // Ensure we are adding, not editing
+                    onAddClick = {
+                        weightEntryToEdit = null
                         showLogWeightDialog = true
                     },
-                    onManageClick = { // Pass lambda for Manage button
+                    onManageClick = {
                         showManageWeightDialog = true
                     }
                 )
@@ -293,15 +297,14 @@ fun HomeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogWeightDialog(
-    entryToEdit: WeightEntry?, // Can be null (for adding) or existing (for editing)
+    entryToEdit: WeightEntry?,
     onDismiss: () -> Unit,
-    onSave: (weight: Float, date: Calendar) -> Unit, // For new entries
-    onUpdate: (id: String, weight: Float, date: Calendar) -> Unit // For updating entries
+    onSave: (weight: Float, date: Calendar) -> Unit,
+    onUpdate: (id: String, weight: Float, date: Calendar) -> Unit
 ) {
     val isEditMode = entryToEdit != null
     val title = if (isEditMode) "Edit Weight Entry" else "Log Your Weight"
 
-    // Set initial state based on whether we are editing or adding
     var weightInput by remember {
         mutableStateOf(entryToEdit?.weight?.toString() ?: "")
     }
@@ -322,7 +325,6 @@ fun LogWeightDialog(
         { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
             selectedDate = Calendar.getInstance().apply {
                 set(year, month, dayOfMonth)
-                // Keep original time for precision if needed, or reset
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
@@ -349,7 +351,7 @@ fun LogWeightDialog(
                         isError = false
                         weightInput = it
                     },
-                    label = { Text("Weight (kg)") }, // Simplified label
+                    label = { Text("Weight (kg)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = isError,
@@ -448,7 +450,6 @@ fun WeightProgressGraph(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Header Row with Title and Add Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -503,7 +504,6 @@ fun WeightProgressGraph(
                         .height(170.dp)
                 )
 
-                // "Last Updated" text
                 if (history.isNotEmpty() && history.last().timestamp != null) {
                     val lastDate = history.last().timestamp!!.toDate()
                     val formattedDate = remember(lastDate) {
@@ -518,7 +518,6 @@ fun WeightProgressGraph(
                     )
                 }
 
-                // "Manage Entries" Button
                 TextButton(
                     onClick = onManageClick,
                     modifier = Modifier.align(Alignment.End)
@@ -597,11 +596,16 @@ fun WeightLineChart(
         val allWeights = (history.map { it.weight } + startingWeight + targetWeight).filter { it > 0 }
         if (allWeights.isEmpty() && startingWeight <= 0) return@Canvas
 
-        val effectiveHistory = if (history.isEmpty()) {
-            listOf(WeightEntry(id = "start", weight = startingWeight, timestamp = com.google.firebase.Timestamp.now()))
-        } else {
-            history
-        }
+        // --- FIXED LOGIC ---
+        // 1. Create the list of (Weight, Date) pairs from the actual history
+        val historyPoints = history.map { it.weight to (it.timestamp?.toDate() ?: Date()) }
+
+        // 2. Determine the start date. Use the date of the first history entry, or today if history is empty.
+        val startDate = historyPoints.firstOrNull()?.second ?: Date()
+
+        // 3. Create the complete list of points, prepending the startingWeight
+        val allPointsWithStart = listOf(startingWeight to startDate) + historyPoints
+        // --- END FIXED LOGIC ---
 
         val minWeight = (allWeights.minOrNull() ?: startingWeight)
         val maxWeight = (allWeights.maxOrNull() ?: startingWeight)
@@ -613,7 +617,7 @@ fun WeightLineChart(
 
         val yMid = (yMin + yMax) / 2
 
-        val totalPoints = effectiveHistory.size + 1 // +1 for startingWeight
+        val totalPoints = allPointsWithStart.size
         val xSpacing = graphWidth / (totalPoints - 1).coerceAtLeast(1)
 
         fun getY(weight: Float): Float {
@@ -645,10 +649,8 @@ fun WeightLineChart(
             yAxisTextPaint
         )
 
-        val points = mutableListOf<Offset>()
-        points.add(Offset(getX(0), getY(startingWeight)))
-        effectiveHistory.forEachIndexed { index, entry ->
-            points.add(Offset(getX(index + 1), getY(entry.weight)))
+        val points = allPointsWithStart.mapIndexed { index, (weight, _) ->
+            Offset(getX(index), getY(weight))
         }
 
         drawContext.canvas.nativeCanvas.drawText(
@@ -658,30 +660,37 @@ fun WeightLineChart(
             textPaint
         )
 
-        if (effectiveHistory.size > 1) {
-            val midIndex = effectiveHistory.size / 2
-            val lastIndex = effectiveHistory.size - 1
+        if (allPointsWithStart.size > 2) {
+            val midIndex = allPointsWithStart.size / 2
+            val lastIndex = allPointsWithStart.size - 1
 
-            effectiveHistory[midIndex].timestamp?.toDate()?.let { midDate ->
+            val midDate = allPointsWithStart[midIndex].second
+            drawContext.canvas.nativeCanvas.drawText(
+                dateFormat.format(midDate),
+                getX(midIndex),
+                size.height - with(density) { 4.dp.toPx() },
+                textPaint
+            )
+
+            if (midIndex != lastIndex) {
+                val lastDate = allPointsWithStart[lastIndex].second
                 drawContext.canvas.nativeCanvas.drawText(
-                    dateFormat.format(midDate),
-                    getX(midIndex + 1),
+                    dateFormat.format(lastDate),
+                    getX(lastIndex),
                     size.height - with(density) { 4.dp.toPx() },
                     textPaint
                 )
             }
-
-            if (midIndex != lastIndex) {
-                effectiveHistory[lastIndex].timestamp?.toDate()?.let { lastDate ->
-                    drawContext.canvas.nativeCanvas.drawText(
-                        dateFormat.format(lastDate),
-                        getX(lastIndex + 1),
-                        size.height - with(density) { 4.dp.toPx() },
-                        textPaint
-                    )
-                }
-            }
+        } else if (allPointsWithStart.size == 2) {
+            val lastDate = allPointsWithStart[1].second
+            drawContext.canvas.nativeCanvas.drawText(
+                dateFormat.format(lastDate),
+                getX(1),
+                size.height - with(density) { 4.dp.toPx() },
+                textPaint
+            )
         }
+
 
         if (targetWeight > 0) {
             val targetY = getY(targetWeight)
@@ -735,9 +744,6 @@ fun WeightLineChart(
     }
 }
 
-/**
- * A dialog to manage (edit/delete) all weight history entries.
- */
 @Composable
 fun ManageWeightHistoryDialog(
     history: List<WeightEntry>,
