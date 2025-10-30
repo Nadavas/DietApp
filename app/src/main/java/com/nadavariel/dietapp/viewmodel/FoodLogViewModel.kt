@@ -12,6 +12,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
@@ -20,12 +21,14 @@ import com.nadavariel.dietapp.data.FoodNutritionalInfo
 import com.nadavariel.dietapp.data.GraphPreference
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
+import com.nadavariel.dietapp.model.WeightEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Calendar
 import java.util.Date
 import kotlin.reflect.KProperty1
 
@@ -43,8 +46,6 @@ class FoodLogViewModel : ViewModel() {
     private val functions = Firebase.functions("me-west1")
     private val preferencesCollection = firestore.collection("users").document(auth.currentUser?.uid ?: "no_user").collection("preferences")
 
-    // --- State Flows ---
-
     private val _selectedDateState = MutableStateFlow(LocalDate.now())
     val selectedDateState = _selectedDateState.asStateFlow()
 
@@ -56,10 +57,19 @@ class FoodLogViewModel : ViewModel() {
 
     private var mealsListenerRegistration: ListenerRegistration? = null
 
+    private var weightHistoryListener: ListenerRegistration? = null
+    private var targetWeightListener: ListenerRegistration? = null
+
     private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
     val graphPreferences = _graphPreferences.asStateFlow()
 
-    // Weekly Nutrient States
+    private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
+    val weightHistory = _weightHistory.asStateFlow()
+
+    private val _targetWeight = MutableStateFlow(0f)
+    val targetWeight = _targetWeight.asStateFlow()
+
+
     private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyCalories = _weeklyCalories.asStateFlow()
 
@@ -87,7 +97,6 @@ class FoodLogViewModel : ViewModel() {
     private val _weeklyVitaminC = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyVitaminC = _weeklyVitaminC.asStateFlow()
 
-    // RENAMED: This now holds the 7-day macro percentage
     private val _weeklyMacroPercentages = MutableStateFlow(
         mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
     )
@@ -96,16 +105,13 @@ class FoodLogViewModel : ViewModel() {
     private val _caloriesByTimeOfDay = MutableStateFlow(
         mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     )
-    val caloriesByTimeOfDay = _caloriesByTimeOfDay.asStateFlow() // Added getter
 
 
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
 
     private val _shouldResetDateOnResume = MutableStateFlow(true)
-    val shouldResetDateOnResume = _shouldResetDateOnResume.asStateFlow() // Added getter
 
-    // NEW: State to check if the selected date/time is in the future
     private val _isFutureTimeSelected = MutableStateFlow(false)
     val isFutureTimeSelected = _isFutureTimeSelected.asStateFlow()
 
@@ -118,14 +124,18 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 if (firebaseAuth.currentUser != null) {
-                    // User signed in
                     listenForMealsForDate(selectedDateState.value)
                     fetchMealsForLastSevenDays()
                     fetchGraphPreferences()
+                    listenForWeightHistory()
+                    listenForTargetWeight()
                 } else {
-                    // User signed out
                     mealsListenerRegistration?.remove()
                     mealsListenerRegistration = null
+                    weightHistoryListener?.remove()
+                    weightHistoryListener = null
+                    targetWeightListener?.remove()
+                    targetWeightListener = null
                     resetAllStates()
                 }
             }
@@ -136,7 +146,7 @@ class FoodLogViewModel : ViewModel() {
         _mealsForSelectedDateState.value = emptyList()
         _weeklyCalories.value = emptyMap()
         _weeklyProtein.value = emptyMap()
-        _weeklyMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f) // RENAMED
+        _weeklyMacroPercentages.value = mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
         _weeklyFiber.value = emptyMap()
         _weeklySugar.value = emptyMap()
         _weeklySodium.value = emptyMap()
@@ -146,21 +156,18 @@ class FoodLogViewModel : ViewModel() {
         _weeklyVitaminC.value = emptyMap()
         _graphPreferences.value = emptyList()
         _caloriesByTimeOfDay.value = mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
-        _isFutureTimeSelected.value = false // NEW: Reset new state
+        _isFutureTimeSelected.value = false
+        _weightHistory.value = emptyList()
+        _targetWeight.value = 0f
     }
 
-    // NEW: Function to check if selected time is in the future
     fun updateDateTimeCheck(selectedTime: Date) {
-        // Check if the selected time is strictly after the current time
         _isFutureTimeSelected.value = selectedTime.after(Date())
     }
-
-    // --- Graph Preference Methods ---
 
     private fun getDefaultGraphPreferences(): List<GraphPreference> = listOf(
         GraphPreference("calories", "Weekly Calorie Intake", 0, true, true),
         GraphPreference("protein", "Weekly Protein Intake", 1, true, true),
-        // UPDATED ID: Changed from "macros_pie" to "weekly_macros_pie"
         GraphPreference("weekly_macros_pie", "Weekly Macronutrient Distribution", 2, true, true),
         GraphPreference("fiber", "Weekly Fiber Intake", 3, true, false),
         GraphPreference("sugar", "Weekly Sugar Intake", 4, true, false),
@@ -184,37 +191,32 @@ class FoodLogViewModel : ViewModel() {
                     val storedList = snapshot.get("list") as? List<Map<String, Any>>
 
                     val storedPreferences = storedList?.mapNotNull { map ->
-                        // Safely map Firestore data to data class
                         GraphPreference(
                             id = map["id"] as? String ?: return@mapNotNull null,
                             title = map["title"] as? String ?: return@mapNotNull null,
                             order = (map["order"] as? Long)?.toInt() ?: 0,
-                            isVisible = map["isVisible"] as? Boolean ?: true,
-                            isMacro = map["isMacro"] as? Boolean ?: false
+                            isVisible = map["isVisible"] as? Boolean != false,
+                            isMacro = map["isMacro"] as? Boolean == true
                         )
                     } ?: getDefaultGraphPreferences()
 
-                    // Merge: prioritize stored preferences, but include all defaults (for new graphs)
                     val storedMap = storedPreferences.associateBy { it.id }
 
                     defaultMap.keys.mapNotNull { id ->
                         if (storedMap.containsKey(id)) {
-                            // Use stored preference but ensure it has the correct, up-to-date title
                             storedMap[id]?.copy(title = defaultMap[id]?.title ?: storedMap[id]!!.title)
                         } else {
-                            // New graph not in storage, add it with a high order value
                             defaultMap[id]?.copy(order = defaultMap.size + storedMap.size)
                         }
                     }.sortedBy { it.order }
 
                 } else {
-                    // No preferences found, use default order
                     getDefaultGraphPreferences()
                 }
 
                 _graphPreferences.value = preferences
                 if (!snapshot.exists()) {
-                    saveGraphPreferences(preferences) // Save default for the first time
+                    saveGraphPreferences(preferences)
                 }
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error fetching graph preferences: ${e.message}")
@@ -225,10 +227,9 @@ class FoodLogViewModel : ViewModel() {
 
     fun saveGraphPreferences(preferences: List<GraphPreference>) {
         auth.currentUser?.uid ?: return
-        _graphPreferences.value = preferences // Optimistic update
+        _graphPreferences.value = preferences
         viewModelScope.launch {
             try {
-                // Prepare data for Firestore using the helper function
                 val dataToSave = hashMapOf("list" to preferences.map { it.toMap() })
                 preferencesCollection.document("graph_order").set(dataToSave).await()
             } catch (e: Exception) {
@@ -237,11 +238,9 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // --- Data Fetching & Processing ---
-
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
-        if (daysToSubtract == 7) { // Assuming Sunday is the start of the week (value 7)
+        if (daysToSubtract == 7) {
             daysToSubtract = 0
         }
         return date.minusDays(daysToSubtract.toLong())
@@ -256,7 +255,6 @@ class FoodLogViewModel : ViewModel() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                // 1. Fetch Meals for Last 7 Days
                 val sevenDaysAgo = LocalDate.now().minusDays(6)
                 val startOfPeriod = Date.from(sevenDaysAgo.atStartOfDay(ZoneId.systemDefault()).toInstant())
                 val querySnapshot = firestore.collection("users").document(userId).collection("meals")
@@ -265,7 +263,6 @@ class FoodLogViewModel : ViewModel() {
                     .await()
                 val meals = querySnapshot.toObjects(Meal::class.java)
 
-                // Process all weekly stats using the single, generic function
                 processWeeklyNutrient(meals, Meal::calories, _weeklyCalories)
                 processWeeklyNutrient(meals, Meal::protein, _weeklyProtein)
                 processWeeklyNutrient(meals, Meal::fiber, _weeklyFiber)
@@ -277,8 +274,6 @@ class FoodLogViewModel : ViewModel() {
                 processWeeklyNutrient(meals, Meal::vitaminC, _weeklyVitaminC)
 
                 processCaloriesByTimeOfDay(meals)
-
-                // 2. Process 7-Day Macro Percentages (using the 'meals' list)
                 processWeeklyMacroPercentages(meals)
 
             } catch (e: Exception) {
@@ -287,9 +282,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Replaces all individual weekly nutrient processing functions.
-     */
     private fun processWeeklyNutrient(
         meals: List<Meal>,
         nutrientProperty: KProperty1<Meal, Number?>,
@@ -331,24 +323,21 @@ class FoodLogViewModel : ViewModel() {
         _caloriesByTimeOfDay.value = finalTimeBuckets
     }
 
-    // RENAMED: Changed from 'Yesterday' to 'Weekly'
     private fun processWeeklyMacroPercentages(meals: List<Meal>) {
-        // Now sums macros from the entire 7-day 'meals' list
         val proteinGrams = meals.sumOf { it.protein ?: 0.0 }
         val carbsGrams = meals.sumOf { it.carbohydrates ?: 0.0 }
         val fatGrams = meals.sumOf { it.fat ?: 0.0 }
 
-        val PROTEIN_CALORIES_PER_GRAM = 4.0
-        val CARB_CALORIES_PER_GRAM = 4.0
-        val FAT_CALORIES_PER_GRAM = 9.0
+        val proteinCaloriesPerGram = 4.0
+        val carbCaloriesPerGram = 4.0
+        val fatCaloriesPerGram = 9.0
 
-        val proteinCalories = proteinGrams * PROTEIN_CALORIES_PER_GRAM
-        val carbCalories = carbsGrams * CARB_CALORIES_PER_GRAM
-        val fatCalories = fatGrams * FAT_CALORIES_PER_GRAM
+        val proteinCalories = proteinGrams * proteinCaloriesPerGram
+        val carbCalories = carbsGrams * carbCaloriesPerGram
+        val fatCalories = fatGrams * fatCaloriesPerGram
 
         val totalMacroCalories = proteinCalories + carbCalories + fatCalories
 
-        // Updates the new StateFlow
         _weeklyMacroPercentages.value = if (totalMacroCalories > 0) {
             mapOf(
                 "Protein" to (proteinCalories / totalMacroCalories * 100).toFloat(),
@@ -357,6 +346,126 @@ class FoodLogViewModel : ViewModel() {
             )
         } else {
             mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
+        }
+    }
+
+    // --- Weight Logging ---
+
+    private fun listenForWeightHistory() {
+        weightHistoryListener?.remove()
+        val userId = auth.currentUser?.uid ?: return
+
+        weightHistoryListener = firestore.collection("users").document(userId)
+            .collection("weight_history")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.e("FoodLogViewModel", "Error listening for weight history", e)
+                    _weightHistory.value = emptyList()
+                    return@addSnapshotListener
+                }
+                // Updated to map document ID
+                val historyList = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject<WeightEntry>()?.copy(id = doc.id)
+                } ?: emptyList()
+                _weightHistory.value = historyList
+            }
+    }
+
+    private fun listenForTargetWeight() {
+        targetWeightListener?.remove()
+        val userId = auth.currentUser?.uid ?: return
+
+        targetWeightListener = firestore.collection("users").document(userId)
+            .collection("user_answers").document("goals")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.e("FoodLogViewModel", "Error listening to target weight", e)
+                    _targetWeight.value = 0f
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    @Suppress("UNCHECKED_CAST")
+                    val answersMap = snapshot.get("answers") as? List<Map<String, String>>
+                    val targetWeightAnswer = answersMap?.firstOrNull {
+                        it["question"] == "What is your target weight (in kg)?"
+                    }?.get("answer")
+
+                    _targetWeight.value = targetWeightAnswer?.toFloatOrNull() ?: 0f
+                } else {
+                    _targetWeight.value = 0f
+                }
+            }
+    }
+
+    fun addWeightEntry(weight: Float, date: Calendar) {
+        val userId = auth.currentUser?.uid ?: return
+        if (weight <= 0) return
+
+        viewModelScope.launch {
+            try {
+                val timestamp = Timestamp(date.time)
+                // We set timestamp here manually so it's not null,
+                // but @ServerTimestamp in WeightEntry will overwrite it on the server.
+                val newEntry = WeightEntry(weight = weight, timestamp = timestamp)
+
+                firestore.collection("users").document(userId)
+                    .collection("weight_history")
+                    .add(newEntry)
+                    .await()
+                Log.d("FoodLogViewModel", "Successfully added new weight entry: $weight at $timestamp")
+            } catch (e: Exception) {
+                Log.e("FoodLogViewModel", "Error adding weight entry", e)
+            }
+        }
+    }
+
+    // New function to update a weight entry
+    fun updateWeightEntry(id: String, newWeight: Float, newDate: Calendar) {
+        val userId = auth.currentUser?.uid ?: return
+        if (id.isBlank()) {
+            Log.e("FoodLogViewModel", "Cannot update weight entry: ID is blank.")
+            return
+        }
+        if (newWeight <= 0) {
+            Log.e("FoodLogViewModel", "Cannot update weight entry: Invalid weight.")
+            return
+        }
+
+        val updatedData = mapOf(
+            "weight" to newWeight,
+            "timestamp" to Timestamp(newDate.time)
+        )
+
+        viewModelScope.launch {
+            try {
+                firestore.collection("users").document(userId)
+                    .collection("weight_history").document(id)
+                    .update(updatedData).await()
+                Log.d("FoodLogViewModel", "Successfully updated weight entry: $id")
+            } catch (e: Exception) {
+                Log.e("FoodLogViewModel", "Error updating weight entry", e)
+            }
+        }
+    }
+
+    // New function to delete a weight entry
+    fun deleteWeightEntry(id: String) {
+        val userId = auth.currentUser?.uid ?: return
+        if (id.isBlank()) {
+            Log.e("FoodLogViewModel", "Cannot delete weight entry: ID is blank.")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                firestore.collection("users").document(userId)
+                    .collection("weight_history").document(id)
+                    .delete().await()
+                Log.d("FoodLogViewModel", "Successfully deleted weight entry: $id")
+            } catch (e: Exception) {
+                Log.e("FoodLogViewModel", "Error deleting weight entry", e)
+            }
         }
     }
 
@@ -401,7 +510,6 @@ class FoodLogViewModel : ViewModel() {
             try {
                 firestore.collection("users").document(userId).collection("meals").add(meal).await()
                 fetchMealsForLastSevenDays()
-                // ADDED: Ensure the listener for the current day is refreshed
                 listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
@@ -455,8 +563,6 @@ class FoodLogViewModel : ViewModel() {
         newVitaminC: Double?
     ) {
         val userId = auth.currentUser?.uid ?: return
-        // REMOVED: Future date check is now handled by the UI (isFutureTimeSelected state)
-        // if (newTimestamp.toDate().after(Date())) return
 
         val mealRef = firestore.collection("users").document(userId).collection("meals").document(mealId)
         val updatedData = mapOf(
@@ -480,7 +586,6 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.update(updatedData).await()
                 fetchMealsForLastSevenDays()
-                // ADDED: Ensure the listener for the current day is refreshed
                 listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
@@ -495,7 +600,6 @@ class FoodLogViewModel : ViewModel() {
             try {
                 mealRef.delete().await()
                 fetchMealsForLastSevenDays()
-                // ADDED: Ensure the listener for the current day is refreshed
                 listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
@@ -531,6 +635,8 @@ class FoodLogViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         mealsListenerRegistration?.remove()
+        weightHistoryListener?.remove()
+        targetWeightListener?.remove()
     }
 
     fun selectDate(date: LocalDate) {
@@ -565,7 +671,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // RENAMED from getMealById
     fun getMealById(mealId: String): Meal? {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
@@ -624,9 +729,6 @@ class FoodLogViewModel : ViewModel() {
     }
 }
 
-/**
- * Helper function to convert GraphPreference to Map for Firestore.
- */
 private fun GraphPreference.toMap(): Map<String, Any> {
     return mapOf(
         "id" to id,
