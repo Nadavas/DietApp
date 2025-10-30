@@ -5,10 +5,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
 import com.google.firebase.Timestamp
 import com.google.gson.annotations.SerializedName
-import com.nadavariel.dietapp.ui.theme.EveningSectionColor
-import com.nadavariel.dietapp.ui.theme.MorningSectionColor
-import com.nadavariel.dietapp.ui.theme.NightSectionColor
-import com.nadavariel.dietapp.ui.theme.NoonSectionColor
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Date
@@ -35,6 +31,12 @@ data class Meal(
 )
 
 // --- MealSection ---
+
+// Meal section colors
+val MorningSectionColor = Color(0xFFFFA726)
+val NoonSectionColor = Color(0xFF66BB6A)
+val EveningSectionColor = Color(0xFF42A5F5)
+val NightSectionColor = Color(0xFFAB47BC)
 
 enum class MealSection(val sectionName: String, val color: Color) {
     MORNING("Morning", MorningSectionColor),
