@@ -1,18 +1,21 @@
-package com.nadavariel.dietapp.model
+package com.nadavariel.dietapp.model // You can place this in your 'model' package
 
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
-// Profile data class
+// --- UserProfile ---
+
 data class UserProfile(
     val name: String = "",
-    val startingWeight: Float = 0f, // Renamed from 'weight'
+    val startingWeight: Float = 0f,
     val height: Float = 0f,
     val dateOfBirth: Date? = null,
     val avatarId: String? = null,
     val gender: Gender = Gender.UNKNOWN
 )
 
-// Enum for multiple options for gender
 enum class Gender(val displayName: String) {
     MALE("Male"),
     FEMALE("Female"),
@@ -20,3 +23,13 @@ enum class Gender(val displayName: String) {
     PREFER_NOT_TO_SAY("Prefer not to say"),
     UNKNOWN("Not Set")
 }
+
+// --- WeightEntry ---
+
+data class WeightEntry(
+    @DocumentId
+    val id: String = "",
+    val weight: Float = 0f,
+    @ServerTimestamp
+    val timestamp: Timestamp? = null
+)

@@ -35,8 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
-import com.nadavariel.dietapp.data.Comment
-import com.nadavariel.dietapp.data.communityTopics // Import communityTopics
+import com.nadavariel.dietapp.model.Comment
+import com.nadavariel.dietapp.model.communityTopics // Import communityTopics
 import com.nadavariel.dietapp.model.Thread // Import your Thread model
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel

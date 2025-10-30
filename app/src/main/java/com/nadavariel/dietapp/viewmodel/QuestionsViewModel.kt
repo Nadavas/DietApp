@@ -9,7 +9,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.nadavariel.dietapp.data.DietPlan
+import com.nadavariel.dietapp.model.DietPlan
 import com.nadavariel.dietapp.screens.Question
 import com.nadavariel.dietapp.model.Gender
 import kotlinx.coroutines.flow.MutableStateFlow

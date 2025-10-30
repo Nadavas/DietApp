@@ -9,8 +9,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.data.Comment
-import com.nadavariel.dietapp.data.Like
+import com.nadavariel.dietapp.model.Comment
+import com.nadavariel.dietapp.model.Like
 import com.nadavariel.dietapp.model.Thread
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

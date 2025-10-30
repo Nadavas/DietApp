@@ -17,8 +17,8 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nadavariel.dietapp.data.FoodNutritionalInfo
-import com.nadavariel.dietapp.data.GraphPreference
+import com.nadavariel.dietapp.model.FoodNutritionalInfo
+import com.nadavariel.dietapp.model.GraphPreference
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.model.WeightEntry

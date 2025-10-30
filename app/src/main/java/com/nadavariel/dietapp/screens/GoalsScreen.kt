@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.data.Goal
+import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import kotlin.math.cos
 import kotlin.math.sin

@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.data.Goal
+import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.nadavariel.dietapp.data.DietPlan
+import com.nadavariel.dietapp.model.DietPlan
 
 class GoalsViewModel : ViewModel() {
 

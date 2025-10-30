@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.data.Topic
-import com.nadavariel.dietapp.data.communityTopics
+import com.nadavariel.dietapp.model.Topic
+import com.nadavariel.dietapp.model.communityTopics
 import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import kotlinx.coroutines.delay

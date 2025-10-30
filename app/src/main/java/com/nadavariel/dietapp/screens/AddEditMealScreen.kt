@@ -41,7 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
-import com.nadavariel.dietapp.data.FoodNutritionalInfo
+import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.ui.meals.*
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel

@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.data.DietPlan
+import com.nadavariel.dietapp.model.DietPlan
 import com.nadavariel.dietapp.viewmodel.DietPlanResult
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 import java.util.*
