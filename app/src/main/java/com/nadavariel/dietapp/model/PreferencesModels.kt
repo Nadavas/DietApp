@@ -2,15 +2,7 @@ package com.nadavariel.dietapp.model // You can place this in your 'model' packa
 
 import com.google.firebase.firestore.DocumentId
 import java.util.Calendar
-import java.util.UUID
 
-// --- Goal ---
-
-data class Goal(
-    val text: String,
-    val value: String? = null,
-    val id: String = UUID.randomUUID().toString()
-)
 
 // --- GraphPreference ---
 

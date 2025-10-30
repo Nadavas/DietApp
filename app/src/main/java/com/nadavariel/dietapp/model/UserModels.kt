@@ -4,6 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
+import java.util.UUID
 
 // --- UserProfile ---
 
@@ -32,4 +33,12 @@ data class WeightEntry(
     val weight: Float = 0f,
     @ServerTimestamp
     val timestamp: Timestamp? = null
+)
+
+// --- Goal ---
+
+data class Goal(
+    val text: String,
+    val value: String? = null,
+    val id: String = UUID.randomUUID().toString()
 )
