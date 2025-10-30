@@ -5,7 +5,7 @@ import java.util.Date
 // Profile data class
 data class UserProfile(
     val name: String = "",
-    val weight: Float = 0f,
+    val startingWeight: Float = 0f, // Renamed from 'weight'
     val height: Float = 0f,
     val dateOfBirth: Date? = null,
     val avatarId: String? = null,

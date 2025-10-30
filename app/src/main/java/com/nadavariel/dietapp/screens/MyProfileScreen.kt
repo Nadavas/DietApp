@@ -83,8 +83,8 @@ fun MyProfileScreen(
                 if (userProfile.name.isBlank()) {
                     missingFields.add("name")
                 }
-                if (userProfile.weight <= 0f) {
-                    missingFields.add("current weight")
+                if (userProfile.startingWeight <= 0f) {
+                    missingFields.add("starting weight")
                 }
                 if (userProfile.height <= 0f) {
                     missingFields.add("height")
@@ -123,7 +123,7 @@ fun MyProfileScreen(
 
             // Essential profile details (always visible)
             ProfileDetailRow("Name:", userProfile.name.ifEmpty { "Not Set" })
-            ProfileDetailRow("Current Weight:", if (userProfile.weight > 0f) "${userProfile.weight} kg" else "Not Set")
+            ProfileDetailRow("Starting Weight:", if (userProfile.startingWeight > 0f) "${userProfile.startingWeight} kg" else "Not Set")
             ProfileDetailRow("Height:", if (userProfile.height > 0f) "${userProfile.height} cm" else "Not Set")
 
             Column(

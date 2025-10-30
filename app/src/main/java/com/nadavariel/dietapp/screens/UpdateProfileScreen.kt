@@ -77,13 +77,17 @@ fun UpdateProfileScreen(
 ) {
     val context = LocalContext.current
 
-    // Get data from the viewmodel
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
 
     // State variables
     var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
-    var weightInput by remember(userProfile.weight) { mutableStateOf(if (userProfile.weight > 0f) userProfile.weight.toString() else "") }
-    var heightInput by remember(userProfile.height) { mutableStateOf(if (userProfile.height > 0f) userProfile.height.toString() else "") }
+    // FIX: Bind to 'startingWeight' from the profile
+    var weightInput by remember(userProfile.startingWeight) {
+        mutableStateOf(if (userProfile.startingWeight > 0f) userProfile.startingWeight.toString() else "")
+    }
+    var heightInput by remember(userProfile.height) {
+        mutableStateOf(if (userProfile.height > 0f) userProfile.height.toString() else "")
+    }
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
     var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
     var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
@@ -93,6 +97,7 @@ fun UpdateProfileScreen(
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     val saveProfileAction: () -> Unit = {
+        // This call is correct, as AuthViewModel's updateProfile maps 'weight' param to 'startingWeight'
         authViewModel.updateProfile(
             name = nameInput,
             weight = weightInput,
@@ -111,13 +116,16 @@ fun UpdateProfileScreen(
         }
     }
 
-    // Load initial values from the viewmodel
     LaunchedEffect(userProfile, isNewUser) {
         nameInput = if (isNewUser && userProfile.name.isBlank() && authViewModel.currentUser?.email != null) {
             authViewModel.currentUser?.email?.substringBefore("@") ?: ""
         } else {
             userProfile.name
         }
+        // FIX: Update weightInput from startingWeight
+        weightInput = if (userProfile.startingWeight > 0f) userProfile.startingWeight.toString() else ""
+        heightInput = if (userProfile.height > 0f) userProfile.height.toString() else ""
+        dateOfBirthInput = userProfile.dateOfBirth
         selectedAvatarId = userProfile.avatarId
         selectedGender = userProfile.gender
     }
@@ -127,7 +135,6 @@ fun UpdateProfileScreen(
             TopAppBar(
                 title = { Text(if (isNewUser) "Create Profile" else "Update Profile") },
                 navigationIcon = {
-                    // Back button
                     IconButton(onClick = {
                         if (isNewUser) {
                             navController.navigate(NavRoutes.HOME) {
@@ -159,7 +166,6 @@ fun UpdateProfileScreen(
                 modifier = Modifier.padding(vertical = 24.dp)
             )
 
-            // Avatar display and change button
             Image(
                 painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
                 contentDescription = "User Avatar",
@@ -176,7 +182,6 @@ fun UpdateProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // profile data
             OutlinedTextField(
                 value = nameInput,
                 onValueChange = { nameInput = it },
@@ -195,7 +200,8 @@ fun UpdateProfileScreen(
                         weightInput = newValue
                     }
                 },
-                label = { Text("Current Weight (kg)") },
+                // FIX: Changed label to "Starting Weight (kg)"
+                label = { Text("Starting Weight (kg)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -220,7 +226,7 @@ fun UpdateProfileScreen(
 
             OutlinedTextField(
                 value = dateOfBirthInput?.let { dateFormatter.format(it) } ?: "",
-                onValueChange = { /* Read-only, no direct text input */ },
+                onValueChange = { /* Read-only */ },
                 label = { Text("Date of Birth") },
                 readOnly = true,
                 modifier = Modifier
@@ -310,7 +316,6 @@ fun UpdateProfileScreen(
                 }
             }
 
-            // Save button
             Button(
                 onClick = { saveProfileAction() },
                 modifier = Modifier.fillMaxWidth()
@@ -322,7 +327,6 @@ fun UpdateProfileScreen(
         }
     }
 
-    // Avatar selection dialog
     if (showAvatarDialog) {
         Dialog(onDismissRequest = { showAvatarDialog = false }) {
             Surface(

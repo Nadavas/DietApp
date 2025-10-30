@@ -19,7 +19,6 @@ import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-import com.nadavariel.dietapp.model.UserProfile
 
 data class UserAnswer(
     val question: String = "",
@@ -49,12 +48,11 @@ class QuestionsViewModel : ViewModel() {
         const val DOB_QUESTION = "What is your date of birth?"
         const val GENDER_QUESTION = "What is your gender?"
         const val HEIGHT_QUESTION = "What is your height?"
-        const val CURRENT_WEIGHT_QUESTION = "What is your current weight?"
+        const val STARTING_WEIGHT_QUESTION = "What is your weight?"
         const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight or body composition goal in mind?"
         const val TARGET_WEIGHT_GOAL_TEXT = "What is your target weight (in kg)?"
     }
 
-    // FIX: Changed date format to match input "yyyy-MM-dd"
     private val dobFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
@@ -98,22 +96,21 @@ class QuestionsViewModel : ViewModel() {
         Log.d("QuestionsViewModel", "Preparing profile updates...")
 
         userAnswersToSave.forEach { answerMap ->
-            val questionText = answerMap["question"] as? String
-            val answerText = answerMap["answer"] as? String ?: ""
+            val questionText = answerMap["question"]
+            val answerText = answerMap["answer"] ?: ""
 
             when (questionText) {
-                CURRENT_WEIGHT_QUESTION -> {
-                    Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'") // ADDED log
-                    // Attempt to parse after removing potential non-numeric characters (like kg)
+                STARTING_WEIGHT_QUESTION -> {
+                    Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'")
                     val numericWeight = answerText.filter { it.isDigit() || it == '.' }
                     numericWeight.toFloatOrNull()?.let {
-                        profileUpdates["weight"] = it
-                        Log.d("QuestionsViewModel", "Adding weight update: $it")
+                        // FIX: Save to 'startingWeight' field
+                        profileUpdates["startingWeight"] = it
+                        Log.d("QuestionsViewModel", "Adding startingWeight update: $it")
                     } ?: Log.w("QuestionsViewModel", "Could not parse weight: '$answerText'")
                 }
                 HEIGHT_QUESTION -> {
-                    Log.d("QuestionsViewModel", "Received height answer string: '$answerText'") // ADDED log
-                    // Attempt to parse after removing potential non-numeric characters (like cm)
+                    Log.d("QuestionsViewModel", "Received height answer string: '$answerText'")
                     val numericHeight = answerText.filter { it.isDigit() || it == '.' }
                     numericHeight.toFloatOrNull()?.let {
                         profileUpdates["height"] = it
@@ -128,7 +125,6 @@ class QuestionsViewModel : ViewModel() {
                             Log.d("QuestionsViewModel", "Adding dateOfBirth update: $timestamp")
                         }
                     } catch (e: Exception) {
-                        // Log format error specifically
                         Log.w("QuestionsViewModel", "Could not parse DOB: '$answerText'. Expected format yyyy-MM-dd", e)
                     }
                 }
@@ -177,7 +173,6 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // Helper to update target weight goal (no changes)
     private suspend fun updateTargetWeightGoal(userId: String, targetWeight: String) {
         val goalsRef = firestore.collection("users").document(userId)
             .collection("user_answers").document("goals")
@@ -186,7 +181,7 @@ class QuestionsViewModel : ViewModel() {
             val existingAnswers = if (snapshot.exists()) {
                 (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
             } else { mutableListOf() }
-            val aiGenerated = snapshot.getBoolean("aiGenerated") ?: false
+            val aiGenerated = snapshot.getBoolean("aiGenerated") == true
 
             val targetWeightQuestionTextForGoal = TARGET_WEIGHT_GOAL_TEXT
             val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
@@ -203,7 +198,6 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // saveDietPlanToFirestore (no changes)
     private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
         val userId = auth.currentUser?.uid ?: return
         try {
@@ -224,7 +218,6 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // saveAnswersAndRegeneratePlan (no changes)
     fun saveAnswersAndRegeneratePlan(questions: List<Question>, answers: List<String?>) {
         viewModelScope.launch {
             saveUserAnswersAndUpdateProfile(questions, answers)
@@ -249,7 +242,6 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // applyDietPlanToGoals (no changes)
     fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -294,7 +286,6 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // resetDietPlanResult (no changes)
     fun resetDietPlanResult() {
         _dietPlanResult.value = DietPlanResult.Idle
     }

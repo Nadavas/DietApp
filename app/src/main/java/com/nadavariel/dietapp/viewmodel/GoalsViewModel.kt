@@ -87,11 +87,11 @@ class GoalsViewModel : ViewModel() {
                 if (snapshot != null && snapshot.exists()) {
                     @Suppress("UNCHECKED_CAST")
                     val answersMap = snapshot.get("answers") as? List<Map<String, String>>
-                    val aiGenerated = snapshot.getBoolean("aiGenerated") ?: false
+                    val aiGenerated = snapshot.getBoolean("aiGenerated") == true
 
-                    val userAnswers = answersMap?.map {
+                    val userAnswers = answersMap?.associate {
                         it["question"] to it["answer"]
-                    }?.toMap() ?: emptyMap()
+                    } ?: emptyMap()
 
                     // Ensure all defined goals are present, merged with saved answers
                     val mergedGoals = allGoals.map { goal ->
@@ -126,7 +126,7 @@ class GoalsViewModel : ViewModel() {
 
                 if (snapshot != null && snapshot.exists()) {
                     val profile = snapshot.toObject(UserProfile::class.java)
-                    _userWeight.value = profile?.weight ?: 0f
+                    _userWeight.value = profile?.startingWeight ?: 0f
                 } else {
                     Log.d("GoalsViewModel", "User profile does not exist.")
                 }
@@ -151,7 +151,7 @@ class GoalsViewModel : ViewModel() {
                     .collection("user_answers").document("goals")
 
                 val currentData = userAnswersRef.get().await()
-                val aiGenerated = currentData.getBoolean("aiGenerated") ?: false
+                val aiGenerated = currentData.getBoolean("aiGenerated") == true
 
                 userAnswersRef.set(mapOf(
                     "answers" to userAnswersToSave,
