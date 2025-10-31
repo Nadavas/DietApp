@@ -16,9 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,6 +38,7 @@ import com.nadavariel.dietapp.model.DietPlan
 import com.nadavariel.dietapp.viewmodel.DietPlanResult
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 import java.util.*
+import kotlin.math.roundToInt
 
 // --- DESIGN TOKENS (from ThreadsScreen) ---
 private val VibrantGreen = Color(0xFF4CAF50)
@@ -48,8 +48,8 @@ private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 private val CardBackgroundColor = Color.White
 
 // --- Data Models ---
-// MODIFICATION: Added TARGET_WEIGHT to fix "empty box" issue
-enum class InputType { DOB, HEIGHT, WEIGHT, TEXT, TARGET_WEIGHT }
+// MODIFICATION: Added EXERCISE_TYPE
+enum class InputType { DOB, HEIGHT, WEIGHT, TEXT, TARGET_WEIGHT, EXERCISE_TYPE }
 data class Question(
     val text: String,
     val options: List<String>? = null,
@@ -63,12 +63,16 @@ private val questions = listOf(
     Question("What is your height?", inputType = InputType.HEIGHT),
     Question("What is your weight?", inputType = InputType.WEIGHT),
     Question("What is your primary fitness goal?", options = listOf("Lose weight", "Gain muscle", "Maintain current weight", "Improve overall health")),
-    // MODIFICATION: Changed to TARGET_WEIGHT
     Question("Do you have a target weight or body composition goal in mind?", inputType = InputType.TARGET_WEIGHT),
     Question("How aggressive do you want to be with your fitness goal timeline?", options = listOf("Very aggressive (1–2 months)", "Moderate (3–6 months)", "Gradual (6+ months or no rush)")),
     Question("How would you describe your daily activity level outside of exercise?", options = listOf("Sedentary", "Lightly active", "Moderately active", "Very active")),
     Question("How many days per week do you engage in structured exercise?", options = listOf("0-1", "2-3", "4-5", "6-7")),
-    Question("What types of exercise do you typically perform?", inputType = InputType.TEXT)
+    // MODIFICATION: Changed to EXERCISE_TYPE and added options
+    Question(
+        "What types of exercise do you typically perform?",
+        inputType = InputType.EXERCISE_TYPE,
+        options = listOf("Cardio", "Strength Training", "Yoga / Pilates", "Team Sports", "Swimming", "HIIT", "Other")
+    )
 )
 
 // --- Screen State ---
@@ -486,12 +490,14 @@ private fun EditQuestionDialog(
                 currentAnswer = tempAnswer,
                 onSave = { newAnswer ->
                     when (question.inputType) {
-                        InputType.DOB -> onSave(newAnswer) // Save immediately for DOB
+                        InputType.DOB -> onSave(newAnswer) // Save immediately
                         InputType.TEXT -> tempAnswer = newAnswer // Wait for confirm
-                        InputType.HEIGHT -> tempAnswer = newAnswer // Don't close dialog
-                        InputType.WEIGHT -> tempAnswer = newAnswer // Don't close dialog
-                        InputType.TARGET_WEIGHT -> tempAnswer = newAnswer
-                        null -> onSave(newAnswer) // For options list, can save immediately
+                        // Sliders update tempAnswer
+                        InputType.HEIGHT, InputType.WEIGHT, InputType.TARGET_WEIGHT -> tempAnswer = newAnswer
+                        // Options save immediately
+                        null -> onSave(newAnswer)
+                        // Exercise types save immediately
+                        InputType.EXERCISE_TYPE -> onSave(newAnswer)
                     }
                 }
             )
@@ -533,9 +539,38 @@ private fun QuestionInput(
     // UI REFRESH: Routing to new/styled inputs
     when {
         question.inputType == InputType.DOB -> DobInput(currentAnswer, onSave)
-        question.inputType == InputType.HEIGHT -> HeightInput(currentAnswer, onSave)
-        question.inputType == InputType.WEIGHT -> WeightInput(currentAnswer, onSave)
-        question.inputType == InputType.TARGET_WEIGHT -> TargetWeightInput(currentAnswer, onSave) // New
+
+        // NEW: Using AnimatedSliderInput for all three
+        question.inputType == InputType.HEIGHT -> AnimatedSliderInput(
+            currentAnswer = currentAnswer,
+            onSave = onSave,
+            valueRange = 120f..220f,
+            defaultVal = 170f,
+            step = 1f,
+            unit = "cm"
+        )
+        question.inputType == InputType.WEIGHT -> AnimatedSliderInput(
+            currentAnswer = currentAnswer,
+            onSave = onSave,
+            valueRange = 40f..150f,
+            defaultVal = 70f,
+            step = 0.5f,
+            unit = "kg"
+        )
+        question.inputType == InputType.TARGET_WEIGHT -> AnimatedSliderInput(
+            currentAnswer = currentAnswer,
+            onSave = onSave,
+            valueRange = 40f..150f,
+            defaultVal = 70f,
+            step = 0.5f,
+            unit = "kg"
+        )
+
+        question.options != null && question.inputType == InputType.EXERCISE_TYPE -> ExerciseTypeInput(
+            options = question.options,
+            currentAnswer = currentAnswer,
+            onSave = onSave
+        )
         question.options != null -> OptionsInput(question.options, currentAnswer, onSave)
         else -> TextInput(currentAnswer, onValueChange = onSave)
     }
@@ -668,142 +703,39 @@ fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ---
+// --- NEW COMPOSABLES START HERE ---
+// ---
+
+/**
+ * Replaces HeightInput, WeightInput, and TargetWeightInput
+ */
 @Composable
-private fun HeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
-    val (initialValue, initialUnit) = remember(currentAnswer) {
-        parseUnitValue(currentAnswer, "cm")
-    }
-
-    var value by remember(currentAnswer) { mutableStateOf(initialValue) }
-    var unit by remember(currentAnswer) { mutableStateOf(initialUnit) }
-
-    // Save whenever value or unit changes (but only if value is not blank)
-    LaunchedEffect(value, unit) {
-        if (value.isNotBlank()) {
-            onSave("$value $unit")
+private fun AnimatedSliderInput(
+    currentAnswer: String?,
+    onSave: (String) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    defaultVal: Float,
+    step: Float,
+    unit: String
+) {
+    // Parse the initial value from the answer string, or use default
+    val (initialValue, _) = remember(currentAnswer) {
+        if (currentAnswer.isNullOrBlank()) {
+            defaultVal to unit
+        } else {
+            val parsed = currentAnswer.replace(Regex("[^0-9.]"), "").toFloatOrNull()
+            (parsed ?: defaultVal) to unit
         }
     }
 
-    // UI REFRESH: Grouped in a Card
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
-        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { newValue ->
-                    value = newValue.filter { it.isDigit() }
-                },
-                placeholder = { Text("Enter height") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = VibrantGreen,
-                    focusedLabelColor = VibrantGreen,
-                    cursorColor = VibrantGreen
-                )
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("cm", "ft").forEach { u ->
-                    FilterChip(
-                        selected = unit == u,
-                        onClick = { unit = u },
-                        label = { Text(u) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = VibrantGreen,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
+    var sliderValue by remember { mutableStateOf(initialValue) }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
-    val (initialValue, initialUnit) = remember(currentAnswer) {
-        parseUnitValue(currentAnswer, "kg", "[^0-9.]")
-    }
-
-    var value by remember(currentAnswer) { mutableStateOf(initialValue) }
-    var unit by remember(currentAnswer) { mutableStateOf(initialUnit) }
-
-    // Save whenever value or unit changes (but only if value is not blank)
-    LaunchedEffect(value, unit) {
-        if (value.isNotBlank()) {
-            onSave("$value $unit")
-        }
-    }
-
-    // UI REFRESH: Grouped in a Card
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
-        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { newValue ->
-                    value = newValue.filter { it.isDigit() || it == '.' }
-                },
-                placeholder = { Text("Enter weight") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = VibrantGreen,
-                    focusedLabelColor = VibrantGreen,
-                    cursorColor = VibrantGreen
-                )
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("kg", "lbs").forEach { u ->
-                    FilterChip(
-                        selected = unit == u,
-                        onClick = { unit = u },
-                        label = { Text(u) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = VibrantGreen,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-// NEW COMPOSABLE: To handle "Target Weight" input
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TargetWeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
-    val (initialValue, initialUnit) = remember(currentAnswer) {
-        parseUnitValue(currentAnswer, "kg", "[^0-9.]")
-    }
-
-    var value by remember(currentAnswer) { mutableStateOf(initialValue) }
-    var unit by remember(currentAnswer) { mutableStateOf(initialUnit) }
-
-    // Save whenever value or unit changes (but only if value is not blank)
-    LaunchedEffect(value, unit) {
-        if (value.isNotBlank()) {
-            onSave("$value $unit")
-        }
+    // This function will be called when the slider stops moving
+    val saveValue = {
+        val roundedValue = (sliderValue / step).roundToInt() * step
+        sliderValue = roundedValue
+        onSave(String.format(Locale.US, "%.1f %s", roundedValue, unit))
     }
 
     Card(
@@ -815,39 +747,151 @@ private fun TargetWeightInput(currentAnswer: String?, onSave: (String) -> Unit) 
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { newValue ->
-                    value = newValue.filter { it.isDigit() || it == '.' }
-                },
-                placeholder = { Text("Enter target weight (optional)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = VibrantGreen,
-                    focusedLabelColor = VibrantGreen,
-                    cursorColor = VibrantGreen
+            // Large text display
+            Text(
+                text = String.format(Locale.US, "%.1f %s", sliderValue, unit),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = VibrantGreen
+            )
+            Spacer(Modifier.height(16.dp))
+
+            // Slider
+            Slider(
+                value = sliderValue,
+                onValueChange = { sliderValue = it },
+                valueRange = valueRange,
+                onValueChangeFinished = { saveValue() },
+                colors = SliderDefaults.colors(
+                    thumbColor = VibrantGreen,
+                    activeTrackColor = VibrantGreen,
+                    inactiveTrackColor = VibrantGreen.copy(alpha = 0.2f)
                 )
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("kg", "lbs").forEach { u ->
-                    FilterChip(
-                        selected = unit == u,
-                        onClick = { unit = u },
-                        label = { Text(u) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = VibrantGreen,
-                            selectedLabelColor = Color.White
-                        )
-                    )
+
+            // Fine-tune buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = {
+                    sliderValue = (sliderValue - step).coerceIn(valueRange)
+                    saveValue()
+                }) {
+                    Icon(Icons.Default.Remove, "Decrease", tint = DarkGreyText)
+                }
+                IconButton(onClick = {
+                    sliderValue = (sliderValue + step).coerceIn(valueRange)
+                    saveValue()
+                }) {
+                    Icon(Icons.Default.Add, "Increase", tint = DarkGreyText)
                 }
             }
         }
     }
 }
 
+/**
+ * Replaces the TextInput for exercise types
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExerciseTypeInput(
+    options: List<String>,
+    currentAnswer: String?,
+    onSave: (String) -> Unit
+) {
+    // Convert comma-separated string to a Set for state
+    val selectedOptions by remember(currentAnswer) {
+        mutableStateOf(currentAnswer?.split(", ")?.toSet() ?: emptySet())
+    }
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            val isSelected = selectedOptions.contains(option)
+            ExerciseChip(
+                text = option,
+                isSelected = isSelected,
+                onClick = {
+                    // Create new set based on selection
+                    val newSet = selectedOptions.toMutableSet()
+                    if (isSelected) {
+                        newSet.remove(option)
+                    } else {
+                        newSet.add(option)
+                    }
+                    // Save as a sorted, comma-separated string
+                    onSave(newSet.sorted().joinToString(", "))
+                }
+            )
+        }
+    }
+}
+
+/**
+ * A selectable chip for the ExerciseTypeInput
+ */
+@Composable
+private fun ExerciseChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val borderColor = if (isSelected) VibrantGreen else LightGreyText.copy(alpha = 0.3f)
+    val containerColor = if (isSelected) VibrantGreen.copy(alpha = 0.05f) else CardBackgroundColor
+    val contentColor = if (isSelected) VibrantGreen else DarkGreyText
+
+    // Simple keyword to icon mapping
+    val icon = remember(text) {
+        when {
+            text.contains("Cardio", ignoreCase = true) -> Icons.Default.DirectionsRun
+            text.contains("Strength", ignoreCase = true) -> Icons.Default.FitnessCenter
+            text.contains("Yoga", ignoreCase = true) -> Icons.Default.SelfImprovement
+            text.contains("Sports", ignoreCase = true) -> Icons.Default.SportsBasketball
+            text.contains("Swimming", ignoreCase = true) -> Icons.Default.Pool
+            text.contains("HIIT", ignoreCase = true) -> Icons.Default.LocalFireDepartment
+            else -> Icons.Default.HelpOutline
+        }
+    }
+
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = contentColor,
+            )
+        }
+    }
+}
+
+
+// ---
+// --- END OF NEW COMPOSABLES ---
+// ---
 
 private fun parseUnitValue(
     answer: String?,
