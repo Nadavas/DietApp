@@ -42,7 +42,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import com.nadavariel.dietapp.data.UserPreferencesRepository // This will be renamed
+import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.DietAppTheme
@@ -108,7 +108,11 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val currentRouteEntry by navController.currentBackStackEntryAsState()
-                val selectedRoute = currentRouteEntry?.destination?.route?.split("/")?.firstOrNull()
+
+                // --- FIX: This now splits by '?' to remove parameters before checking the route ---
+                val selectedRoute = currentRouteEntry?.destination?.route
+                    ?.split("?")?.firstOrNull()
+                    ?.split("/")?.firstOrNull()
 
                 val showLoadingScreen = authViewModel.isUserSignedIn() && isLoadingProfile
 
@@ -304,7 +308,6 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
-                            // --- UPDATED HOME ROUTE ---
                             composable(
                                 route = "${NavRoutes.HOME}?openWeightLog={openWeightLog}",
                                 arguments = listOf(
@@ -323,11 +326,9 @@ class MainActivity : ComponentActivity() {
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController,
-                                    openWeightLog = openWeightLog // Pass the new parameter
+                                    openWeightLog = openWeightLog
                                 )
                             }
-                            // --- END OF UPDATED HOME ROUTE ---
-
                             composable(NavRoutes.STATISTICS) {
                                 StatisticsScreen(
                                     navController = navController
