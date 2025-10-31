@@ -9,7 +9,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.nadavariel.dietapp.model.DietPlan
+import com.nadavariel.dietapp.model.DietPlan // <-- This now imports the NEW DietPlan
 import com.nadavariel.dietapp.screens.Question
 import com.nadavariel.dietapp.model.Gender
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -198,21 +198,29 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
+    // ---
+    // --- !!! THIS FUNCTION IS UPDATED !!! ---
+    // ---
     private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
         val userId = auth.currentUser?.uid ?: return
         try {
+            // We convert the full, new data class into a nested map for Firestore
             val planData = mapOf(
-                "dailyCalories" to dietPlan.dailyCalories,
-                "proteinGrams" to dietPlan.proteinGrams,
-                "carbsGrams" to dietPlan.carbsGrams,
-                "fatGrams" to dietPlan.fatGrams,
-                "recommendations" to dietPlan.recommendations,
+                "healthOverview" to dietPlan.healthOverview,
+                "goalStrategy" to dietPlan.goalStrategy,
+                "concretePlan" to mapOf(
+                    "targets" to dietPlan.concretePlan.targets, // This will save the Targets data class as a map
+                    "mealGuidelines" to dietPlan.concretePlan.mealGuidelines, // Saves MealGuidelines as a map
+                    "trainingAdvice" to dietPlan.concretePlan.trainingAdvice
+                ),
+                "exampleMealPlan" to dietPlan.exampleMealPlan, // Saves ExampleMealPlan as a map
                 "disclaimer" to dietPlan.disclaimer,
                 "generatedAt" to com.google.firebase.Timestamp.now()
             )
             firestore.collection("users").document(userId)
                 .collection("diet_plans").document("current_plan")
                 .set(planData).await()
+            Log.d("QuestionsViewModel", "Successfully saved new diet plan structure.")
         } catch (e: Exception) {
             Log.e("QuestionsViewModel", "Error saving diet plan", e)
         }
@@ -229,6 +237,7 @@ class QuestionsViewModel : ViewModel() {
                 val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
                 if (responseData["success"] == true) {
                     val gson = Gson()
+                    // This now correctly parses the new JSON into the new DietPlan data class structure
                     val dietPlan = gson.fromJson(gson.toJson(responseData["data"]), DietPlan::class.java)
                     saveDietPlanToFirestore(dietPlan)
                     _dietPlanResult.value = DietPlanResult.Success(dietPlan)
@@ -242,6 +251,9 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
+    // ---
+    // --- !!! THIS FUNCTION IS UPDATED !!! ---
+    // ---
     fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -257,9 +269,10 @@ class QuestionsViewModel : ViewModel() {
                     (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
                 } else { mutableListOf() }
 
+                // UPDATED: Reads from the new nested structure
                 val aiGoalsMap = mapOf(
-                    "How many calories a day is your target?" to plan.dailyCalories.toString(),
-                    "How many grams of protein a day is your target?" to plan.proteinGrams.toString()
+                    "How many calories a day is your target?" to plan.concretePlan.targets.dailyCalories.toString(),
+                    "How many grams of protein a day is your target?" to plan.concretePlan.targets.proteinGrams.toString()
                 )
                 val finalGoalsList = mutableListOf<Map<String, String>>()
                 val addedOrUpdatedQuestions = mutableSetOf<String>()

@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model // You can place this in your 'model' package
+package com.nadavariel.dietapp.model // Your correct package
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -9,8 +9,8 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Date
 
-// --- Meal ---
-
+// --- Meal (Your existing class for logging) ---
+// (This is unchanged)
 data class Meal(
     val id: String = "", // Document ID from Firestore
     val foodName: String = "",
@@ -30,9 +30,8 @@ data class Meal(
     val timestamp: Timestamp = Timestamp(Date())
 )
 
-// --- MealSection ---
-
-// Meal section colors
+// --- MealSection (Your existing enum) ---
+// (This is unchanged)
 val MorningSectionColor = Color(0xFFFFA726)
 val NoonSectionColor = Color(0xFF66BB6A)
 val EveningSectionColor = Color(0xFF42A5F5)
@@ -58,19 +57,52 @@ enum class MealSection(val sectionName: String, val color: Color) {
     }
 }
 
-// --- DietPlan ---
+// ---
+// --- !!! THIS PART IS NEW AND REPLACES YOUR OLD DietPlan !!! ---
+// ---
 
 data class DietPlan(
+    val healthOverview: String = "",
+    val goalStrategy: String = "",
+    val concretePlan: ConcretePlan = ConcretePlan(),
+    val exampleMealPlan: ExampleMealPlan = ExampleMealPlan(),
+    val disclaimer: String = ""
+)
+
+data class ConcretePlan(
+    val targets: Targets = Targets(),
+    val mealGuidelines: MealGuidelines = MealGuidelines(),
+    val trainingAdvice: String = ""
+)
+
+data class Targets(
     val dailyCalories: Int = 0,
     val proteinGrams: Int = 0,
     val carbsGrams: Int = 0,
-    val fatGrams: Int = 0,
-    val recommendations: String = "No recommendations available.",
-    val disclaimer: String = "This diet plan is AI-generated. Consult with a healthcare professional before making significant dietary changes."
+    val fatGrams: Int = 0
 )
 
-// --- FoodNutritionalInfo (from Gemini) ---
+data class MealGuidelines(
+    val mealFrequency: String = "",
+    val foodsToEmphasize: List<String> = emptyList(),
+    val foodsToLimit: List<String> = emptyList()
+)
 
+data class ExampleMealPlan(
+    val breakfast: ExampleMeal = ExampleMeal(), // Uses renamed ExampleMeal
+    val lunch: ExampleMeal = ExampleMeal(),
+    val dinner: ExampleMeal = ExampleMeal(),
+    val snacks: ExampleMeal = ExampleMeal()
+)
+
+// Renamed from "Meal" to "ExampleMeal" to avoid conflict with your existing class
+data class ExampleMeal(
+    val description: String = "",
+    val estimatedCalories: Int = 0
+)
+
+// --- FoodNutritionalInfo (Your existing class) ---
+// (This is unchanged)
 data class FoodNutritionalInfo(
     @SerializedName("food_name") val food_name: String?,
     @SerializedName("serving_unit") val serving_unit: String?,

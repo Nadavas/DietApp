@@ -173,7 +173,7 @@ exports.analyzeFoodWithGemini = onCall(
 
 
 // =================================================================
-// NEW FUNCTION FOR DIET PLAN GENERATION
+// NEW FUNCTION FOR DIET PLAN GENERATION (SOPHISTICATED V2)
 // =================================================================
 exports.generateDietPlan = onCall(
   {
@@ -199,23 +199,54 @@ exports.generateDietPlan = onCall(
     try {
         const geminiApiKey = geminiApiKeySecret.value();
         const genAI = new GoogleGenerativeAI(geminiApiKey);
+        // Using a more powerful model for complex JSON
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+        // --- THIS IS THE MODIFIED PROMPT (V2) ---
         const prompt = `
-          You are a helpful and experienced nutritionist.
+          You are an expert nutritionist and head fitness coach.
           Analyze the following user's diet and health profile.
-          Based on their answers, calculate a personalized daily diet plan.
+          Based on their answers, generate a comprehensive, sophisticated, and actionable wellness plan.
 
           Your response MUST be a valid JSON object. Do not include any text, markdown, or formatting before or after the JSON object.
 
           The JSON object must have the following structure:
           {
-            "dailyCalories": <integer>,
-            "proteinGrams": <integer>,
-            "carbsGrams": <integer>,
-            "fatGrams": <integer>,
-            "recommendations": "<string with 2-3 brief, actionable recommendations>",
-            "disclaimer": "This diet plan is AI-generated. Consult with a healthcare professional before making significant dietary changes."
+            "healthOverview": "<string: 2-3 sentence analysis of the user's *current* health situation based on their profile data (e.g., activity level, goals)>",
+            "goalStrategy": "<string: A brief, high-level explanation of the *steps* needed to achieve their goal (e.g., 'To lose weight, we will establish a consistent calorie deficit...')>",
+            "concretePlan": {
+              "targets": {
+                "dailyCalories": <integer>,
+                "proteinGrams": <integer>,
+                "carbsGrams": <integer>,
+                "fatGrams": <integer>
+              },
+              "mealGuidelines": {
+                "mealFrequency": "<string: Advice on meal timing, e.g., 'Aim for 3 main meals and 1-2 protein-rich snacks.'>",
+                "foodsToEmphasize": ["<string: e.g., Lean proteins>", "<string: e.g., Leafy greens>", "<string: e.g., Healthy fats (avocado, nuts)>"],
+                "foodsToLimit": ["<string: e.g., Processed snacks>", "<string: e.g., Sugary drinks>"]
+              },
+              "trainingAdvice": "<string: 2-3 sentences of specific, concrete exercise advice based on their profile, e.g., 'Aim for 3 days of strength training and 2 days of cardio.'>"
+            },
+            "exampleMealPlan": {
+              "breakfast": {
+                "description": "<string: Example meal, e.g., 'Oatmeal with berries and a scoop of protein powder'>",
+                "estimatedCalories": <integer>
+              },
+              "lunch": {
+                "description": "<string: Example meal, e.g., 'Large salad with grilled chicken, quinoa, and avocado'>",
+                "estimatedCalories": <integer>
+              },
+              "dinner": {
+                "description": "<string: Example meal, e.g., 'Baked salmon with roasted sweet potatoes and broccoli'>",
+                "estimatedCalories": <integer>
+              },
+              "snacks": {
+                "description": "<string: Example snack, e.g., 'Greek yogurt or a handful of almonds'>",
+                "estimatedCalories": <integer>
+              }
+            },
+            "disclaimer": "This wellness plan is AI-generated. Consult with a healthcare professional before making significant lifestyle changes."
           }
 
           Here is the user's profile:
@@ -223,6 +254,7 @@ exports.generateDietPlan = onCall(
           ${userProfile}
           ---
         `;
+        // --- END OF MODIFIED PROMPT ---
 
         const result = await model.generateContent(prompt);
         const response = result.response;

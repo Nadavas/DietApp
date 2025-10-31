@@ -41,13 +41,16 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle // <-- NEW IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp // <-- NEW IMPORT
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.nadavariel.dietapp.model.ExampleMeal // <-- NEW IMPORT
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import kotlin.math.cos
@@ -59,7 +62,7 @@ private val DarkGreyText = Color(0xFF333333)
 private val LightGreyText = Color(0xFF757575)
 private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) // <-- NEW IMPORT (ExperimentalLayoutApi)
 @Composable
 fun GoalsScreen(
     navController: NavController,
@@ -179,8 +182,95 @@ fun GoalsScreen(
 
             // Hero Calorie Card - Stunning redesign
             dietPlan?.let { plan ->
+
+                // --- NEW CARD: Health Overview ---
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE3F2FD)), // Light Blue
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.PersonSearch,
+                                    contentDescription = null,
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Text(
+                                "Your Health Overview",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = plan.healthOverview,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = DarkGreyText.copy(alpha = 0.85f),
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
+                        )
+                    }
+                }
+
+                // --- NEW CARD: Goal Strategy ---
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE8F5E9)), // Light Green
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Flag,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Text(
+                                "Your Goal Strategy",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = plan.goalStrategy,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = DarkGreyText.copy(alpha = 0.85f),
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
+                        )
+                    }
+                }
+
                 AnimatedCalorieHeroCard(
-                    dailyCalories = plan.dailyCalories
+                    dailyCalories = plan.concretePlan.targets.dailyCalories
                 )
 
                 // Macronutrient Breakdown Section
@@ -200,7 +290,7 @@ fun GoalsScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.FitnessCenter,
                         label = "Protein",
-                        value = plan.proteinGrams,
+                        value = plan.concretePlan.targets.proteinGrams,
                         unit = "g",
                         color = Color(0xFF2196F3), // Blue
                         progress = 0.75f
@@ -209,7 +299,7 @@ fun GoalsScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Grain,
                         label = "Carbs",
-                        value = plan.carbsGrams,
+                        value = plan.concretePlan.targets.carbsGrams,
                         unit = "g",
                         color = Color(0xFFFF9800), // Orange
                         progress = 0.85f
@@ -218,7 +308,7 @@ fun GoalsScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.WaterDrop,
                         label = "Fat",
-                        value = plan.fatGrams,
+                        value = plan.concretePlan.targets.fatGrams,
                         unit = "g",
                         color = Color(0xFF9C27B0), // Purple
                         progress = 0.65f
@@ -230,7 +320,115 @@ fun GoalsScreen(
                     ProteinRecommendationCard(userWeight.toInt())
                 }
 
-                // AI Recommendations - Enhanced design
+                // --- NEW CARD: Meal Guidelines ---
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF3E5F5)), // Light Purple
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Rule,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9C27B0),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Text(
+                                "Meal Guidelines",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+
+                        // Meal Frequency
+                        Text(
+                            plan.concretePlan.mealGuidelines.mealFrequency,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DarkGreyText,
+                            fontStyle = FontStyle.Italic,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.times(1.4f)
+                        )
+                        Spacer(Modifier.height(16.dp))
+
+                        // Foods to Emphasize
+                        Text("Foods to Emphasize:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = VibrantGreen)
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            plan.concretePlan.mealGuidelines.foodsToEmphasize.forEach { FoodChip(it, true) }
+                        }
+                        Spacer(Modifier.height(16.dp))
+
+                        // Foods to Limit
+                        Text("Foods to Limit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = Color(0xFFD32F2F))
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            plan.concretePlan.mealGuidelines.foodsToLimit.forEach { FoodChip(it, false) }
+                        }
+                    }
+                }
+
+                // --- NEW CARD: Example Meal Plan ---
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEDE7F6)), // Light Indigo
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Restaurant,
+                                    contentDescription = null,
+                                    tint = Color(0xFF5E35B1),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Text(
+                                "Example Meal Plan",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            MealPlanItem("Breakfast", plan.exampleMealPlan.breakfast)
+                            HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+                            MealPlanItem("Lunch", plan.exampleMealPlan.lunch)
+                            HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+                            MealPlanItem("Dinner", plan.exampleMealPlan.dinner)
+                            HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+                            MealPlanItem("Snacks", plan.exampleMealPlan.snacks)
+                        }
+                    }
+                }
+
+                // AI Recommendations (Existing, now just for Training)
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = Color.White
@@ -259,7 +457,7 @@ fun GoalsScreen(
                                 )
                             }
                             Text(
-                                "Personalized Tips",
+                                "Personalized Training Advice",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkGreyText
@@ -267,7 +465,7 @@ fun GoalsScreen(
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            plan.recommendations,
+                            text = plan.concretePlan.trainingAdvice,
                             style = MaterialTheme.typography.bodyLarge,
                             color = DarkGreyText.copy(alpha = 0.85f),
                             lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
@@ -275,7 +473,7 @@ fun GoalsScreen(
                     }
                 }
 
-                // Disclaimer - Subtle and informative
+                // Disclaimer - Subtle and informative (This was already correct)
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFFFF8E1) // Very light yellow
@@ -791,5 +989,46 @@ fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+// ---
+// --- !!! NEW HELPER COMPOSABLES TO ADD AT THE END OF THE FILE !!! ---
+// ---
+
+// Helper for Meal Plan
+@Composable
+private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
+    Column {
+        Text(
+            mealType,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = VibrantGreen
+        )
+        Text(
+            meal.description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = DarkGreyText
+        )
+        Text(
+            "~${meal.estimatedCalories} kcal",
+            style = MaterialTheme.typography.bodySmall,
+            color = LightGreyText
+        )
+    }
+}
+
+// Helper for Food Chips
+@Composable
+private fun FoodChip(text: String, isGood: Boolean) {
+    val chipColor = if (isGood) VibrantGreen else Color(0xFFD32F2F)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(chipColor.copy(alpha = 0.1f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(text, color = chipColor, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle // <-- NEW IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +36,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.DietPlan
+import com.nadavariel.dietapp.model.ExampleMeal // <-- NEW IMPORT
 import com.nadavariel.dietapp.viewmodel.DietPlanResult
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 import java.util.*
@@ -627,7 +629,9 @@ private fun OptionCardItem(
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -955,6 +959,11 @@ private fun HandleDietPlanResultDialogs(
     }
 }
 
+// ---
+// --- !!! THIS IS THE FULLY REPLACED/UPDATED DIALOG !!! ---
+// ---
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals: () -> Unit) {
     AlertDialog(
@@ -963,7 +972,7 @@ fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals:
         shape = RoundedCornerShape(20.dp),
         title = {
             Text(
-                "Your Personalized Diet Plan",
+                "Your Personalized Plan",
                 fontWeight = FontWeight.Bold,
                 color = DarkGreyText
             )
@@ -973,70 +982,147 @@ fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals:
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // UI REFRESH: Styled Cards
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = VibrantGreen.copy(alpha = 0.1f)),
-                    shape = RoundedCornerShape(16.dp)
+                // 1. Overview
+                SectionCard(
+                    title = "Your Health Overview",
+                    icon = Icons.Default.PersonSearch
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Daily Calories Target",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = VibrantGreen,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "${plan.dailyCalories} kcal",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = VibrantGreen,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
+                    Text(
+                        text = plan.healthOverview,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DarkGreyText,
+                        lineHeight = 22.sp
+                    )
                 }
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.2f))
+
+                // 2. Strategy
+                SectionCard(
+                    title = "Your Goal Strategy",
+                    icon = Icons.Default.Flag
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Macronutrient Breakdown",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkGreyText
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            MacroItem("Protein", plan.proteinGrams, "g")
-                            MacroItem("Carbs", plan.carbsGrams, "g")
-                            MacroItem("Fat", plan.fatGrams, "g")
+                    Text(
+                        text = plan.goalStrategy,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DarkGreyText,
+                        lineHeight = 22.sp
+                    )
+                }
+
+                // 3. Concrete Plan (Targets, Guidelines, Training)
+                SectionCard(
+                    title = "Your Concrete Plan",
+                    icon = Icons.Default.Checklist
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Targets
+                        Column {
+                            Text(
+                                "Daily Targets",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            // Calorie Card
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = VibrantGreen.copy(alpha = 0.1f)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier
+                                    .padding(12.dp)
+                                    .fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        "Daily Calories",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = VibrantGreen,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        // THIS IS THE FIX: Accessing the nested value
+                                        "${plan.concretePlan.targets.dailyCalories} kcal",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        color = VibrantGreen,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            // Macro Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceAround
+                            ) {
+                                // THIS IS THE FIX: Accessing the nested values
+                                MacroItem("Protein", plan.concretePlan.targets.proteinGrams, "g")
+                                MacroItem("Carbs", plan.concretePlan.targets.carbsGrams, "g")
+                                MacroItem("Fat", plan.concretePlan.targets.fatGrams, "g")
+                            }
+                        }
+
+                        HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+
+                        // Meal Guidelines
+                        Column {
+                            Text(
+                                "Meal Guidelines",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                plan.concretePlan.mealGuidelines.mealFrequency,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = DarkGreyText,
+                                fontStyle = FontStyle.Italic
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text("Foods to Emphasize:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = VibrantGreen)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                plan.concretePlan.mealGuidelines.foodsToEmphasize.forEach { FoodChip(it, true) }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text("Foods to Limit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = Color(0xFFD32F2F))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                plan.concretePlan.mealGuidelines.foodsToLimit.forEach { FoodChip(it, false) }
+                            }
+                        }
+
+                        HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+
+                        // Training Advice
+                        Column {
+                            Text(
+                                "Training Advice",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGreyText
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                plan.concretePlan.trainingAdvice,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = DarkGreyText,
+                                lineHeight = 22.sp
+                            )
                         }
                     }
                 }
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.2f))
+
+                // 4. Example Meal Plan
+                SectionCard(
+                    title = "Example Meal Plan",
+                    icon = Icons.Default.Restaurant
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "Recommendations",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkGreyText
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            plan.recommendations,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = DarkGreyText,
-                            lineHeight = 22.sp
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MealPlanItem("Breakfast", plan.exampleMealPlan.breakfast)
+                        MealPlanItem("Lunch", plan.exampleMealPlan.lunch)
+                        MealPlanItem("Dinner", plan.exampleMealPlan.dinner)
+                        MealPlanItem("Snacks", plan.exampleMealPlan.snacks)
                     }
                 }
+
+                // 5. Disclaimer
                 Text(
                     plan.disclaimer,
                     style = MaterialTheme.typography.bodySmall,
@@ -1064,6 +1150,72 @@ fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals:
     )
 }
 
+// Helper composable for the new dialog
+@Composable
+private fun SectionCard(
+    title: String,
+    icon: ImageVector,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.2f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(imageVector = icon, contentDescription = null, tint = VibrantGreen)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreyText
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            content()
+        }
+    }
+}
+
+// Helper for Meal Plan (USES ExampleMeal)
+@Composable
+private fun MealPlanItem(mealType: String, meal: ExampleMeal) { // <-- USES ExampleMeal
+    Column {
+        Text(
+            mealType,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = VibrantGreen
+        )
+        Text(
+            meal.description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = DarkGreyText
+        )
+        Text(
+            "~${meal.estimatedCalories} kcal",
+            style = MaterialTheme.typography.bodySmall,
+            color = LightGreyText
+        )
+    }
+}
+
+// Helper for Food Chips
+@Composable
+private fun FoodChip(text: String, isGood: Boolean) {
+    val chipColor = if (isGood) VibrantGreen else Color(0xFFD32F2F)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(chipColor.copy(alpha = 0.1f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(text, color = chipColor, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// This is the MacroItem, replacing your old one
 @Composable
 private fun MacroItem(label: String, value: Int, unit: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

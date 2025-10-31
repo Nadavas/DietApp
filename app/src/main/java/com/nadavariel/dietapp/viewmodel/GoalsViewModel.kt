@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.nadavariel.dietapp.model.DietPlan
+import com.nadavariel.dietapp.model.DietPlan // <-- This now imports your NEW model structure
 
 class GoalsViewModel : ViewModel() {
 
@@ -37,6 +37,9 @@ class GoalsViewModel : ViewModel() {
         fetchUserProfile()
     }
 
+    // ---
+    // --- !!! THIS FUNCTION IS UPDATED !!! ---
+    // ---
     private fun fetchDietPlan() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
@@ -46,18 +49,17 @@ class GoalsViewModel : ViewModel() {
                     .get().await()
 
                 if (snapshot.exists()) {
-                    val plan = DietPlan(
-                        dailyCalories = (snapshot.getLong("dailyCalories") ?: 0).toInt(),
-                        proteinGrams = (snapshot.getLong("proteinGrams") ?: 0).toInt(),
-                        carbsGrams = (snapshot.getLong("carbsGrams") ?: 0).toInt(),
-                        fatGrams = (snapshot.getLong("fatGrams") ?: 0).toInt(),
-                        recommendations = snapshot.getString("recommendations") ?: "",
-                        disclaimer = snapshot.getString("disclaimer") ?: "Consult a healthcare professional before making dietary changes."
-                    )
+                    // THE FIX: Use .toObject() to parse the entire nested structure automatically
+                    val plan = snapshot.toObject(DietPlan::class.java)
                     _currentDietPlan.value = plan
+                    Log.d("GoalsViewModel", "Successfully fetched new diet plan structure.")
+                } else {
+                    Log.d("GoalsViewModel", "No diet plan document found.")
+                    _currentDietPlan.value = null
                 }
             } catch (e: Exception) {
                 Log.e("GoalsViewModel", "Error fetching diet plan", e)
+                _currentDietPlan.value = null
             }
         }
     }
