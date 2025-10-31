@@ -1,11 +1,17 @@
 package com.nadavariel.dietapp.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,11 +23,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -30,8 +40,16 @@ import com.nadavariel.dietapp.viewmodel.DietPlanResult
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 import java.util.*
 
+// --- DESIGN TOKENS (from ThreadsScreen) ---
+private val VibrantGreen = Color(0xFF4CAF50)
+private val DarkGreyText = Color(0xFF333333)
+private val LightGreyText = Color(0xFF757575)
+private val ScreenBackgroundColor = Color(0xFFF7F9FC)
+private val CardBackgroundColor = Color.White
+
 // --- Data Models ---
-enum class InputType { DOB, HEIGHT, WEIGHT, TEXT }
+// MODIFICATION: Added TARGET_WEIGHT to fix "empty box" issue
+enum class InputType { DOB, HEIGHT, WEIGHT, TEXT, TARGET_WEIGHT }
 data class Question(
     val text: String,
     val options: List<String>? = null,
@@ -45,7 +63,8 @@ private val questions = listOf(
     Question("What is your height?", inputType = InputType.HEIGHT),
     Question("What is your weight?", inputType = InputType.WEIGHT),
     Question("What is your primary fitness goal?", options = listOf("Lose weight", "Gain muscle", "Maintain current weight", "Improve overall health")),
-    Question("Do you have a target weight or body composition goal in mind?", inputType = InputType.TEXT),
+    // MODIFICATION: Changed to TARGET_WEIGHT
+    Question("Do you have a target weight or body composition goal in mind?", inputType = InputType.TARGET_WEIGHT),
     Question("How aggressive do you want to be with your fitness goal timeline?", options = listOf("Very aggressive (1–2 months)", "Moderate (3–6 months)", "Gradual (6+ months or no rush)")),
     Question("How would you describe your daily activity level outside of exercise?", options = listOf("Sedentary", "Lightly active", "Moderately active", "Very active")),
     Question("How many days per week do you engage in structured exercise?", options = listOf("0-1", "2-3", "4-5", "6-7")),
@@ -87,14 +106,19 @@ fun QuestionsScreen(
     HandleDietPlanResultDialogs(navController, questionsViewModel)
 
     Scaffold(
+        containerColor = ScreenBackgroundColor,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(when(screenState) {
-                        ScreenState.LANDING -> "Your Profile"
-                        ScreenState.EDITING -> "Edit Answers"
-                        ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
-                    })
+                    Text(
+                        text = when(screenState) {
+                            ScreenState.LANDING -> "Your Profile"
+                            ScreenState.EDITING -> "Edit Answers"
+                            ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
+                        },
+                        fontWeight = FontWeight.Bold,
+                        color = DarkGreyText
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -115,9 +139,16 @@ fun QuestionsScreen(
                             }
                         }
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = DarkGreyText
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ScreenBackgroundColor
+                )
             )
         }
     ) { paddingValues ->
@@ -127,12 +158,6 @@ fun QuestionsScreen(
                 LandingContent(
                     modifier = Modifier.padding(paddingValues),
                     allQuestionsAnswered = allAnswered,
-                    onCompleteQuiz = {
-                        editAnswers = questions.map { q ->
-                            savedAnswers.find { it.question == q.text }?.answer
-                        }
-                        screenState = ScreenState.EDITING
-                    },
                     onEditAnswers = {
                         editAnswers = questions.map { q ->
                             savedAnswers.find { it.question == q.text }?.answer
@@ -208,7 +233,6 @@ fun QuestionsScreen(
 private fun LandingContent(
     modifier: Modifier = Modifier,
     allQuestionsAnswered: Boolean,
-    onCompleteQuiz: () -> Unit,
     onEditAnswers: () -> Unit,
     onRetakeQuiz: () -> Unit
 ) {
@@ -219,36 +243,64 @@ private fun LandingContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = if (allQuestionsAnswered) Icons.Default.Check else Icons.Default.Edit,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = if (allQuestionsAnswered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        // UI REFRESH: Styled icon presentation
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(
+                    if (allQuestionsAnswered) VibrantGreen.copy(alpha = 0.1f)
+                    else LightGreyText.copy(alpha = 0.1f)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (allQuestionsAnswered) Icons.Default.Check else Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = if (allQuestionsAnswered) VibrantGreen else LightGreyText
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = if (allQuestionsAnswered) "Your profile is complete!" else "Your profile is incomplete",
             style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = DarkGreyText,
             textAlign = TextAlign.Center
         )
         Text(
             text = if (allQuestionsAnswered) "You can edit your answers or retake the quiz to get an updated diet plan." else "Please complete the quiz to generate a personalized diet plan.",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
+            color = LightGreyText,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp)
         )
         Spacer(modifier = Modifier.height(32.dp))
 
         if (allQuestionsAnswered) {
-            Button(onClick = onEditAnswers, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onEditAnswers,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
+            ) {
                 Text("Edit Answers")
             }
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(onClick = onRetakeQuiz, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = onRetakeQuiz,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkGreyText),
+                border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f))
+            ) {
                 Text("Retake Whole Quiz")
             }
         } else {
-            Button(onClick = onRetakeQuiz, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onRetakeQuiz,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
+            ) {
                 Text("Complete Quiz")
             }
         }
@@ -265,25 +317,25 @@ private fun EditingContent(
     Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp)
+                .weight(1f),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Text(
                     "Tap on a question to provide or update your answer.",
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(vertical = 16.dp)
+                    color = LightGreyText,
+                    modifier = Modifier.padding(bottom = 8.dp, start = 4.dp, end = 4.dp)
                 )
             }
             itemsIndexed(questions) { index, question ->
-                QuestionItem(
+                // UI REFRESH: Replaced with new QuestionItemCard
+                QuestionItemCard(
                     question = question.text,
                     answer = answers.getOrNull(index),
                     onClick = { onEditClick(index) }
                 )
-                if (index < questions.lastIndex) {
-                    HorizontalDivider()
-                }
             }
         }
 
@@ -292,32 +344,48 @@ private fun EditingContent(
             enabled = answers.size == questions.size && answers.all { !it.isNullOrBlank() },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
         ) {
             Text("Save Changes & Get Plan")
         }
     }
 }
 
+// UI REFRESH: New Card-based composable for EditingContent
 @Composable
-private fun QuestionItem(question: String, answer: String?, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun QuestionItemCard(question: String, answer: String?, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(question, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = if (answer.isNullOrBlank()) "Tap to answer" else answer,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (answer.isNullOrBlank()) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary,
-                fontWeight = if (answer.isNullOrBlank()) FontWeight.Normal else FontWeight.Bold
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    question,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = DarkGreyText
+                )
+                Text(
+                    text = if (answer.isNullOrBlank()) "Tap to answer" else answer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (answer.isNullOrBlank()) LightGreyText else VibrantGreen,
+                    fontWeight = if (answer.isNullOrBlank()) FontWeight.Normal else FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = VibrantGreen)
         }
-        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -331,22 +399,36 @@ private fun QuizModeContent(
     onNext: () -> Unit,
     canProceed: Boolean
 ) {
+    // UI REFRESH: Animated progress
+    val progress by animateFloatAsState(
+        targetValue = (currentIndex + 1).toFloat() / questions.size,
+        animationSpec = tween(600),
+        label = "progressAnimation"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Progress indicator
+        // UI REFRESH: Styled progress indicator
         LinearProgressIndicator(
-            progress = { (currentIndex + 1).toFloat() / questions.size },
+            progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 24.dp)
+                .height(8.dp)
+                .clip(CircleShape),
+            color = VibrantGreen,
+            trackColor = VibrantGreen.copy(alpha = 0.1f),
+            strokeCap = StrokeCap.Round
         )
 
         Text(
             question.text,
             style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = DarkGreyText,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
@@ -365,16 +447,20 @@ private fun QuizModeContent(
             }
         }
 
+        Spacer(Modifier.height(16.dp))
+
         Button(
             onClick = onNext,
             enabled = canProceed,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
         ) {
             Text(if (currentIndex < questions.lastIndex) "Next" else "Submit & Get Plan")
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditQuestionDialog(
     question: Question,
@@ -386,7 +472,14 @@ private fun EditQuestionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(question.text) },
+        containerColor = ScreenBackgroundColor,
+        title = {
+            Text(
+                question.text,
+                fontWeight = FontWeight.Bold,
+                color = DarkGreyText
+            )
+        },
         text = {
             QuestionInput(
                 question = question,
@@ -395,7 +488,9 @@ private fun EditQuestionDialog(
                     when (question.inputType) {
                         InputType.DOB -> onSave(newAnswer) // Save immediately for DOB
                         InputType.TEXT -> tempAnswer = newAnswer // Wait for confirm
-                        InputType.HEIGHT, InputType.WEIGHT -> tempAnswer = newAnswer // Don't close dialog
+                        InputType.HEIGHT -> tempAnswer = newAnswer // Don't close dialog
+                        InputType.WEIGHT -> tempAnswer = newAnswer // Don't close dialog
+                        InputType.TARGET_WEIGHT -> tempAnswer = newAnswer
                         null -> onSave(newAnswer) // For options list, can save immediately
                     }
                 }
@@ -407,17 +502,24 @@ private fun EditQuestionDialog(
                     // For text, height, or weight inputs, apply when pressing Save
                     if (question.inputType == InputType.TEXT ||
                         question.inputType == InputType.HEIGHT ||
-                        question.inputType == InputType.WEIGHT) {
+                        question.inputType == InputType.WEIGHT ||
+                        question.inputType == InputType.TARGET_WEIGHT) {
                         onSave(tempAnswer)
                     }
                     onDismiss()
-                }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = DarkGreyText)
+            ) {
+                Text("Cancel")
+            }
         }
     )
 }
@@ -428,10 +530,12 @@ private fun QuestionInput(
     currentAnswer: String?,
     onSave: (String) -> Unit
 ) {
+    // UI REFRESH: Routing to new/styled inputs
     when {
         question.inputType == InputType.DOB -> DobInput(currentAnswer, onSave)
         question.inputType == InputType.HEIGHT -> HeightInput(currentAnswer, onSave)
         question.inputType == InputType.WEIGHT -> WeightInput(currentAnswer, onSave)
+        question.inputType == InputType.TARGET_WEIGHT -> TargetWeightInput(currentAnswer, onSave) // New
         question.options != null -> OptionsInput(question.options, currentAnswer, onSave)
         else -> TextInput(currentAnswer, onValueChange = onSave)
     }
@@ -439,29 +543,72 @@ private fun QuestionInput(
 
 @Composable
 private fun TextInput(currentValue: String?, onValueChange: (String) -> Unit) {
+    // UI REFRESH: Styled text field
     OutlinedTextField(
         value = currentValue ?: "",
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Type your answer...") }
+        placeholder = { Text("Type your answer...") },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = VibrantGreen,
+            focusedLabelColor = VibrantGreen,
+            cursorColor = VibrantGreen
+        ),
+        minLines = 3 // Makes more sense for "types of exercise"
     )
 }
 
 @Composable
 private fun OptionsInput(options: List<String>, currentAnswer: String?, onSave: (String) -> Unit) {
-    Column {
+    // UI REFRESH: Using new OptionCardItem
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         options.forEach { opt ->
             val selected = currentAnswer == opt
-            OutlinedButton(
-                onClick = { onSave(opt) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
+            OptionCardItem(
+                text = opt,
+                isSelected = selected,
+                onClick = { onSave(opt) }
+            )
+        }
+    }
+}
+
+// UI REFRESH: New Composable for OptionsInput
+@Composable
+private fun OptionCardItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val borderColor = if (isSelected) VibrantGreen else LightGreyText.copy(alpha = 0.3f)
+    val containerColor = if (isSelected) VibrantGreen.copy(alpha = 0.05f) else CardBackgroundColor
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) VibrantGreen else DarkGreyText,
+                modifier = Modifier.weight(1f)
+            )
+            if (isSelected) {
+                Spacer(Modifier.width(12.dp))
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = VibrantGreen
                 )
-            ) {
-                Text(opt)
             }
         }
     }
@@ -480,7 +627,9 @@ fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
         } catch (e: Exception) { /* Ignore */ }
     }
 
-    OutlinedButton(
+    // UI REFRESH: Styled as a Card
+    val hasAnswer = !currentAnswer.isNullOrBlank()
+    Card(
         onClick = {
             DatePickerDialog(
                 context,
@@ -493,13 +642,33 @@ fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
                 cal.get(Calendar.DAY_OF_MONTH)
             ).show()
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date", modifier = Modifier.padding(end = 8.dp))
-        Text(if (currentAnswer.isNullOrBlank()) "Select Date of Birth" else currentAnswer)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CalendarToday,
+                contentDescription = "Pick Date",
+                tint = VibrantGreen,
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            Text(
+                if (hasAnswer) currentAnswer!! else "Select Date of Birth",
+                color = if (hasAnswer) VibrantGreen else DarkGreyText,
+                fontWeight = if (hasAnswer) FontWeight.Bold else FontWeight.Normal,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
     val (initialValue, initialUnit) = remember(currentAnswer) {
@@ -516,28 +685,50 @@ private fun HeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { newValue ->
-                value = newValue.filter { it.isDigit() }
-            },
-            placeholder = { Text("Enter height") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("cm", "ft").forEach { u ->
-                FilterChip(
-                    selected = unit == u,
-                    onClick = { unit = u },
-                    label = { Text(u) }
+    // UI REFRESH: Grouped in a Card
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { newValue ->
+                    value = newValue.filter { it.isDigit() }
+                },
+                placeholder = { Text("Enter height") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = VibrantGreen,
+                    focusedLabelColor = VibrantGreen,
+                    cursorColor = VibrantGreen
                 )
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("cm", "ft").forEach { u ->
+                    FilterChip(
+                        selected = unit == u,
+                        onClick = { unit = u },
+                        label = { Text(u) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = VibrantGreen,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
     val (initialValue, initialUnit) = remember(currentAnswer) {
@@ -554,27 +745,109 @@ private fun WeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { newValue ->
-                value = newValue.filter { it.isDigit() || it == '.' }
-            },
-            placeholder = { Text("Enter weight") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("kg", "lbs").forEach { u ->
-                FilterChip(
-                    selected = unit == u,
-                    onClick = { unit = u },
-                    label = { Text(u) }
+    // UI REFRESH: Grouped in a Card
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { newValue ->
+                    value = newValue.filter { it.isDigit() || it == '.' }
+                },
+                placeholder = { Text("Enter weight") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = VibrantGreen,
+                    focusedLabelColor = VibrantGreen,
+                    cursorColor = VibrantGreen
                 )
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("kg", "lbs").forEach { u ->
+                    FilterChip(
+                        selected = unit == u,
+                        onClick = { unit = u },
+                        label = { Text(u) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = VibrantGreen,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
             }
         }
     }
 }
+
+// NEW COMPOSABLE: To handle "Target Weight" input
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TargetWeightInput(currentAnswer: String?, onSave: (String) -> Unit) {
+    val (initialValue, initialUnit) = remember(currentAnswer) {
+        parseUnitValue(currentAnswer, "kg", "[^0-9.]")
+    }
+
+    var value by remember(currentAnswer) { mutableStateOf(initialValue) }
+    var unit by remember(currentAnswer) { mutableStateOf(initialUnit) }
+
+    // Save whenever value or unit changes (but only if value is not blank)
+    LaunchedEffect(value, unit) {
+        if (value.isNotBlank()) {
+            onSave("$value $unit")
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { newValue ->
+                    value = newValue.filter { it.isDigit() || it == '.' }
+                },
+                placeholder = { Text("Enter target weight (optional)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = VibrantGreen,
+                    focusedLabelColor = VibrantGreen,
+                    cursorColor = VibrantGreen
+                )
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("kg", "lbs").forEach { u ->
+                    FilterChip(
+                        selected = unit == u,
+                        onClick = { unit = u },
+                        label = { Text(u) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = VibrantGreen,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 private fun parseUnitValue(
     answer: String?,
@@ -597,14 +870,22 @@ private fun HandleDietPlanResultDialogs(
     when (val result = dietPlanResult) {
         is DietPlanResult.Loading -> {
             Dialog(onDismissRequest = {}) {
-                Card(modifier = Modifier.padding(32.dp)) {
+                Card(
+                    modifier = Modifier.padding(32.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBackgroundColor)
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(24.dp)
                     ) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.width(16.dp))
-                        Text("Generating your plan...")
+                        CircularProgressIndicator(color = VibrantGreen)
+                        Spacer(Modifier.width(20.dp))
+                        Text(
+                            "Generating your plan...",
+                            color = DarkGreyText,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
             }
@@ -634,25 +915,56 @@ private fun HandleDietPlanResultDialogs(
 fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Your Personalized Diet Plan") },
+        containerColor = ScreenBackgroundColor,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text(
+                "Your Personalized Diet Plan",
+                fontWeight = FontWeight.Bold,
+                color = DarkGreyText
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                // UI REFRESH: Styled Cards
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = VibrantGreen.copy(alpha = 0.1f)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Daily Calories Target", style = MaterialTheme.typography.labelLarge)
-                        Text("${plan.dailyCalories} kcal", style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            "Daily Calories Target",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = VibrantGreen,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "${plan.dailyCalories} kcal",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = VibrantGreen,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
                 }
-                Card {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.2f))
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Macronutrient Breakdown", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Macronutrient Breakdown",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkGreyText
+                        )
+                        Spacer(Modifier.height(12.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceAround
                         ) {
                             MacroItem("Protein", plan.proteinGrams, "g")
                             MacroItem("Carbs", plan.carbsGrams, "g")
@@ -660,23 +972,48 @@ fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals:
                         }
                     }
                 }
-                Card {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.2f))
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Recommendations", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Recommendations",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkGreyText
+                        )
                         Spacer(Modifier.height(8.dp))
-                        Text(plan.recommendations, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            plan.recommendations,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DarkGreyText,
+                            lineHeight = 22.sp
+                        )
                     }
                 }
-                Text(plan.disclaimer, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    plan.disclaimer,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LightGreyText,
+                    fontSize = 11.sp
+                )
             }
         },
         confirmButton = {
-            Button(onClick = onApplyToGoals) {
+            Button(
+                onClick = onApplyToGoals,
+                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
+            ) {
                 Text("Apply to Goals")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = DarkGreyText)
+            ) {
                 Text("Close")
             }
         }
@@ -686,8 +1023,17 @@ fun DietPlanSuccessDialog(plan: DietPlan, onDismiss: () -> Unit, onApplyToGoals:
 @Composable
 private fun MacroItem(label: String, value: Int, unit: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
-        Text("$value$unit", style = MaterialTheme.typography.titleLarge)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = LightGreyText
+        )
+        Text(
+            "$value$unit",
+            style = MaterialTheme.typography.titleLarge,
+            color = DarkGreyText,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -695,10 +1041,15 @@ private fun MacroItem(label: String, value: Int, unit: String) {
 fun DietPlanErrorDialog(message: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Error") },
-        text = { Text(message) },
+        containerColor = ScreenBackgroundColor,
+        shape = RoundedCornerShape(20.dp),
+        title = { Text("Error", fontWeight = FontWeight.Bold, color = DarkGreyText) },
+        text = { Text(message, color = DarkGreyText, style = MaterialTheme.typography.bodyLarge) },
         confirmButton = {
-            Button(onClick = onDismiss) {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
+            ) {
                 Text("Dismiss")
             }
         }
