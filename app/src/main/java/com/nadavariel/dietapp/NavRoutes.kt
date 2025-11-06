@@ -23,6 +23,11 @@ object NavRoutes {
     const val MEAL_ID_ARG = "mealId"
     const val ADD_EDIT_MEAL_WITH_ID = "$ADD_EDIT_MEAL/{$MEAL_ID_ARG}"
     const val NOTIFICATIONS = "notifications_screen"
+    const val STATS_ENERGY = "stats/energy"
+    const val STATS_MACROS = "stats/macros"
+    const val STATS_CARBS = "stats/carbs"
+    const val STATS_MINERALS = "stats/minerals"
+    const val STATS_VITAMINS = "stats/vitamins"
 
     fun threadDetail(threadId: String) = "thread_detail/$threadId"
 

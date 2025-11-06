@@ -50,6 +50,11 @@ import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import com.nadavariel.dietapp.viewmodel.NotificationViewModel
+import com.nadavariel.dietapp.screens.EnergyDetailScreen
+import com.nadavariel.dietapp.screens.MacrosDetailScreen
+import com.nadavariel.dietapp.screens.CarbsDetailScreen
+import com.nadavariel.dietapp.screens.MineralsDetailScreen
+import com.nadavariel.dietapp.screens.VitaminsDetailScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -127,12 +132,14 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         modifier = Modifier,
                         bottomBar = {
-                            if (selectedRoute == NavRoutes.HOME ||
-                                selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
-                                selectedRoute == NavRoutes.STATISTICS ||
-                                selectedRoute == NavRoutes.THREADS ||
-                                selectedRoute == NavRoutes.ACCOUNT
-                            ) {
+                            val isStatsDetailScreen = selectedRoute?.startsWith("stats/") == true
+                            if (!isStatsDetailScreen && (
+                                        selectedRoute == NavRoutes.HOME ||
+                                                selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
+                                                selectedRoute == NavRoutes.STATISTICS ||
+                                                selectedRoute == NavRoutes.THREADS ||
+                                                selectedRoute == NavRoutes.ACCOUNT
+                                    )) {
                                 NavigationBar(
                                     containerColor = Color(0xFF4CAF50),
                                     contentColor = Color.White.copy(alpha = 0.9f)
@@ -331,6 +338,46 @@ class MainActivity : ComponentActivity() {
                             }
                             composable(NavRoutes.STATISTICS) {
                                 StatisticsScreen(
+                                    foodLogViewModel = foodLogViewModel,
+                                    navController = navController
+                                )
+                            }
+                            // NEW: Energy & Protein Detail Screen
+                            composable(NavRoutes.STATS_ENERGY) {
+                                EnergyDetailScreen(
+                                    foodLogViewModel = foodLogViewModel,
+                                    navController = navController
+                                )
+                            }
+
+// NEW: Macronutrients Detail Screen
+                            composable(NavRoutes.STATS_MACROS) {
+                                MacrosDetailScreen(
+                                    foodLogViewModel = foodLogViewModel,
+                                    navController = navController
+                                )
+                            }
+
+// NEW: Fiber & Sugar Detail Screen
+                            composable(NavRoutes.STATS_CARBS) {
+                                CarbsDetailScreen(
+                                    foodLogViewModel = foodLogViewModel,
+                                    navController = navController
+                                )
+                            }
+
+// NEW: Minerals Detail Screen
+                            composable(NavRoutes.STATS_MINERALS) {
+                                MineralsDetailScreen(
+                                    foodLogViewModel = foodLogViewModel,
+                                    navController = navController
+                                )
+                            }
+
+// NEW: Vitamins Detail Screen
+                            composable(NavRoutes.STATS_VITAMINS) {
+                                VitaminsDetailScreen(
+                                    foodLogViewModel = foodLogViewModel,
                                     navController = navController
                                 )
                             }
