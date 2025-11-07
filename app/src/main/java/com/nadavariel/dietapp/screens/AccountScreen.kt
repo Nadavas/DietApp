@@ -289,13 +289,9 @@ fun AccountScreen(
         when (val result = authResult) {
             is AuthResult.Success -> {
                 errorMessage = null
-                if (showDeleteConfirmationDialog) {
-                    authViewModel.signOut()
-                    navController.navigate(NavRoutes.LANDING) {
-                        popUpTo(NavRoutes.HOME) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
+                // --- FIX: REMOVED NAVIGATION LOGIC ---
+                // The MainActivity listener will handle navigation.
+                // We just reset the auth result.
                 authViewModel.resetAuthResult()
             }
 
@@ -501,10 +497,8 @@ fun AccountScreen(
             onConfirm = {
                 showSignOutDialog = false
                 authViewModel.signOut()
-                navController.navigate(NavRoutes.LANDING) {
-                    popUpTo(NavRoutes.HOME) { inclusive = true }
-                    launchSingleTop = true
-                }
+                // --- FIX: REMOVED NAVIGATION LOGIC ---
+                // MainActivity's listener will handle this
             }
         )
     }

@@ -23,6 +23,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect // <-- IMPORT ADDED
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -105,7 +106,25 @@ class MainActivity : ComponentActivity() {
 
             val useDarkTheme = isDarkModeEnabled || isSystemInDarkTheme()
 
+            // --- FIX 1: Read the currentUser state directly ---
+            val currentUser = authViewModel.currentUser
+
             DietAppTheme(darkTheme = useDarkTheme) {
+                // --- FIX 2: Add a LaunchedEffect to react to auth changes ---
+                LaunchedEffect(currentUser, isLoadingProfile) {
+                    if (!isLoadingProfile) { // Only navigate if we're not in the initial loading phase
+                        if (currentUser == null) {
+                            // User signed out or was deleted, force navigate to LANDING
+                            navController.navigate(NavRoutes.LANDING) {
+                                popUpTo(navController.graph.id) { // Pop the entire back stack
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                }
+
                 val startDestination = if (authViewModel.isUserSignedIn()) {
                     NavRoutes.HOME
                 } else {
@@ -139,7 +158,7 @@ class MainActivity : ComponentActivity() {
                                                 selectedRoute == NavRoutes.STATISTICS ||
                                                 selectedRoute == NavRoutes.THREADS ||
                                                 selectedRoute == NavRoutes.ACCOUNT
-                                    )) {
+                                        )) {
                                 NavigationBar(
                                     containerColor = Color(0xFF4CAF50),
                                     contentColor = Color.White.copy(alpha = 0.9f)
