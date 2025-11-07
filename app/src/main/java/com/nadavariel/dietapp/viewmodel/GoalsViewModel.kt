@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.nadavariel.dietapp.model.DietPlan // <-- This now imports your NEW model structure
+import com.nadavariel.dietapp.model.DietPlan
 
 class GoalsViewModel : ViewModel() {
 
@@ -31,25 +31,26 @@ class GoalsViewModel : ViewModel() {
     private val _hasAiGeneratedGoals = MutableStateFlow(false)
     val hasAiGeneratedGoals = _hasAiGeneratedGoals.asStateFlow()
 
+    // --- NEW LOADING STATE ---
+    private val _isLoadingPlan = MutableStateFlow(true)
+    val isLoadingPlan = _isLoadingPlan.asStateFlow()
+
     init {
         fetchDietPlan()
         fetchUserGoals()
         fetchUserProfile()
     }
 
-    // ---
-    // --- !!! THIS FUNCTION IS UPDATED !!! ---
-    // ---
     private fun fetchDietPlan() {
         val userId = auth.currentUser?.uid ?: return
         viewModelScope.launch {
+            _isLoadingPlan.value = true // Start loading
             try {
                 val snapshot = firestore.collection("users").document(userId)
                     .collection("diet_plans").document("current_plan")
                     .get().await()
 
                 if (snapshot.exists()) {
-                    // THE FIX: Use .toObject() to parse the entire nested structure automatically
                     val plan = snapshot.toObject(DietPlan::class.java)
                     _currentDietPlan.value = plan
                     Log.d("GoalsViewModel", "Successfully fetched new diet plan structure.")
@@ -60,6 +61,8 @@ class GoalsViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("GoalsViewModel", "Error fetching diet plan", e)
                 _currentDietPlan.value = null
+            } finally {
+                _isLoadingPlan.value = false // Stop loading
             }
         }
     }
@@ -71,11 +74,10 @@ class GoalsViewModel : ViewModel() {
             return
         }
 
-        // Added "Target Weight" goal with a unique ID
         val allGoals = listOf(
             Goal(id = "calories", text = "How many calories a day is your target?"),
             Goal(id = "protein", text = "How many grams of protein a day is your target?"),
-            Goal(id = "target_weight", text = "What is your target weight (in kg)?") // Added new goal
+            Goal(id = "target_weight", text = "What is your target weight (in kg)?")
         )
 
         firestore.collection("users").document(userId)
@@ -95,7 +97,6 @@ class GoalsViewModel : ViewModel() {
                         it["question"] to it["answer"]
                     } ?: emptyMap()
 
-                    // Ensure all defined goals are present, merged with saved answers
                     val mergedGoals = allGoals.map { goal ->
                         goal.copy(value = userAnswers[goal.text])
                     }
@@ -104,7 +105,6 @@ class GoalsViewModel : ViewModel() {
                     _hasAiGeneratedGoals.value = aiGenerated
                     Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items, AI-generated: $aiGenerated")
                 } else {
-                    // If no saved data, ensure all base goals are shown
                     _goals.value = allGoals
                     _hasAiGeneratedGoals.value = false
                     Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
@@ -144,7 +144,6 @@ class GoalsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Ensure we save using the current state of goals
                 val userAnswersToSave = _goals.value.map { goal ->
                     mapOf("question" to goal.text, "answer" to (goal.value ?: ""))
                 }

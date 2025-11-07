@@ -418,32 +418,38 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         if (user != null) {
             val userId = user.uid
             _authResult.value = AuthResult.Loading
-            user.delete()
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        viewModelScope.launch {
-                            try {
-                                firestore.collection("users").document(userId).delete().await()
-                                preferencesRepository.clearUserPreferences()
-                                _authResult.value = AuthResult.Success
-                                onSuccess()
-                            } catch (e: Exception) {
-                                val firestoreError = "Account deleted, but failed to delete associated data: ${e.message}"
-                                _authResult.value = AuthResult.Error(firestoreError)
-                                onError(firestoreError)
-                            }
-                        }
-                    } else {
-                        val errorMessage = task.exception?.message ?: "Failed to delete account."
-                        _authResult.value = AuthResult.Error(errorMessage)
 
-                        if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
-                            onError("re-authenticate-required")
-                        } else {
-                            onError(errorMessage)
-                        }
+            viewModelScope.launch {
+                try {
+                    // 1. DELETE FIRESTORE DATA FIRST (while user is still authenticated)
+                    // Note: This won't delete sub-collections.
+                    firestore.collection("users").document(userId).delete().await()
+                    Log.d("AuthViewModel", "Successfully deleted user data from Firestore.")
+
+                    // 2. NOW DELETE THE AUTH USER
+                    user.delete().await()
+                    Log.d("AuthViewModel", "Successfully deleted user from Firebase Auth.")
+
+                    // 3. Clean up local preferences
+                    preferencesRepository.clearUserPreferences()
+                    _authResult.value = AuthResult.Success
+                    onSuccess() // AuthStateListener will handle resetting the user profile
+
+                } catch (e: Exception) {
+                    val errorMessage = e.message ?: "Failed to delete account."
+                    Log.e("AuthViewModel", "Error deleting account: $errorMessage", e)
+                    _authResult.value = AuthResult.Error(errorMessage)
+
+                    if (e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                        onError("re-authenticate-required")
+                    } else if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                        // This error might still happen if your rules are very strict
+                        onError("Permission denied. Could not delete user data.")
+                    } else {
+                        onError(errorMessage)
                     }
                 }
+            }
         } else {
             val noUserError = "No user is currently signed in to delete."
             _authResult.value = AuthResult.Error(noUserError)

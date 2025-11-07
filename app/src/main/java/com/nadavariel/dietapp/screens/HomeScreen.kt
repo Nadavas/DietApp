@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,7 +60,6 @@ import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -70,7 +70,7 @@ private val CardBackground = Color.White
 private val TextPrimary = Color(0xFF1A1A1A)
 private val TextSecondary = Color(0xFF6B7280)
 private val BackgroundGradient = listOf(Color.White, Color(0xFFF7F9FC))
-private val PageBackgroundColor = Color(0xFFF7F9FC) // Solid color for blending
+private val PageBackgroundColor = Color(0xFFF7F9FC)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -87,6 +87,10 @@ fun HomeScreen(
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
     val goals by goalViewModel.goals.collectAsState()
+
+    // --- FIX 1: Collect the loading and diet plan states ---
+    val dietPlan by goalViewModel.currentDietPlan.collectAsStateWithLifecycle()
+    val isLoadingPlan by goalViewModel.isLoadingPlan.collectAsStateWithLifecycle()
 
     val weightHistory by foodLogViewModel.weightHistory.collectAsState()
     val targetWeight by foodLogViewModel.targetWeight.collectAsState()
@@ -107,6 +111,7 @@ fun HomeScreen(
         goals.firstOrNull()?.value?.toIntOrNull() ?: 2000
     }
 
+    // (This val is no longer used for the alert, but is safe to keep)
     val missingGoals = remember(goals) {
         goals.filter { goal ->
             goal.value.isNullOrBlank() || goal.value == "0"
@@ -215,14 +220,53 @@ fun HomeScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (missingGoals.isNotEmpty()) {
+
+                // --- FIX 2: Alert logic is now based on loading state and diet plan ---
+                if (!isLoadingPlan && dietPlan == null) {
                     item {
-                        MissingGoalsWarning(
-                            missingGoals = missingGoals,
-                            onSetGoalsClick = { navController.navigate(NavRoutes.GOALS) }
-                        )
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate(NavRoutes.QUESTIONS) }, // Navigate to Questions
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Warning",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Answer the Questionnaire",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        text = "Complete the questionnaire to get your personalized diet plan.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Text(
+                                    text = "START",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
                 }
+                // --- END OF CHANGE ---
 
                 item {
                     CompactWeightDateRow(
@@ -291,8 +335,6 @@ fun HomeScreen(
                         stickyHeader {
                             MealSectionHeader(
                                 section,
-                                // FIX: Apply a solid background color that matches the page's
-                                // gradient, instead of applying a *new* gradient which causes the boxy look.
                                 Modifier.background(
                                     PageBackgroundColor
                                 )
@@ -402,7 +444,6 @@ private fun CompactWeightDateRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Weight Section (Left side)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -476,7 +517,6 @@ private fun CompactWeightDateRow(
                 }
             }
 
-            // Divider
             Box(
                 modifier = Modifier
                     .width(1.dp)
@@ -484,7 +524,6 @@ private fun CompactWeightDateRow(
                     .background(Color(0xFFE0E0E0))
             )
 
-            // *** MODIFIED: Right side now has header + graph ***
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -492,7 +531,6 @@ private fun CompactWeightDateRow(
                     .clickable(onClick = onGraphClick),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 1. Added Header
                 Text(
                     text = "Click graph to view progress",
                     style = MaterialTheme.typography.labelSmall,
@@ -502,13 +540,12 @@ private fun CompactWeightDateRow(
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
 
-                // 2. Graph (with placeholder)
                 if (history.isEmpty() && startingWeight <= 0) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier
-                            .height(60.dp) // Match graph height
+                            .height(60.dp)
                     ) {
                         Text(
                             "Log weight",
@@ -522,14 +559,13 @@ private fun CompactWeightDateRow(
                         )
                     }
                 } else {
-                    // 3. Pass targetWeight to mini graph
                     MiniWeightLineChart(
                         startingWeight = startingWeight,
-                        targetWeight = targetWeight, // Pass target
+                        targetWeight = targetWeight,
                         history = history,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp) // Fixed height
+                            .height(60.dp)
                             .padding(end = 8.dp)
                     )
                 }
@@ -538,7 +574,6 @@ private fun CompactWeightDateRow(
     }
 }
 
-// *** MODIFIED: Mini graph now has axes and target line ***
 @Composable
 fun MiniWeightLineChart(
     startingWeight: Float,
@@ -552,19 +587,18 @@ fun MiniWeightLineChart(
     val targetColor = Color(0xFF4CAF50)
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
 
-    // Setup paint for axis labels
     val textPaint = remember(density) {
         Paint().apply {
             color = grayColor.toArgb()
             textAlign = Paint.Align.LEFT
-            textSize = with(density) { 10.sp.toPx() } // Small text
+            textSize = with(density) { 10.sp.toPx() }
         }
     }
     val xTextPaint = remember(density) {
         Paint().apply {
             color = grayColor.toArgb()
             textAlign = Paint.Align.CENTER
-            textSize = with(density) { 10.sp.toPx() } // Small text
+            textSize = with(density) { 10.sp.toPx() }
         }
     }
 
@@ -580,14 +614,13 @@ fun MiniWeightLineChart(
         val minWeight = allWeights.minOrNull() ?: 0f
         val maxWeight = allWeights.maxOrNull() ?: 0f
 
-        val verticalPadding = (maxWeight - minWeight) * 0.15f // A bit more padding
+        val verticalPadding = (maxWeight - minWeight) * 0.15f
         val yMin = (minWeight - verticalPadding).coerceAtLeast(0f)
         val yMax = (maxWeight + verticalPadding).coerceAtLeast(yMin + 1f)
         val weightRange = (yMax - yMin)
 
-        // Define padding for axes
-        val yAxisPadding = with(density) { 20.dp.toPx() } // Space for Y labels
-        val xAxisPadding = with(density) { 12.dp.toPx() } // Space for X labels
+        val yAxisPadding = with(density) { 20.dp.toPx() }
+        val xAxisPadding = with(density) { 12.dp.toPx() }
         val graphWidth = size.width - yAxisPadding
         val graphHeight = size.height - xAxisPadding
 
@@ -602,15 +635,13 @@ fun MiniWeightLineChart(
             return yAxisPadding + (index * xSpacing)
         }
 
-        // --- Draw Axes and Labels ---
         val yMinLabel = String.format("%.0f", yMin)
         val yMaxLabel = String.format("%.0f", yMax)
 
-        // Y-Axis Labels
         drawContext.canvas.nativeCanvas.drawText(
             yMaxLabel,
-            yAxisPadding - with(density) { 4.dp.toPx() }, // Position left of padding
-            getY(yMax) + with(density) { 3.dp.toPx() }, // Align with line
+            yAxisPadding - with(density) { 4.dp.toPx() },
+            getY(yMax) + with(density) { 3.dp.toPx() },
             textPaint
         )
         drawContext.canvas.nativeCanvas.drawText(
@@ -620,11 +651,10 @@ fun MiniWeightLineChart(
             textPaint
         )
 
-        // X-Axis Labels
         drawContext.canvas.nativeCanvas.drawText(
             "Start",
             getX(0),
-            size.height - with(density) { 2.dp.toPx() }, // Position below graph
+            size.height - with(density) { 2.dp.toPx() },
             xTextPaint
         )
         if (allPoints.size > 1) {
@@ -636,7 +666,6 @@ fun MiniWeightLineChart(
             )
         }
 
-        // Draw Target Line
         if (targetWeight > 0) {
             val targetY = getY(targetWeight)
             drawLine(
@@ -648,7 +677,6 @@ fun MiniWeightLineChart(
             )
         }
 
-        // --- Draw Weight Line Path ---
         val points = allPoints.mapIndexed { index, weight ->
             Offset(getX(index), getY(weight))
         }
@@ -777,6 +805,7 @@ private fun WeightProgressDialogContent(
 
             if (history.isNotEmpty() && history.last().timestamp != null) {
                 val lastDate = history.last().timestamp!!.toDate()
+                // --- FIX 1: Corrected 'yyyY' to 'yyyy' ---
                 val formattedDate = remember(lastDate) {
                     SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(lastDate)
                 }
@@ -800,7 +829,6 @@ private fun WeightProgressDialogContent(
         }
     }
 }
-
 
 @Composable
 fun WeightStat(label: String, weight: Float, isMain: Boolean = false) {
