@@ -1,7 +1,6 @@
 package com.nadavariel.dietapp.ui.home
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,30 +18,35 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.util.AvatarConstants
 
-// Note: glassmorphism modifier is removed.
+// Design tokens
+private val TextPrimary = Color(0xFF1A1A1A)
+private val TextSecondary = Color(0xFF6B7280)
+private val PrimaryGreen = Color(0xFF00C853)
+private val WarmOrange = Color(0xFFFF6E40)
 
 @Composable
 fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 4.dp, end = 4.dp), // Adjusted padding for TopAppBar
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
             Text(
                 text = "Welcome back,",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Gray
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                fontSize = 14.sp
             )
             Text(
                 text = userName.ifBlank { "User" },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = TextPrimary,
+                fontSize = 24.sp
             )
         }
         Image(
@@ -50,9 +54,9 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             contentDescription = "User Avatar",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(48.dp)
+                .size(52.dp)
                 .clip(CircleShape)
-                .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
+                .border(3.dp, PrimaryGreen.copy(alpha = 0.3f), CircleShape)
                 .clickable(onClick = onAvatarClick)
         )
     }
@@ -61,43 +65,53 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
 @Composable
 fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit) {
     val missingListText = missingGoals.joinToString(" and ")
-    val message = "Your $missingListText goal${if (missingGoals.size > 1) "s are" else " is"} missing."
+    val message = "Set your $missingListText goal${if (missingGoals.size > 1) "s" else ""} to track your progress"
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = WarmOrange.copy(alpha = 0.1f)
+        ),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSetGoalsClick() }
+            .clickable { onSetGoalsClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = "Warning",
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.size(28.dp)
+                tint = WarmOrange,
+                modifier = Modifier.size(32.dp)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "Set Your Goals!",
+                    text = "Set Your Goals",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    color = TextPrimary
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    color = TextSecondary,
+                    lineHeight = 20.sp
                 )
             }
+            Spacer(modifier = Modifier.width(8.dp))
             TextButton(onClick = onSetGoalsClick) {
-                Text("SET", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                Text(
+                    "SET",
+                    fontWeight = FontWeight.Bold,
+                    color = WarmOrange
+                )
             }
         }
     }
