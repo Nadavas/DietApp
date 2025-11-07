@@ -50,7 +50,8 @@ class QuestionsViewModel : ViewModel() {
         const val HEIGHT_QUESTION = "What is your height?"
         const val STARTING_WEIGHT_QUESTION = "What is your weight?"
         const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight or body composition goal in mind?"
-        const val TARGET_WEIGHT_GOAL_TEXT = "What is your target weight (in kg)?"
+        // --- FIX: This constant was causing the bug and has been removed ---
+        // const val TARGET_WEIGHT_GOAL_TEXT = "What is your target weight (in kg)?"
     }
 
     private val dobFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
@@ -179,7 +180,12 @@ class QuestionsViewModel : ViewModel() {
             } else { mutableListOf() }
             val aiGenerated = snapshot.getBoolean("aiGenerated") == true
 
-            val targetWeightQuestionTextForGoal = TARGET_WEIGHT_GOAL_TEXT
+            // --- THIS IS THE FIX ---
+            // It now uses the correct constant, so it saves the answer
+            // with the same question key that FoodLogViewModel is listening for.
+            val targetWeightQuestionTextForGoal = TARGET_WEIGHT_QUESTION_GOAL
+            // --- END OF FIX ---
+
             val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
 
             if (targetWeightIndex != -1) {

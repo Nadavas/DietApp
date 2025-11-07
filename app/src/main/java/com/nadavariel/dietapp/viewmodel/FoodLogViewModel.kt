@@ -372,12 +372,13 @@ class FoodLogViewModel : ViewModel() {
             }
     }
 
+    // --- FIX: This function has been updated to match the question in QuestionsScreen.kt ---
     private fun listenForTargetWeight() {
         targetWeightListener?.remove()
         val userId = auth.currentUser?.uid ?: return
 
         targetWeightListener = firestore.collection("users").document(userId)
-            .collection("user_answers").document("goals")
+            .collection("user_answers").document("goals") // <-- This path is correct
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e("FoodLogViewModel", "Error listening to target weight", e)
@@ -388,16 +389,20 @@ class FoodLogViewModel : ViewModel() {
                 if (snapshot != null && snapshot.exists()) {
                     @Suppress("UNCHECKED_CAST")
                     val answersMap = snapshot.get("answers") as? List<Map<String, String>>
+
+                    // --- THE FIX IS HERE ---
                     val targetWeightAnswer = answersMap?.firstOrNull {
-                        it["question"] == "What is your target weight (in kg)?"
+                        it["question"] == "Do you have a target weight or body composition goal in mind?" // <-- This now matches QuestionsScreen.kt
                     }?.get("answer")
 
-                    _targetWeight.value = targetWeightAnswer?.toFloatOrNull() ?: 0f
+                    // Parse the answer string (e.g., "70.5 kg") to get the float
+                    _targetWeight.value = targetWeightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull() ?: 0f
                 } else {
                     _targetWeight.value = 0f
                 }
             }
     }
+    // --- END OF FIX ---
 
     fun addWeightEntry(weight: Float, date: Calendar) {
         val userId = auth.currentUser?.uid ?: return
@@ -711,6 +716,7 @@ class FoodLogViewModel : ViewModel() {
                     _geminiResult.value = if (parsedList.isNotEmpty()) {
                         GeminiResult.Success(parsedList)
                     } else {
+                        // --- TYPO FIX HERE ---
                         GeminiResult.Error("No food information found.")
                     }
                 } else {
