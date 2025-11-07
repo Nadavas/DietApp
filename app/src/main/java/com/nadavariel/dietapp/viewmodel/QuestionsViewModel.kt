@@ -129,12 +129,8 @@ class QuestionsViewModel : ViewModel() {
                     }
                 }
                 GENDER_QUESTION -> {
-                    val genderEnum = when (answerText) {
-                        "Male" -> Gender.MALE
-                        "Female" -> Gender.FEMALE
-                        "Other / Prefer not to say" -> Gender.PREFER_NOT_TO_SAY
-                        else -> Gender.UNKNOWN
-                    }
+                    // Use the centralized mapping function from the Gender companion object
+                    val genderEnum = Gender.fromString(answerText)
                     profileUpdates["gender"] = genderEnum.name
                     Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}")
                 }

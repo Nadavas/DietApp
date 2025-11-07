@@ -17,12 +17,26 @@ data class UserProfile(
     val gender: Gender = Gender.UNKNOWN
 )
 
+// --- Gender ---
 enum class Gender(val displayName: String) {
     MALE("Male"),
     FEMALE("Female"),
-    NON_BINARY("Non-binary"),
     PREFER_NOT_TO_SAY("Prefer not to say"),
-    UNKNOWN("Not Set")
+    UNKNOWN("Not Set"); // Removed NON_BINARY
+
+    companion object {
+        /**
+         * Parses a string answer from the questionnaire into a Gender enum.
+         */
+        fun fromString(answerText: String): Gender {
+            return when (answerText) {
+                "Male" -> MALE
+                "Female" -> FEMALE
+                "Other / Prefer not to say" -> PREFER_NOT_TO_SAY
+                else -> UNKNOWN
+            }
+        }
+    }
 }
 
 // --- WeightEntry ---
