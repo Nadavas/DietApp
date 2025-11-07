@@ -40,13 +40,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 
-// Design tokens
-private val PrimaryGreen = Color(0xFF00C853)
-private val CardBackground = Color.White
-private val TextPrimary = Color(0xFF1A1A1A)
-private val TextSecondary = Color(0xFF6B7280)
-private val DividerColor = Color(0xFFE5E7EB)
-
 @Composable
 fun CalorieSummaryCard(totalCalories: Int, goalCalories: Int) {
     val remaining = max(0, goalCalories - totalCalories)

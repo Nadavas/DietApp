@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -21,16 +22,47 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.util.AvatarConstants
 
-// Design tokens
-private val TextPrimary = Color(0xFF1A1A1A)
-private val TextSecondary = Color(0xFF6B7280)
-private val PrimaryGreen = Color(0xFF00C853)
-private val WarmOrange = Color(0xFFFF6E40)
+@Composable
+fun ModernHomeHeader(
+    userName: String,
+    avatarId: String?,
+    onAvatarClick: () -> Unit,
+    onNotificationsClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            HeaderSection(
+                userName = userName,
+                avatarId = avatarId,
+                onAvatarClick = onAvatarClick
+            )
+            IconButton(onClick = onNotificationsClick) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = "Notifications",
+                    tint = TextPrimary
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        // Note: This was fillMaxWidth(), but ModernHomeHeader's Row is now responsible for spacing.
+        // Kept it as is, but this modifier might not be necessary if it's always used inside ModernHomeHeader
+        // modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -49,6 +81,7 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
                 fontSize = 24.sp
             )
         }
+        Spacer(Modifier.width(16.dp)) // Add spacer for cases where column doesn't fill width
         Image(
             painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
             contentDescription = "User Avatar",

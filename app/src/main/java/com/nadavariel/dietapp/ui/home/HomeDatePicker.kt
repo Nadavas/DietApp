@@ -26,12 +26,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-// Design tokens
-private val PrimaryGreen = Color(0xFF00C853)
-private val CardBackground = Color.White
-private val TextPrimary = Color(0xFF1A1A1A)
-private val TextSecondary = Color(0xFF6B7280)
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DatePickerSection(
