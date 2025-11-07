@@ -41,31 +41,40 @@ class GoalsViewModel : ViewModel() {
         fetchUserProfile()
     }
 
+    // --- FIX: Changed from .get() to addSnapshotListener ---
     private fun fetchDietPlan() {
-        val userId = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
-            _isLoadingPlan.value = true // Start loading
-            try {
-                val snapshot = firestore.collection("users").document(userId)
-                    .collection("diet_plans").document("current_plan")
-                    .get().await()
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.e("GoalsViewModel", "Cannot fetch diet plan: User not logged in.")
+            _isLoadingPlan.value = false // Stop loading if user is not logged in
+            return
+        }
 
-                if (snapshot.exists()) {
+        _isLoadingPlan.value = true // Start loading
+
+        firestore.collection("users").document(userId)
+            .collection("diet_plans").document("current_plan")
+            .addSnapshotListener { snapshot, e ->
+                // Stop loading as soon as we get a response (or error)
+                _isLoadingPlan.value = false
+
+                if (e != null) {
+                    Log.e("GoalsViewModel", "Error listening to diet plan", e)
+                    _currentDietPlan.value = null
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
                     val plan = snapshot.toObject(DietPlan::class.java)
                     _currentDietPlan.value = plan
-                    Log.d("GoalsViewModel", "Successfully fetched new diet plan structure.")
+                    Log.d("GoalsViewModel", "Live diet plan updated.")
                 } else {
                     Log.d("GoalsViewModel", "No diet plan document found.")
                     _currentDietPlan.value = null
                 }
-            } catch (e: Exception) {
-                Log.e("GoalsViewModel", "Error fetching diet plan", e)
-                _currentDietPlan.value = null
-            } finally {
-                _isLoadingPlan.value = false // Stop loading
             }
-        }
     }
+    // --- END OF FIX ---
 
     private fun fetchUserGoals() {
         val userId = auth.currentUser?.uid
