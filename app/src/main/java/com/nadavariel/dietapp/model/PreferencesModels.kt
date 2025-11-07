@@ -22,8 +22,9 @@ data class NotificationPreference(
     val hour: Int = 12,
     val minute: Int = 0,
     val repetition: String = "DAILY",
-    val message: String = "Time to log your meal!",
-    val isEnabled: Boolean = true
+    val message: String = "",
+    val isEnabled: Boolean = true,
+    val type: String = "MEAL" // NEW: "MEAL" or "WEIGHT"
 ) {
     val uniqueId: Int
         get() = id.hashCode()

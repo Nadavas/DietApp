@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.NotificationPreference
@@ -37,12 +38,7 @@ fun NotificationScreen(
     navController: NavController,
     notificationViewModel: NotificationViewModel = viewModel()
 ) {
-    // 0 = Meals, 1 = Weight
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Meal Reminders", "Weight Reminders")
-
-    val mealNotifications by notificationViewModel.mealNotifications.collectAsState()
-    val weightNotifications by notificationViewModel.weightNotifications.collectAsState()
+    val allNotifications by notificationViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
 
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
@@ -77,7 +73,7 @@ fun NotificationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reminders") },
+                title = { Text("All Reminders") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -90,7 +86,7 @@ fun NotificationScreen(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    selectedPreference = null // Ensure it's a new reminder
+                    selectedPreference = null
                     showAddDialog = true
                 }
             }) {
@@ -103,17 +99,6 @@ fun NotificationScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Tab Row
-            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(text = title) }
-                    )
-                }
-            }
-
             if (!hasNotificationPermission) {
                 Card(
                     modifier = Modifier
@@ -131,36 +116,35 @@ fun NotificationScreen(
                 }
             }
 
-            // Show content based on selected tab
-            when (selectedTabIndex) {
-                // --- Meal Reminders ---
-                0 -> NotificationList(
-                    notifications = mealNotifications,
-                    onToggle = { pref, enabled ->
-                        notificationViewModel.toggleMealNotification(pref, enabled)
-                    },
-                    onEdit = { pref ->
-                        selectedPreference = pref
-                        showAddDialog = true
-                    },
-                    onDelete = { pref ->
-                        notificationViewModel.deleteMealNotification(pref)
+            if (allNotifications.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No reminders set yet. Tap '+' to add one.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allNotifications, key = { it.id }) { pref ->
+                        NotificationItem(
+                            preference = pref,
+                            onToggle = { enabled ->
+                                notificationViewModel.toggleNotification(pref, enabled)
+                            },
+                            onEdit = {
+                                selectedPreference = pref
+                                showAddDialog = true
+                            },
+                            onDelete = {
+                                notificationViewModel.deleteNotification(pref)
+                            }
+                        )
                     }
-                )
-                // --- Weight Reminders ---
-                1 -> NotificationList(
-                    notifications = weightNotifications,
-                    onToggle = { pref, enabled ->
-                        notificationViewModel.toggleWeightNotification(pref, enabled)
-                    },
-                    onEdit = { pref ->
-                        selectedPreference = pref
-                        showAddDialog = true
-                    },
-                    onDelete = { pref ->
-                        notificationViewModel.deleteWeightNotification(pref)
-                    }
-                )
+                }
             }
         }
     }
@@ -169,42 +153,8 @@ fun NotificationScreen(
         AddEditNotificationDialog(
             viewModel = notificationViewModel,
             preferenceToEdit = selectedPreference,
-            isMealReminder = (selectedTabIndex == 0), // Pass the type
             onDismiss = { showAddDialog = false; selectedPreference = null }
         )
-    }
-}
-
-// Reusable composable for the list
-@Composable
-fun NotificationList(
-    notifications: List<NotificationPreference>,
-    onToggle: (NotificationPreference, Boolean) -> Unit,
-    onEdit: (NotificationPreference) -> Unit,
-    onDelete: (NotificationPreference) -> Unit
-) {
-    if (notifications.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("No reminders set yet. Tap '+' to add one.")
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(notifications, key = { it.id }) { pref ->
-                NotificationItem(
-                    preference = pref,
-                    onToggle = { enabled -> onToggle(pref, enabled) },
-                    onEdit = { onEdit(pref) },
-                    onDelete = { onDelete(pref) }
-                )
-            }
-        }
     }
 }
 
@@ -218,18 +168,27 @@ fun NotificationItem(
     val repetitionText = if (preference.repetition == "DAILY") "Every Day" else "One Time"
     val timeText = String.format("%02d:%02d", preference.hour, preference.minute)
 
+    // Updated: Use a more descriptive type text
+    val typeText = if (preference.type == "WEIGHT") "Weight Reminder" else "Meal Reminder"
+
     ListItem(
         headlineContent = { Text(timeText, style = MaterialTheme.typography.headlineSmall) },
-        supportingContent = { Text(preference.message) },
+        // UPDATED: Supporting content is now the type
+        supportingContent = { Text(typeText) },
         leadingContent = {
             Icon(Icons.Default.NotificationsActive, contentDescription = "Reminder Icon")
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(repetitionText, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(end = 8.dp))
+                // UPDATED: Only show repetition text
+                Text(
+                    text = repetitionText,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
                 Switch(checked = preference.isEnabled, onCheckedChange = onToggle)
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
+                    Icon(Icons.Default.Delete, "Delete Reminder", tint = MaterialTheme.colorScheme.error)
                 }
             }
         },
@@ -244,27 +203,29 @@ fun NotificationItem(
 fun AddEditNotificationDialog(
     viewModel: NotificationViewModel,
     preferenceToEdit: NotificationPreference?,
-    isMealReminder: Boolean,
     onDismiss: () -> Unit
 ) {
     val isEdit = preferenceToEdit != null
-    val defaultMessage = if (isMealReminder) "Time to log your next meal!" else "Time to log your weight!"
 
-    val initialHour = if (isEdit) {
-        preferenceToEdit!!.hour
-    } else {
-        Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    }
-    val initialMinute = if (isEdit) {
-        preferenceToEdit!!.minute
-    } else {
-        Calendar.getInstance().get(Calendar.MINUTE)
-    }
+    val defaultMealMessage = "Time to log your next meal!"
+    val defaultWeightMessage = "Time to log your weight!"
+
+    val initialHour = if (isEdit) preferenceToEdit!!.hour else Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val initialMinute = if (isEdit) preferenceToEdit!!.minute else Calendar.getInstance().get(Calendar.MINUTE)
 
     var hour by remember { mutableIntStateOf(initialHour) }
     var minute by remember { mutableIntStateOf(initialMinute) }
     var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") }
-    var message by remember { mutableStateOf(preferenceToEdit?.message ?: defaultMessage) }
+
+    var type by remember { mutableStateOf(preferenceToEdit?.type ?: "MEAL") }
+
+    var message by remember {
+        mutableStateOf(
+            preferenceToEdit?.message ?: defaultMealMessage
+        )
+    }
+
+    // Removed the LaunchedEffect that was here
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -313,6 +274,28 @@ fun AddEditNotificationDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                Text("Type", style = MaterialTheme.typography.labelLarge)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = type == "MEAL",
+                        onClick = {
+                            type = "MEAL"
+                            message = defaultMealMessage // Reverted: Always set message
+                        },
+                        label = { Text("Meal") }
+                    )
+                    FilterChip(
+                        selected = type == "WEIGHT",
+                        onClick = {
+                            type = "WEIGHT"
+                            message = defaultWeightMessage // Reverted: Always set message
+                        },
+                        label = { Text("Weight") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
@@ -330,14 +313,10 @@ fun AddEditNotificationDialog(
                         minute = minute,
                         repetition = repetition,
                         message = message,
-                        isEnabled = true
+                        isEnabled = true,
+                        type = type
                     )
-                    // Save to the correct function based on the tab
-                    if (isMealReminder) {
-                        viewModel.saveMealNotification(finalPref)
-                    } else {
-                        viewModel.saveWeightNotification(finalPref)
-                    }
+                    viewModel.saveNotification(finalPref)
                     onDismiss()
                 }
             ) {

@@ -12,23 +12,22 @@ class NotificationScheduler(private val context: Context) {
     private val TAG = "ALARM_DEBUG"
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    // Updated to accept a generic receiver class
     private fun getPendingIntent(
         preference: NotificationPreference,
         flags: Int,
-        receiverClass: Class<*> // e.g., MealReminderReceiver::class.java
+        receiverClass: Class<*>
     ): PendingIntent {
 
-        // Use the correct receiver class
         val intent = Intent(context, receiverClass).apply {
-            // Use different extras for different receivers to avoid conflicts
-            if (receiverClass == MealReminderReceiver::class.java) {
+            // Check the type to set the correct extras
+            if (preference.type == "WEIGHT") {
+                putExtra(WeightReminderReceiver.WEIGHT_NOTIF_ID_EXTRA, preference.uniqueId)
+                putExtra(WeightReminderReceiver.WEIGHT_MESSAGE_EXTRA, preference.message)
+            } else {
+                // Default to MEAL
                 putExtra(MealReminderReceiver.NOTIFICATION_ID_EXTRA, preference.uniqueId)
                 putExtra(MealReminderReceiver.NOTIFICATION_MESSAGE_EXTRA, preference.message)
                 putExtra(MealReminderReceiver.NOTIFICATION_REPETITION_EXTRA, preference.repetition)
-            } else {
-                putExtra(WeightReminderReceiver.WEIGHT_NOTIF_ID_EXTRA, preference.uniqueId)
-                putExtra(WeightReminderReceiver.WEIGHT_MESSAGE_EXTRA, preference.message)
             }
         }
 
@@ -40,17 +39,11 @@ class NotificationScheduler(private val context: Context) {
         )
     }
 
-    // Overload the old schedule function to default to MealReminderReceiver (keeps old code working)
-    fun schedule(preference: NotificationPreference) {
-        schedule(preference, MealReminderReceiver::class.java)
-    }
+    // This default function is no longer safe as we don't know the type.
+    // All calls should use the specific schedule/cancel methods.
+    // fun schedule(preference: NotificationPreference) { ... }
+    // fun cancel(preference: NotificationPreference) { ... }
 
-    // Overload the old cancel function
-    fun cancel(preference: NotificationPreference) {
-        cancel(preference, MealReminderReceiver::class.java)
-    }
-
-    // New schedule function that accepts the receiver class
     fun schedule(preference: NotificationPreference, receiverClass: Class<*>) {
         if (!preference.isEnabled) {
             Log.d(TAG, "Not scheduling alarm for ID ${preference.uniqueId}: Disabled.")
@@ -82,7 +75,6 @@ class NotificationScheduler(private val context: Context) {
         }
     }
 
-    // New cancel function that accepts the receiver class
     fun cancel(preference: NotificationPreference, receiverClass: Class<*>) {
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val pendingIntent = getPendingIntent(preference, flags, receiverClass)
