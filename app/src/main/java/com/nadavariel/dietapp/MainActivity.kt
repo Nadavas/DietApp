@@ -9,13 +9,9 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -23,7 +19,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect // <-- IMPORT ADDED
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -31,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,7 +96,7 @@ class MainActivity : ComponentActivity() {
             val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory)
 
             val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
-            val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
+            // val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle() // <-- NO LONGER NEEDED HERE
             val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
 
             val useDarkTheme = isDarkModeEnabled || isSystemInDarkTheme()
@@ -248,21 +243,12 @@ class MainActivity : ComponentActivity() {
                                                 restoreState = true
                                             }
                                         },
+                                        // --- THIS IS THE FIX ---
+                                        // The BadgedBox wrapper has been removed
                                         icon = {
-                                            BadgedBox(
-                                                badge = {
-                                                    if (hasMissingProfileDetails) {
-                                                        Badge(
-                                                            Modifier
-                                                                .size(8.dp)
-                                                                .offset(x = 8.dp, y = (-4).dp)
-                                                        ) {}
-                                                    }
-                                                }
-                                            ) {
-                                                Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
-                                            }
+                                            Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
                                         },
+                                        // --- END OF FIX ---
                                         label = { Text("Account") },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = Color.White,

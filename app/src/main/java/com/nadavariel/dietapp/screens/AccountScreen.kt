@@ -13,7 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Notifications // <-- IMPORT ADDED
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -353,7 +353,9 @@ fun AccountScreen(
                     title = "Profile",
                     subtitle = if (hasMissingDetails) "Complete your profile" else "Manage your information",
                     leadingIcon = { Icon(Icons.Filled.Person, "My Profile", modifier = Modifier.size(24.dp)) },
-                    hasNotification = hasMissingDetails,
+                    // --- THIS IS THE FIX ---
+                    hasNotification = false, // <-- Changed from hasMissingDetails
+                    // --- END OF FIX ---
                     onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
             }
@@ -386,7 +388,6 @@ fun AccountScreen(
                 )
             }
 
-            // --- THIS IS THE NEW ROW ---
             item {
                 MenuRow(
                     title = "Notifications",
@@ -395,7 +396,6 @@ fun AccountScreen(
                     onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
                 )
             }
-            // --- END OF NEW ROW ---
 
             item {
                 MenuRow(
