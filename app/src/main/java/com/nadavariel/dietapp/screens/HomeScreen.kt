@@ -33,7 +33,6 @@ import com.nadavariel.dietapp.ui.home.*
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -72,19 +71,6 @@ fun HomeScreen(
     }
     val goalCalories = remember(goals) {
         goals.firstOrNull()?.value?.toIntOrNull() ?: 2000
-    }
-
-    // (This val is no longer used for the alert, but is safe to keep)
-    val missingGoals = remember(goals) {
-        goals.filter { goal ->
-            goal.value.isNullOrBlank() || goal.value == "0"
-        }.map { goal ->
-            when {
-                goal.text.contains("calorie", ignoreCase = true) -> "Calorie"
-                goal.text.contains("protein", ignoreCase = true) -> "Protein"
-                else -> "Goal"
-            }
-        }.distinct()
     }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -169,8 +155,7 @@ fun HomeScreen(
             ModernHomeHeader(
                 userName = userProfile.name,
                 avatarId = userProfile.avatarId,
-                onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) },
-                onNotificationsClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
+                onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
             )
 
             LazyColumn(

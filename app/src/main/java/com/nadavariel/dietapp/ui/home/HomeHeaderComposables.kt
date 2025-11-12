@@ -5,10 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,7 +23,6 @@ fun ModernHomeHeader(
     userName: String,
     avatarId: String?,
     onAvatarClick: () -> Unit,
-    onNotificationsClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -46,13 +41,6 @@ fun ModernHomeHeader(
                 avatarId = avatarId,
                 onAvatarClick = onAvatarClick
             )
-            IconButton(onClick = onNotificationsClick) {
-                Icon(
-                    Icons.Default.Notifications,
-                    contentDescription = "Notifications",
-                    tint = TextPrimary
-                )
-            }
         }
     }
 }
@@ -92,60 +80,5 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
                 .border(3.dp, PrimaryGreen.copy(alpha = 0.3f), CircleShape)
                 .clickable(onClick = onAvatarClick)
         )
-    }
-}
-
-@Composable
-fun MissingGoalsWarning(missingGoals: List<String>, onSetGoalsClick: () -> Unit) {
-    val missingListText = missingGoals.joinToString(" and ")
-    val message = "Set your $missingListText goal${if (missingGoals.size > 1) "s" else ""} to track your progress"
-
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = WarmOrange.copy(alpha = 0.1f)
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSetGoalsClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Warning",
-                tint = WarmOrange,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "Set Your Goals",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    lineHeight = 20.sp
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            TextButton(onClick = onSetGoalsClick) {
-                Text(
-                    "SET",
-                    fontWeight = FontWeight.Bold,
-                    color = WarmOrange
-                )
-            }
-        }
     }
 }
