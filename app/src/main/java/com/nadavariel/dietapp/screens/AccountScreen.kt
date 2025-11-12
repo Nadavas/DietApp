@@ -276,6 +276,11 @@ fun AccountScreen(
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
+    // --- THIS IS THE FIX ---
+    // We get the userProfile from the ViewModel's state
+    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    // --- END OF FIX ---
+
     // --- State Variables ---
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
@@ -336,9 +341,13 @@ fun AccountScreen(
             // Profile Header Card
             item {
                 AccountHeaderInfo(
-                    name = currentUser?.displayName ?: "User",
+                    // --- THIS IS THE FIX ---
+                    // Use userProfile.name, not currentUser.displayName
+                    name = userProfile.name.ifBlank { "User" },
                     email = currentUser?.email ?: "No email",
-                    avatarId = authViewModel.currentAvatarId,
+                    // Use userProfile.avatarId for consistency
+                    avatarId = userProfile.avatarId,
+                    // --- END OF FIX ---
                     onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
             }

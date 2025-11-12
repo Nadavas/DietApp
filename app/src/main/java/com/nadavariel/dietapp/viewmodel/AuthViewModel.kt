@@ -50,9 +50,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
 
+    // --- STATES FOR SIGN UP ---
+    val nameState = mutableStateOf("")
     val emailState = mutableStateOf("")
     val passwordState = mutableStateOf("")
     val confirmPasswordState = mutableStateOf("")
+    val selectedAvatarId = mutableStateOf<String?>(null)
 
     private val _authResult = MutableStateFlow<AuthResult>(AuthResult.Idle)
     val authResult: StateFlow<AuthResult> = _authResult.asStateFlow()
@@ -196,8 +199,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     }
 
     fun signUp(onSuccess: () -> Unit) {
-        if (emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
-            _authResult.value = AuthResult.Error("Email and passwords cannot be empty.")
+        if (nameState.value.isBlank() || emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
+            _authResult.value = AuthResult.Error("Name, email and passwords cannot be empty.")
             return
         }
         if (passwordState.value != confirmPasswordState.value) {
@@ -209,24 +212,33 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
+
+                    // --- THIS IS THE FIX ---
+                    // Capture the values *before* clearing the state or starting the coroutine
+                    val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
+                    val newAvatarId = selectedAvatarId.value
+                    val emailForPrefs = emailState.value
+                    // --- END OF FIX ---
+
                     viewModelScope.launch {
                         if (rememberMeState.value) {
-                            preferencesRepository.saveUserPreferences(emailState.value, rememberMeState.value)
+                            preferencesRepository.saveUserPreferences(emailForPrefs, rememberMeState.value)
                         } else {
                             preferencesRepository.clearUserPreferences()
                         }
+
                         val newProfile = UserProfile(
-                            name = auth.currentUser?.displayName ?: emailState.value.substringBefore("@"),
-                            startingWeight = 0f, // Changed
+                            name = newName, // Use the captured local variable
+                            startingWeight = 0f,
                             height = 0f,
                             dateOfBirth = null,
-                            avatarId = null,
+                            avatarId = newAvatarId, // Use the captured local variable
                             gender = Gender.UNKNOWN
                         )
                         saveUserProfile(newProfile)
                     }
                     onSuccess()
-                    clearInputFields()
+                    clearInputFields() // This is now safe to call
                 } else {
                     val errorMessage = task.exception?.message ?: "Sign up failed."
                     _authResult.value = AuthResult.Error(errorMessage)
@@ -281,6 +293,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         if (!rememberMeState.value) {
             emailState.value = ""
         }
+        nameState.value = ""
+        selectedAvatarId.value = null
         passwordState.value = ""
         confirmPasswordState.value = ""
     }

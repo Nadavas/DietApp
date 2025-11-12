@@ -5,7 +5,13 @@ package com.nadavariel.dietapp.screens
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,11 +20,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -27,6 +37,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -34,6 +45,7 @@ import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.R
+import com.nadavariel.dietapp.util.AvatarConstants
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,10 +58,14 @@ fun SignUpScreen(
 ) {
     val context = LocalContext.current
     // Get state from viewmodel
+    val name by authViewModel.nameState
     val email by authViewModel.emailState
     val password by authViewModel.passwordState
     val confirmPassword by authViewModel.confirmPasswordState
+    val selectedAvatarId by authViewModel.selectedAvatarId
     val authResult by authViewModel.authResult.collectAsState()
+
+    var showAvatarDialog by remember { mutableStateOf(false) }
 
     // Snackbar message
     val scope = rememberCoroutineScope()
@@ -77,7 +93,7 @@ fun SignUpScreen(
                 scope.launch {
                     snackbarHostState.showSnackbar("Google Sign-In failed: ${e.localizedMessage}")
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 scope.launch {
                     snackbarHostState.showSnackbar("An unexpected error occurred during Google Sign-In.")
                 }
@@ -149,6 +165,37 @@ fun SignUpScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("Create Account", fontSize = 28.sp, modifier = Modifier.padding(bottom = 24.dp))
+
+            // --- AVATAR PICKER ---
+            Image(
+                painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
+                contentDescription = "User Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                // --- FIX: Clickable removed from here to avoid redundancy ---
+            )
+
+            // --- FIX: Added TextButton for clarity ---
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = { showAvatarDialog = true }) {
+                Text("Choose Avatar")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            // --- END OF FIX ---
+
+
+            // --- NAME FIELD ---
+            OutlinedTextField(
+                value = name,
+                onValueChange = { authViewModel.nameState.value = it },
+                label = { Text("Name") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                singleLine = true
+            )
 
             // Email, password and confirm password
             OutlinedTextField(
@@ -247,6 +294,61 @@ fun SignUpScreen(
                     text = "Continue with Google",
                     fontSize = 18.sp
                 )
+            }
+        }
+    }
+
+    // --- AVATAR DIALOG (Copied from UpdateProfileScreen) ---
+    if (showAvatarDialog) {
+        Dialog(onDismissRequest = { showAvatarDialog = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Select an Avatar",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
+                            Image(
+                                painter = painterResource(id = drawableResId),
+                                contentDescription = "Avatar $avatarId",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        authViewModel.selectedAvatarId.value = avatarId // <-- Update ViewModel
+                                        showAvatarDialog = false
+                                    }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TextButton(onClick = { showAvatarDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
             }
         }
     }
