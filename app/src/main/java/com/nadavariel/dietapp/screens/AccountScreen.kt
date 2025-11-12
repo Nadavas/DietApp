@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications // <-- IMPORT ADDED
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -276,10 +277,7 @@ fun AccountScreen(
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
 
-    // --- THIS IS THE FIX ---
-    // We get the userProfile from the ViewModel's state
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
-    // --- END OF FIX ---
 
     // --- State Variables ---
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
@@ -293,9 +291,6 @@ fun AccountScreen(
         when (val result = authResult) {
             is AuthResult.Success -> {
                 errorMessage = null
-                // --- FIX: REMOVED NAVIGATION LOGIC ---
-                // The MainActivity listener will handle navigation.
-                // We just reset the auth result.
                 authViewModel.resetAuthResult()
             }
 
@@ -341,13 +336,9 @@ fun AccountScreen(
             // Profile Header Card
             item {
                 AccountHeaderInfo(
-                    // --- THIS IS THE FIX ---
-                    // Use userProfile.name, not currentUser.displayName
                     name = userProfile.name.ifBlank { "User" },
                     email = currentUser?.email ?: "No email",
-                    // Use userProfile.avatarId for consistency
                     avatarId = userProfile.avatarId,
-                    // --- END OF FIX ---
                     onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
             }
@@ -394,6 +385,17 @@ fun AccountScreen(
                     onClick = { navController.navigate(NavRoutes.GOALS) }
                 )
             }
+
+            // --- THIS IS THE NEW ROW ---
+            item {
+                MenuRow(
+                    title = "Notifications",
+                    subtitle = "Meal reminder notifications",
+                    leadingIcon = { Icon(Icons.Filled.Notifications, "Notifications", modifier = Modifier.size(24.dp)) },
+                    onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
+                )
+            }
+            // --- END OF NEW ROW ---
 
             item {
                 MenuRow(

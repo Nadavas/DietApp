@@ -11,21 +11,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.DarkMode
+// import androidx.compose.material.icons.filled.DarkMode // <-- DELETED
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications // NEW: Import for notifications icon
+// import androidx.compose.material.icons.filled.Notifications // <-- DELETED
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
+// import androidx.compose.material3.Switch // <-- DELETED
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+// import androidx.compose.runtime.collectAsState // <-- DELETED
+// import androidx.compose.runtime.getValue // <-- DELETED
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -40,8 +40,7 @@ fun SettingsScreen(
     navController: NavController,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    // Get dark mode state from viewmodel
-    val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsState()
+    // Dark mode state removed
 
     Scaffold(
         topBar = {
@@ -65,38 +64,9 @@ fun SettingsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Dark mode
-            ListItem(
-                headlineContent = { Text("Dark Mode") },
-                leadingContent = {
-                    Icon(Icons.Filled.DarkMode, contentDescription = "Dark Mode")
-                },
-                trailingContent = {
-                    Switch(
-                        checked = isDarkModeEnabled,
-                        onCheckedChange = { enabled ->
-                            authViewModel.toggleDarkMode(enabled)
-                        }
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            HorizontalDivider()
+            // Dark mode ListItem removed
 
-            // NEW: Notifications
-            ListItem(
-                headlineContent = { Text("Notifications") },
-                leadingContent = {
-                    Icon(Icons.Default.Notifications, contentDescription = "Meal Reminder Notifications")
-                },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Go to Notifications")
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(NavRoutes.NOTIFICATIONS) } // NEW: Navigation action
-            )
-            HorizontalDivider()
+            // Notifications ListItem removed
 
             // Change Password (only for manual registered users)
             if (authViewModel.isEmailPasswordUser) {
