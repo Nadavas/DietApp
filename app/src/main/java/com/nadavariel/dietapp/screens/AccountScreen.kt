@@ -10,9 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -170,7 +169,7 @@ private fun MenuRow(
             }
 
             Icon(
-                imageVector = Icons.Filled.ArrowForwardIos,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = null,
                 tint = LightGreyText,
                 modifier = Modifier.size(16.dp)
@@ -321,16 +320,7 @@ fun AccountScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = ScreenBackgroundColor
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            "Back",
-                            tint = DarkGreyText
-                        )
-                    }
-                }
+                )
             )
         },
         containerColor = ScreenBackgroundColor
@@ -497,8 +487,6 @@ fun AccountScreen(
             onConfirm = {
                 showSignOutDialog = false
                 authViewModel.signOut()
-                // --- FIX: REMOVED NAVIGATION LOGIC ---
-                // MainActivity's listener will handle this
             }
         )
     }

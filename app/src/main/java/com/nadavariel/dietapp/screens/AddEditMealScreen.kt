@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
-import android.provider.OpenableColumns
 import android.util.Base64
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -49,7 +48,6 @@ import com.nadavariel.dietapp.viewmodel.GeminiResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -168,7 +166,7 @@ fun AddEditMealScreen(
 
     LaunchedEffect(mealToEdit) {
         if (isEditMode) {
-            mealToEdit?.let {
+            mealToEdit.let {
                 foodName = it.foodName
                 caloriesText = it.calories.toString()
                 servingAmountText = it.servingAmount.orEmpty()
@@ -247,9 +245,14 @@ fun AddEditMealScreen(
             TopAppBar(
                 title = { Text(if (isEditMode) "Edit Meal" else "Add New Meal", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    // --- THIS IS THE FIX ---
+                    // Only show the back button if in Edit Mode
+                    if (isEditMode) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
+                    // --- END OF FIX ---
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = screenBackgroundColor,
