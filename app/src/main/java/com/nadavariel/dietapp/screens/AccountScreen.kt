@@ -3,7 +3,6 @@ package com.nadavariel.dietapp.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -64,16 +63,16 @@ fun AccountHeaderInfo(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // Avatar with subtle pulse effect suggestion
             Box(contentAlignment = Alignment.Center) {
                 // Background circle for depth
                 Box(
                     modifier = Modifier
-                        .size(112.dp)
+                        .size(96.dp)
                         .background(VibrantGreen.copy(alpha = 0.1f), CircleShape)
                 )
                 Image(
@@ -81,9 +80,9 @@ fun AccountHeaderInfo(
                     contentDescription = "Profile Avatar",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(96.dp)
+                        .size(86.dp)
                         .clip(CircleShape)
-                        .border(3.dp, VibrantGreen, CircleShape)
+                        //.border(3.dp, VibrantGreen, CircleShape)
                         .clickable { onAvatarClick() }
                 )
             }
@@ -275,8 +274,6 @@ fun AccountScreen(
 ) {
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
-    val hasMissingDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
-
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
 
     // --- State Variables ---
@@ -351,7 +348,7 @@ fun AccountScreen(
             item {
                 MenuRow(
                     title = "Profile",
-                    subtitle = if (hasMissingDetails) "Complete your profile" else "Manage your information",
+                    subtitle = "Manage your information",
                     leadingIcon = { Icon(Icons.Filled.Person, "My Profile", modifier = Modifier.size(24.dp)) },
                     // --- THIS IS THE FIX ---
                     hasNotification = false, // <-- Changed from hasMissingDetails

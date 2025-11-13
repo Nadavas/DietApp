@@ -1,7 +1,7 @@
 package com.nadavariel.dietapp.ui.home
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -70,15 +70,30 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             )
         }
         Spacer(Modifier.width(16.dp)) // Add spacer for cases where column doesn't fill width
-        Image(
-            painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
-            contentDescription = "User Avatar",
-            contentScale = ContentScale.Crop,
+
+        // --- THIS IS THE UPDATED AVATAR CODE ---
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .border(3.dp, PrimaryGreen.copy(alpha = 0.3f), CircleShape)
-                .clickable(onClick = onAvatarClick)
-        )
+                .size(52.dp) // This is the total size including the background
+                .clickable(onClick = onAvatarClick) // Clickable is now on the outer box
+        ) {
+            // Background Circle
+            Box(
+                modifier = Modifier
+                    .fillMaxSize() // Fills the 52.dp
+                    .background(PrimaryGreen.copy(alpha = 0.1f), CircleShape)
+            )
+            // Avatar Image (slightly smaller to show background)
+            Image(
+                painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
+                contentDescription = "User Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+        }
+        // --- END OF UPDATED CODE ---
     }
 }
