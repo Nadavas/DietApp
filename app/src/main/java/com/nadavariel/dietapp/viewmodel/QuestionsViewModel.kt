@@ -50,8 +50,6 @@ class QuestionsViewModel : ViewModel() {
         const val HEIGHT_QUESTION = "What is your height?"
         const val STARTING_WEIGHT_QUESTION = "What is your weight?"
         const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight or body composition goal in mind?"
-        // --- FIX: This constant was causing the bug and has been removed ---
-        // const val TARGET_WEIGHT_GOAL_TEXT = "What is your target weight (in kg)?"
     }
 
     private val dobFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
@@ -180,11 +178,7 @@ class QuestionsViewModel : ViewModel() {
             } else { mutableListOf() }
             val aiGenerated = snapshot.getBoolean("aiGenerated") == true
 
-            // --- THIS IS THE FIX ---
-            // It now uses the correct constant, so it saves the answer
-            // with the same question key that FoodLogViewModel is listening for.
             val targetWeightQuestionTextForGoal = TARGET_WEIGHT_QUESTION_GOAL
-            // --- END OF FIX ---
 
             val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
 
@@ -200,9 +194,6 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // ---
-    // --- !!! THIS FUNCTION IS UPDATED !!! ---
-    // ---
     private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
         val userId = auth.currentUser?.uid ?: return
         try {
@@ -239,10 +230,17 @@ class QuestionsViewModel : ViewModel() {
                 val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
                 if (responseData["success"] == true) {
                     val gson = Gson()
-                    // This now correctly parses the new JSON into the new DietPlan data class structure
                     val dietPlan = gson.fromJson(gson.toJson(responseData["data"]), DietPlan::class.java)
+
+                    // --- THIS IS THE NEW LOGIC ---
+                    // 1. Save the plan to Firestore
                     saveDietPlanToFirestore(dietPlan)
+                    // 2. Automatically apply it to goals
+                    applyDietPlanToGoals(dietPlan)
+                    // 3. Set success state to trigger navigation
                     _dietPlanResult.value = DietPlanResult.Success(dietPlan)
+                    // --- END OF NEW LOGIC ---
+
                 } else {
                     throw Exception(responseData["error"]?.toString() ?: "Unknown error from function")
                 }
@@ -253,51 +251,49 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // ---
-    // --- !!! THIS FUNCTION IS UPDATED !!! ---
-    // ---
-    fun applyDietPlanToGoals(plan: DietPlan) {
+    // --- THIS FUNCTION IS NOW PRIVATE AND SUSPEND ---
+    private suspend fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("QuestionsViewModel", "Cannot apply goals: User not logged in.")
             return
         }
-        viewModelScope.launch {
-            try {
-                val goalsRef = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("goals")
-                val snapshot = goalsRef.get().await()
-                val existingAnswers = if (snapshot.exists()) {
-                    (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
-                } else { mutableListOf() }
 
-                // UPDATED: Reads from the new nested structure
-                val aiGoalsMap = mapOf(
-                    "How many calories a day is your target?" to plan.concretePlan.targets.dailyCalories.toString(),
-                    "How many grams of protein a day is your target?" to plan.concretePlan.targets.proteinGrams.toString()
-                )
-                val finalGoalsList = mutableListOf<Map<String, String>>()
-                val addedOrUpdatedQuestions = mutableSetOf<String>()
+        // No new viewModelScope, uses the caller's
+        try {
+            val goalsRef = firestore.collection("users").document(userId)
+                .collection("user_answers").document("goals")
+            val snapshot = goalsRef.get().await()
+            val existingAnswers = if (snapshot.exists()) {
+                (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
+            } else { mutableListOf() }
 
-                aiGoalsMap.forEach { (question, answer) ->
-                    finalGoalsList.add(mapOf("question" to question, "answer" to answer))
-                    addedOrUpdatedQuestions.add(question)
-                }
-                existingAnswers.forEach { existingGoal ->
-                    val question = existingGoal["question"]
-                    if (question != null && question !in addedOrUpdatedQuestions) {
-                        finalGoalsList.add(existingGoal)
-                    }
-                }
-                val dataToSet = mapOf(
-                    "answers" to finalGoalsList,
-                    "aiGenerated" to true
-                )
-                goalsRef.set(dataToSet).await()
-                Log.d("QuestionsViewModel", "Successfully applied and merged AI diet plan to goals.")
-            } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error applying/merging diet plan to goals", e)
+            // UPDATED: Reads from the new nested structure
+            val aiGoalsMap = mapOf(
+                "How many calories a day is your target?" to plan.concretePlan.targets.dailyCalories.toString(),
+                "How many grams of protein a day is your target?" to plan.concretePlan.targets.proteinGrams.toString()
+            )
+            val finalGoalsList = mutableListOf<Map<String, String>>()
+            val addedOrUpdatedQuestions = mutableSetOf<String>()
+
+            aiGoalsMap.forEach { (question, answer) ->
+                finalGoalsList.add(mapOf("question" to question, "answer" to answer))
+                addedOrUpdatedQuestions.add(question)
             }
+            existingAnswers.forEach { existingGoal ->
+                val question = existingGoal["question"]
+                if (question != null && question !in addedOrUpdatedQuestions) {
+                    finalGoalsList.add(existingGoal)
+                }
+            }
+            val dataToSet = mapOf(
+                "answers" to finalGoalsList,
+                "aiGenerated" to true
+            )
+            goalsRef.set(dataToSet).await()
+            Log.d("QuestionsViewModel", "Successfully applied and merged AI diet plan to goals.")
+        } catch (e: Exception) {
+            Log.e("QuestionsViewModel", "Error applying/merging diet plan to goals", e)
         }
     }
 

@@ -83,10 +83,11 @@ class GoalsViewModel : ViewModel() {
             return
         }
 
+        // --- FIX 1: Update the question text to match what is being saved ---
         val allGoals = listOf(
             Goal(id = "calories", text = "How many calories a day is your target?"),
             Goal(id = "protein", text = "How many grams of protein a day is your target?"),
-            Goal(id = "target_weight", text = "What is your target weight (in kg)?")
+            Goal(id = "target_weight", text = "Do you have a target weight or body composition goal in mind?")
         )
 
         firestore.collection("users").document(userId)
@@ -107,7 +108,17 @@ class GoalsViewModel : ViewModel() {
                     } ?: emptyMap()
 
                     val mergedGoals = allGoals.map { goal ->
-                        goal.copy(value = userAnswers[goal.text])
+                        val answer = userAnswers[goal.text]
+
+                        // --- FIX 2: Parse the target weight answer to just the number ---
+                        if (goal.id == "target_weight" && answer != null) {
+                            // Parses "70.5 kg" to "70.5"
+                            val parsedValue = answer.split(" ").firstOrNull() ?: ""
+                            goal.copy(value = parsedValue)
+                        } else {
+                            goal.copy(value = answer)
+                        }
+                        // --- END OF FIX 2 ---
                     }
 
                     _goals.value = mergedGoals
@@ -154,6 +165,7 @@ class GoalsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val userAnswersToSave = _goals.value.map { goal ->
+                    // This is fine. If the user saves "71", FoodLogViewModel will parse "71" correctly.
                     mapOf("question" to goal.text, "answer" to (goal.value ?: ""))
                 }
 
