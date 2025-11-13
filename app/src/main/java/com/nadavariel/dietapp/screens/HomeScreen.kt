@@ -30,6 +30,10 @@ import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.model.WeightEntry
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.home.*
+import com.nadavariel.dietapp.ui.HomeColors.BackgroundGradient
+import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
+import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
+import com.nadavariel.dietapp.ui.HomeColors.PageBackgroundColor
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel

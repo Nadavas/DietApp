@@ -24,6 +24,26 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
+// Home Colors
+object HomeColors {
+    val PrimaryGreen = Color(0xFF00C853)
+    val CardBackground = Color.White
+    val TextPrimary = Color(0xFF1A1A1A)
+    val TextSecondary = Color(0xFF6B7280)
+    val BackgroundGradient = listOf(Color.White, Color(0xFFF7F9FC))
+    val PageBackgroundColor = Color(0xFFF7F9FC)
+    val DividerColor = Color(0xFFE5E7EB)
+}
+
+// Question Colors
+object QuestionColors {
+    val VibrantGreen = Color(0xFF4CAF50)
+    val DarkGreyText = Color(0xFF333333)
+    val LightGreyText = Color(0xFF757575)
+    val ScreenBackgroundColor = Color(0xFFF7F9FC)
+    val CardBackgroundColor = Color.White
+}
+
 // Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(

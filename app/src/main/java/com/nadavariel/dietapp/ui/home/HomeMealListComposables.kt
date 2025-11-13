@@ -29,15 +29,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
+import com.nadavariel.dietapp.ui.HomeColors.CardBackground
+import com.nadavariel.dietapp.ui.HomeColors.DividerColor
+import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen
+import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
+import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.math.max
 
 @Composable

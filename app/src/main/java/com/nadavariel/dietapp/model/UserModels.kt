@@ -56,3 +56,12 @@ data class Goal(
     val value: String? = null,
     val id: String = UUID.randomUUID().toString()
 )
+
+// --- Questions ---
+
+enum class InputType { DOB, HEIGHT, WEIGHT, TEXT, TARGET_WEIGHT, EXERCISE_TYPE }
+data class Question(
+    val text: String,
+    val options: List<String>? = null,
+    val inputType: InputType? = null
+)

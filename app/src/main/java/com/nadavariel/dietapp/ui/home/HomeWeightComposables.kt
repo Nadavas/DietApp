@@ -15,11 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +42,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.WeightEntry
+import com.nadavariel.dietapp.ui.HomeColors.CardBackground
+import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen
+import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
+import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -89,7 +93,7 @@ fun CompactWeightDateRow(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.TrendingUp,
+                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                             contentDescription = null,
                             tint = PrimaryGreen,
                             modifier = Modifier.size(20.dp)
