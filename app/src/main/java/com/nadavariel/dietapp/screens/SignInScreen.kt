@@ -65,7 +65,7 @@ import kotlinx.coroutines.launch
 fun SignInScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
-    onSignInSuccess: () -> Unit,
+    onSignInSuccess: (isNewUser: Boolean) -> Unit, // <-- This signature is correct
     onNavigateToSignUp: () -> Unit
 ) {
     val context = LocalContext.current
@@ -78,7 +78,6 @@ fun SignInScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // TODO: fix this part so that connection with google isn't automatic, you need to choose the account
     val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
@@ -97,7 +96,7 @@ fun SignInScreen(
         when (val result = authResult) {
             is AuthResult.Success -> {
                 authViewModel.resetAuthResult()
-                onSignInSuccess()
+                onSignInSuccess(false) // This is correct for email/pass
             }
             is AuthResult.Error -> {
                 scope.launch {
@@ -188,7 +187,9 @@ fun SignInScreen(
             Button(
                 onClick = {
                     if (authResult != AuthResult.Loading) {
-                        authViewModel.signIn(onSignInSuccess)
+                        // --- THIS IS THE FIX ---
+                        // We must call the VM function that has the (isNewUser) callback
+                        authViewModel.signIn(email, password, onSignInSuccess)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

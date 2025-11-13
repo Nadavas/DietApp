@@ -1,11 +1,10 @@
 package com.nadavariel.dietapp.screens
 
+import androidx.activity.compose.BackHandler // <-- IMPORT ADDED
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -21,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -33,27 +33,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontStyle // <-- NEW IMPORT
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // <-- NEW IMPORT
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.ExampleMeal // <-- NEW IMPORT
+import com.nadavariel.dietapp.NavRoutes // <-- IMPORT ADDED
+import com.nadavariel.dietapp.model.ExampleMeal
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
-import kotlin.math.cos
 import kotlin.math.sin
 
 // --- DESIGN TOKENS (matching HomeScreen) ---
@@ -62,7 +59,7 @@ private val DarkGreyText = Color(0xFF333333)
 private val LightGreyText = Color(0xFF757575)
 private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) // <-- NEW IMPORT (ExperimentalLayoutApi)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun GoalsScreen(
     navController: NavController,
@@ -72,6 +69,24 @@ fun GoalsScreen(
     val userWeight by goalsViewModel.userWeight.collectAsState()
     val hasAiGeneratedGoals by goalsViewModel.hasAiGeneratedGoals.collectAsState()
     val dietPlan by goalsViewModel.currentDietPlan.collectAsState()
+
+    // --- THIS IS THE FIX (PART 1) ---
+    // Define the navigation action you want
+    val navigateToAccount = {
+        navController.navigate(NavRoutes.ACCOUNT) {
+            // Pop the entire graph to clear the sign-up/questions stack
+            popUpTo(navController.graph.id) {
+                inclusive = true
+            }
+        }
+        // This will result in a clean [HOME, ACCOUNT] stack
+    }
+
+    // Intercept the system back button
+    BackHandler(enabled = true) {
+        navigateToAccount()
+    }
+    // --- END OF FIX (PART 1) ---
 
     Scaffold(
         topBar = {
@@ -84,7 +99,10 @@ fun GoalsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    // --- THIS IS THE FIX (PART 2) ---
+                    // Use the same logic for the TopAppBar's back button
+                    IconButton(onClick = { navigateToAccount() }) {
+                        // --- END OF FIX (PART 2) ---
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -340,7 +358,7 @@ fun GoalsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Default.Rule,
+                                    Icons.AutoMirrored.Filled.Rule,
                                     contentDescription = null,
                                     tint = Color(0xFF9C27B0),
                                     modifier = Modifier.size(28.dp)

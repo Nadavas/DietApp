@@ -80,8 +80,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val _isLoadingProfile = MutableStateFlow(true)
     val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
 
-    val currentAvatarId: String? get() = userProfile.value.avatarId
-
     private var userProfileListener: ListenerRegistration? = null
 
     init {
@@ -208,18 +206,16 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             return
         }
         _authResult.value = AuthResult.Loading
+
+        // Capture the values *before* clearing the state
+        val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
+        val newAvatarId = selectedAvatarId.value
+        val emailForPrefs = emailState.value
+
         auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim())
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _authResult.value = AuthResult.Success
-
-                    // --- THIS IS THE FIX ---
-                    // Capture the values *before* clearing the state or starting the coroutine
-                    val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
-                    val newAvatarId = selectedAvatarId.value
-                    val emailForPrefs = emailState.value
-                    // --- END OF FIX ---
-
                     viewModelScope.launch {
                         if (rememberMeState.value) {
                             preferencesRepository.saveUserPreferences(emailForPrefs, rememberMeState.value)
@@ -228,11 +224,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         }
 
                         val newProfile = UserProfile(
-                            name = newName, // Use the captured local variable
+                            name = newName,
                             startingWeight = 0f,
                             height = 0f,
                             dateOfBirth = null,
-                            avatarId = newAvatarId, // Use the captured local variable
+                            avatarId = newAvatarId,
                             gender = Gender.UNKNOWN
                         )
                         saveUserProfile(newProfile)
@@ -246,7 +242,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun signIn(email: String, password: String, onSuccess: () -> Unit) {
+    // --- FIX: Changed signature to (isNewUser: Boolean) -> Unit ---
+    fun signIn(email: String, password: String, onSuccess: (isNewUser: Boolean) -> Unit) {
         if (email.isBlank() || password.isBlank()) {
             _authResult.value = AuthResult.Error("Email and password cannot be empty.")
             return
@@ -263,17 +260,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             preferencesRepository.clearUserPreferences()
                         }
                     }
-                    onSuccess()
+                    onSuccess(false) // Email/pass login is never a new user
                     clearInputFields()
                 } else {
                     val errorMessage = task.exception?.message ?: "Sign in failed."
                     _authResult.value = AuthResult.Error(errorMessage)
                 }
             }
-    }
-
-    fun signIn(onSuccess: () -> Unit) {
-        signIn(emailState.value, passwordState.value, onSuccess)
     }
 
     fun signOut() {
@@ -311,35 +304,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return GoogleSignIn.getClient(context, gso)
     }
 
-    fun firebaseAuthWithGoogle(idToken: String, onSuccess: () -> Unit) {
-        _authResult.value = AuthResult.Loading
-        val credential = GoogleAuthProvider.getCredential(idToken, null)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    _authResult.value = AuthResult.Success
-                    viewModelScope.launch {
-                        val userId = auth.currentUser?.uid
-                        if (userId != null) {
-                            val userDoc = firestore.collection("users").document(userId).get().await()
-                            if (!userDoc.exists()) {
-                                val newProfile = UserProfile(
-                                    name = task.result.user?.displayName ?: ""
-                                    // other defaults are set in UserProfile
-                                )
-                                saveUserProfile(newProfile)
-                            }
-                        }
-                        onSuccess()
-                    }
-                } else {
-                    val errorMessage = task.exception?.message ?: "Google sign-in failed."
-                    _authResult.value = AuthResult.Error(errorMessage)
-                }
-            }
-    }
+    // --- This function is now removed, handleGoogleSignInResult is used everywhere ---
+    // fun firebaseAuthWithGoogle(...)
 
-    fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: () -> Unit) {
+    fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: (isNewUser: Boolean) -> Unit) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
         auth.signInWithCredential(credential)
@@ -353,17 +321,18 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             preferencesRepository.clearUserPreferences()
                         }
                         val userId = auth.currentUser?.uid
+                        var isNewUser = false // Flag to track
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
+                                isNewUser = true // This is a new user
                                 val newProfile = UserProfile(
                                     name = account.displayName ?: ""
-                                    // other defaults are set in UserProfile
                                 )
                                 saveUserProfile(newProfile)
                             }
                         }
-                        onSuccess()
+                        onSuccess(isNewUser) // Pass the flag back
                     }
                 } else {
                     val errorMessage = task.exception?.message ?: "Google sign-in failed."
@@ -468,12 +437,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val noUserError = "No user is currently signed in to delete."
             _authResult.value = AuthResult.Error(noUserError)
             onError(noUserError)
-        }
-    }
-
-    fun toggleDarkMode(enabled: Boolean) {
-        viewModelScope.launch {
-            preferencesRepository.saveDarkModePreference(enabled)
         }
     }
 }

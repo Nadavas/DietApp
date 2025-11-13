@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
 fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
-    onSignUpSuccess: () -> Unit,
+    onSignUpSuccess: (isNewUser: Boolean) -> Unit, // <-- THIS IS CORRECT
     onNavigateToSignIn: () -> Unit
 ) {
     val context = LocalContext.current
@@ -71,7 +71,6 @@ fun SignUpScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // TODO: fix this part so that connection with google isn't automatic, you need to choose the account
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -79,23 +78,17 @@ fun SignUpScreen(
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                val idToken = account.idToken
-                if (idToken != null) {
-                    authViewModel.firebaseAuthWithGoogle(idToken) {
-                        onSignUpSuccess()
-                    }
-                } else {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Google Sign-In failed: No ID Token found.")
-                    }
+                // This now correctly uses the right function
+                authViewModel.handleGoogleSignInResult(account) { isNewUser ->
+                    onSignUpSuccess(isNewUser)
                 }
             } catch (e: ApiException) {
                 scope.launch {
                     snackbarHostState.showSnackbar("Google Sign-In failed: ${e.localizedMessage}")
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 scope.launch {
-                    snackbarHostState.showSnackbar("An unexpected error occurred during Google Sign-In.")
+                    snackbarHostState.showSnackbar("An unexpected error occurred during Google Sign-In: ${e.message}")
                 }
             }
         } else {
@@ -174,17 +167,13 @@ fun SignUpScreen(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                // --- FIX: Clickable removed from here to avoid redundancy ---
             )
 
-            // --- FIX: Added TextButton for clarity ---
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = { showAvatarDialog = true }) {
                 Text("Choose Avatar")
             }
             Spacer(modifier = Modifier.height(16.dp))
-            // --- END OF FIX ---
-
 
             // --- NAME FIELD ---
             OutlinedTextField(
@@ -232,7 +221,11 @@ fun SignUpScreen(
 
             // Sign up button
             Button(
-                onClick = { authViewModel.signUp(onSignUpSuccess) },
+                onClick = {
+                    authViewModel.signUp {
+                        onSignUpSuccess(true) // This is correct (always new user)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
             ) {
@@ -242,7 +235,7 @@ fun SignUpScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Sign Up", fontSize = 18.sp)
+                    Text("Next", fontSize = 18.sp)
                 }
             }
 

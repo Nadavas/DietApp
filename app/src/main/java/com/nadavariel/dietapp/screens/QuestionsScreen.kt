@@ -9,16 +9,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.ui.QuestionColors.DarkGreyText
 import com.nadavariel.dietapp.ui.QuestionColors.ScreenBackgroundColor
-import com.nadavariel.dietapp.ui.questions.* // <-- IMPORT ALL NEW COMPOSABLES
+import com.nadavariel.dietapp.ui.questions.*
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuestionsScreen(
     navController: NavController,
-    questionsViewModel: QuestionsViewModel = viewModel()
+    questionsViewModel: QuestionsViewModel = viewModel(),
+    startQuiz: Boolean // <-- 1. ADD NEW PARAMETER
 ) {
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
@@ -42,6 +44,20 @@ fun QuestionsScreen(
         }
     }
 
+    // --- 2. ADD THIS LAUNCHED EFFECT ---
+    // This will run once when the screen is composed.
+    // If we're navigated here with startQuiz=true,
+    // it will set up the quiz and change the state.
+    LaunchedEffect(Unit) {
+        if (startQuiz) {
+            // This is the same logic from the onRetakeQuiz lambda
+            quizAnswers = List(questions.size) { null }
+            quizCurrentIndex = 0
+            screenState = ScreenState.QUIZ_MODE
+        }
+    }
+    // --- END OF FIX ---
+
     // --- DIALOGS for API Results ---
     HandleDietPlanResultDialogs(navController, questionsViewModel)
 
@@ -63,7 +79,16 @@ fun QuestionsScreen(
                 navigationIcon = {
                     IconButton(onClick = {
                         when (screenState) {
-                            ScreenState.LANDING -> navController.popBackStack()
+                            ScreenState.LANDING -> {
+                                // This logic is from our previous fix
+                                if (navController.previousBackStackEntry != null) {
+                                    navController.popBackStack()
+                                } else {
+                                    navController.navigate(NavRoutes.HOME) {
+                                        popUpTo(navController.graph.id) { inclusive = true }
+                                    }
+                                }
+                            }
                             ScreenState.QUIZ_MODE -> {
                                 // Go back to previous question or landing
                                 if (quizCurrentIndex > 0) {

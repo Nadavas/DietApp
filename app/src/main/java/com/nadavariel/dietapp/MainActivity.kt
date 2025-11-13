@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -51,6 +53,8 @@ import com.nadavariel.dietapp.screens.MacrosDetailScreen
 import com.nadavariel.dietapp.screens.CarbsDetailScreen
 import com.nadavariel.dietapp.screens.MineralsDetailScreen
 import com.nadavariel.dietapp.screens.VitaminsDetailScreen
+import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -60,7 +64,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
-            // You will need to rename this to UserPreferences(applicationContext) after your file merge
             val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
 
             val appViewModelFactory = remember {
@@ -84,6 +87,15 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 NotificationViewModel(application) as T
                             }
+                            // --- ADDED VIEWMODELS FOR QUESTIONS/GOALS ---
+                            modelClass.isAssignableFrom(QuestionsViewModel::class.java) -> {
+                                @Suppress("UNCHECKED_CAST")
+                                QuestionsViewModel() as T
+                            }
+                            modelClass.isAssignableFrom(GoalsViewModel::class.java) -> {
+                                @Suppress("UNCHECKED_CAST")
+                                GoalsViewModel() as T
+                            }
                             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
                         }
                     }
@@ -94,24 +106,22 @@ class MainActivity : ComponentActivity() {
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
             val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory)
             val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory)
+            // --- ADDED VIEWMODELS FOR QUESTIONS/GOALS ---
+            val questionsViewModel: QuestionsViewModel = viewModel(factory = appViewModelFactory)
+            val goalsViewModel: GoalsViewModel = viewModel(factory = appViewModelFactory)
+
 
             val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
-            // val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle() // <-- NO LONGER NEEDED HERE
             val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
-
             val useDarkTheme = isDarkModeEnabled || isSystemInDarkTheme()
-
-            // --- FIX 1: Read the currentUser state directly ---
             val currentUser = authViewModel.currentUser
 
             DietAppTheme(darkTheme = useDarkTheme) {
-                // --- FIX 2: Add a LaunchedEffect to react to auth changes ---
                 LaunchedEffect(currentUser, isLoadingProfile) {
-                    if (!isLoadingProfile) { // Only navigate if we're not in the initial loading phase
+                    if (!isLoadingProfile) {
                         if (currentUser == null) {
-                            // User signed out or was deleted, force navigate to LANDING
                             navController.navigate(NavRoutes.LANDING) {
-                                popUpTo(navController.graph.id) { // Pop the entire back stack
+                                popUpTo(navController.graph.id) {
                                     inclusive = true
                                 }
                                 launchSingleTop = true
@@ -120,29 +130,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val startDestination = if (authViewModel.isUserSignedIn()) {
-                    NavRoutes.HOME
-                } else {
-                    NavRoutes.LANDING
+                val startDestination = remember {
+                    if (authViewModel.isUserSignedIn()) {
+                        NavRoutes.HOME
+                    } else {
+                        NavRoutes.LANDING
+                    }
                 }
 
                 val currentRouteEntry by navController.currentBackStackEntryAsState()
-
-                // --- FIX: This now splits by '?' to remove parameters before checking the route ---
                 val selectedRoute = currentRouteEntry?.destination?.route
                     ?.split("?")?.firstOrNull()
                     ?.split("/")?.firstOrNull()
 
                 val showLoadingScreen = authViewModel.isUserSignedIn() && isLoadingProfile
 
-                if (showLoadingScreen) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
+                Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
                         modifier = Modifier,
                         bottomBar = {
@@ -243,12 +246,9 @@ class MainActivity : ComponentActivity() {
                                                 restoreState = true
                                             }
                                         },
-                                        // --- THIS IS THE FIX ---
-                                        // The BadgedBox wrapper has been removed
                                         icon = {
                                             Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
                                         },
-                                        // --- END OF FIX ---
                                         label = { Text("Account") },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = Color.White,
@@ -287,8 +287,11 @@ class MainActivity : ComponentActivity() {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
-                                    onSignInSuccess = {
-                                        navController.navigate(NavRoutes.HOME) {
+                                    onSignInSuccess = { isNewUser ->
+                                        // --- THIS IS THE FIX ---
+                                        val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
+                                        // --- END OF FIX ---
+                                        navController.navigate(route) {
                                             popUpTo(NavRoutes.LANDING) { inclusive = true }
                                             launchSingleTop = true
                                         }
@@ -307,8 +310,11 @@ class MainActivity : ComponentActivity() {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
-                                    onSignUpSuccess = {
-                                        navController.navigate("${NavRoutes.UPDATE_PROFILE_BASE}?${NavRoutes.IS_NEW_USER_ARG}=true") {
+                                    onSignUpSuccess = { isNewUser ->
+                                        // --- THIS IS THE FIX ---
+                                        val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
+                                        // --- END OF FIX ---
+                                        navController.navigate(route) {
                                             popUpTo(NavRoutes.LANDING) { inclusive = true }
                                             launchSingleTop = true
                                         }
@@ -347,39 +353,31 @@ class MainActivity : ComponentActivity() {
                                     navController = navController
                                 )
                             }
-                            // NEW: Energy & Protein Detail Screen
+
                             composable(NavRoutes.STATS_ENERGY) {
                                 EnergyDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController
                                 )
                             }
-
-// NEW: Macronutrients Detail Screen
                             composable(NavRoutes.STATS_MACROS) {
                                 MacrosDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController
                                 )
                             }
-
-// NEW: Fiber & Sugar Detail Screen
                             composable(NavRoutes.STATS_CARBS) {
                                 CarbsDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController
                                 )
                             }
-
-// NEW: Minerals Detail Screen
                             composable(NavRoutes.STATS_MINERALS) {
                                 MineralsDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController
                                 )
                             }
-
-// NEW: Vitamins Detail Screen
                             composable(NavRoutes.STATS_VITAMINS) {
                                 VitaminsDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
@@ -410,14 +408,33 @@ class MainActivity : ComponentActivity() {
                                     notificationViewModel = notificationViewModel
                                 )
                             }
-                            composable(NavRoutes.QUESTIONS) {
+
+                            // --- THIS IS THE FIX ---
+                            // 1. Update route to accept an optional argument "startQuiz"
+                            // 2. Define the argument with a default value of false
+                            composable(
+                                route = "${NavRoutes.QUESTIONS}?startQuiz={startQuiz}",
+                                arguments = listOf(
+                                    navArgument("startQuiz") {
+                                        type = NavType.BoolType
+                                        defaultValue = false
+                                    }
+                                )
+                            ) { backStackEntry ->
+                                // 3. Extract the argument
+                                val startQuiz = backStackEntry.arguments?.getBoolean("startQuiz") == true
                                 QuestionsScreen(
-                                    navController = navController
+                                    navController = navController,
+                                    questionsViewModel = questionsViewModel,
+                                    startQuiz = startQuiz // 4. Pass it to the screen
                                 )
                             }
+                            // --- END OF FIX ---
+
                             composable(NavRoutes.GOALS) {
                                 GoalsScreen(
-                                    navController = navController
+                                    navController = navController,
+                                    goalsViewModel = goalsViewModel
                                 )
                             }
                             composable(NavRoutes.CHANGE_PASSWORD) {
@@ -426,21 +443,7 @@ class MainActivity : ComponentActivity() {
                                     authViewModel = authViewModel
                                 )
                             }
-                            composable(
-                                route = NavRoutes.UPDATE_PROFILE,
-                                arguments = listOf(navArgument(NavRoutes.IS_NEW_USER_ARG) {
-                                    type = NavType.StringType; defaultValue = "false"; nullable = true
-                                })
-                            ) { backStackEntry ->
-                                val isNewUserString = backStackEntry.arguments?.getString(NavRoutes.IS_NEW_USER_ARG)
-                                val isNewUser = isNewUserString?.toBooleanStrictOrNull() == true
-                                UpdateProfileScreen(
-                                    authViewModel = authViewModel,
-                                    navController = navController,
-                                    onBack = { navController.popBackStack() },
-                                    isNewUser = isNewUser
-                                )
-                            }
+
                             composable(
                                 route = NavRoutes.ADD_EDIT_MEAL,
                                 deepLinks = listOf(
@@ -470,7 +473,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // --- Thread routes ---
                             composable(NavRoutes.THREADS) {
                                 ThreadsScreen(
                                     navController = navController,
@@ -499,6 +501,17 @@ class MainActivity : ComponentActivity() {
                                     Text("Error: Thread ID is missing.")
                                 }
                             }
+                        }
+                    }
+
+                    if (showLoadingScreen) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
                     }
                 }
