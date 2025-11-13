@@ -29,6 +29,10 @@ import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
+import kotlin.math.ceil
+import kotlin.math.floor // <-- IMPORT ADDED
+import kotlin.math.log10 // <-- IMPORT ADDED
+import kotlin.math.pow  // <-- IMPORT ADDED
 
 // Consistent Color Definitions
 private val HealthyGreenCompose = androidx.compose.ui.graphics.Color(0xFF4CAF50)
@@ -96,7 +100,7 @@ fun BeautifulBarChart(
                     setDrawGridLines(true)
                     enableGridDashedLine(8f, 8f, 0f)
                     gridColor = GridLineColor
-                    setLabelCount(4, true)
+                    setLabelCount(5, false)
                     axisMinimum = 0f
                     setDrawAxisLine(false)
                     textColor = AxisTextColor
@@ -104,7 +108,11 @@ fun BeautifulBarChart(
 
                     val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
                     val targetValue = target?.toFloat() ?: 0f
-                    axisMaximum = maxOf(maxBar * 1.1f, targetValue * 1.2f, 100f)
+
+                    // --- THIS IS THE FIX ---
+                    // Calculate a "clean" maximum value based on the data and label
+                    axisMaximum = calculateRoundedAxisMax(maxBar, targetValue) // <-- Label no longer needed
+                    // --- END OF FIX ---
 
                     target?.let {
                         // Create a beautiful target line with enhanced styling
@@ -270,4 +278,29 @@ fun BeautifulPieChart(
             chart.animateY(900, com.github.mikephil.charting.animation.Easing.EaseInOutQuad)
         }
     )
+}
+
+// --- NEW HELPER FUNCTION ---
+/**
+ * Calculates a "clean" maximum value for the Y-axis.
+ * This rounds the highest visible value (data or target) up to the
+ * nearest "nice" number (e.g., 42 -> 50, 1800 -> 2000, 3100 -> 4000).
+ */
+private fun calculateRoundedAxisMax(maxValue: Float, targetValue: Float): Float {
+    // 1. Find the highest value we need to display (including padding)
+    val highestValue = maxOf(maxValue * 1.1f, targetValue * 1.2f, 10f) // Use 10f as a minimum
+
+    // 2. Find the "magnitude" (the nearest power of 10 below the number)
+    // e.g., 3600 -> 1000
+    // e.g., 42 -> 10
+    // e.g., 18 -> 10
+    val magnitude = 10.0.pow(floor(log10(highestValue.toDouble()))).toFloat()
+
+    // 3. Round the highest value UP to the nearest magnitude
+    // e.g., (3600 / 1000) -> 3.6 -> ceil -> 4.0 -> 4.0 * 1000 = 4000
+    // e.g., (42 / 10) -> 4.2 -> ceil -> 5.0 -> 5.0 * 10 = 50
+    // e.g., (18 / 10) -> 1.8 -> ceil -> 2.0 -> 2.0 * 10 = 20
+    val newMax = ceil(highestValue / magnitude) * magnitude
+
+    return newMax
 }
