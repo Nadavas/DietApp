@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.ui.account.ImageIcon
+// import com.nadavariel.dietapp.ui.account.ImageIcon // <-- REMOVED
 import com.nadavariel.dietapp.ui.account.ReauthDialog
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
@@ -350,9 +350,7 @@ fun AccountScreen(
                     title = "Profile",
                     subtitle = "Manage your information",
                     leadingIcon = { Icon(Icons.Filled.Person, "My Profile", modifier = Modifier.size(24.dp)) },
-                    // --- THIS IS THE FIX ---
-                    hasNotification = false, // <-- Changed from hasMissingDetails
-                    // --- END OF FIX ---
+                    hasNotification = false,
                     onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                 )
             }
@@ -361,12 +359,15 @@ fun AccountScreen(
                 MenuRow(
                     title = "Questions",
                     subtitle = "View your dietary preferences",
+                    // --- THIS IS THE FIX ---
                     leadingIcon = {
-                        ImageIcon(
-                            painterResource(id = R.drawable.ic_query_filled),
-                            "Questions"
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_query_filled),
+                            contentDescription = "Questions",
+                            modifier = Modifier.size(24.dp)
                         )
                     },
+                    // --- END OF FIX ---
                     onClick = { navController.navigate(NavRoutes.QUESTIONS) }
                 )
             }
@@ -375,12 +376,15 @@ fun AccountScreen(
                 MenuRow(
                     title = "Goals",
                     subtitle = "Set your nutrition targets",
+                    // --- THIS IS THE FIX ---
                     leadingIcon = {
-                        ImageIcon(
-                            painterResource(id = R.drawable.ic_goals),
-                            "Goals"
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_goals),
+                            contentDescription = "Goals",
+                            modifier = Modifier.size(24.dp)
                         )
                     },
+                    // --- END OF FIX ---
                     onClick = { navController.navigate(NavRoutes.GOALS) }
                 )
             }
