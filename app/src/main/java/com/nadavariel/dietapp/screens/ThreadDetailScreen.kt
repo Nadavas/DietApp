@@ -74,7 +74,7 @@ fun ThreadDetailScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            threadViewModel.clearSelectedThreadAndComments()
+            threadViewModel.clearSelectedThreadAndListeners()
         }
     }
 

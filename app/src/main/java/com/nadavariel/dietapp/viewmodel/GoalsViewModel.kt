@@ -3,7 +3,10 @@ package com.nadavariel.dietapp.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth // <-- 1. IMPORT
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore // <-- 2. IMPORT
+import com.google.firebase.firestore.ListenerRegistration // <-- 3. IMPORT
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Goal
@@ -16,8 +19,13 @@ import com.nadavariel.dietapp.model.DietPlan
 
 class GoalsViewModel : ViewModel() {
 
-    private val auth = Firebase.auth
-    private val firestore = Firebase.firestore
+    private val auth: FirebaseAuth = Firebase.auth // <-- 4. ADD AUTH INSTANCE
+    private val firestore: FirebaseFirestore = Firebase.firestore // <-- 5. ADD FIRESTORE INSTANCE
+
+    // --- 6. ADD LISTENER REGISTRATIONS ---
+    private var dietPlanListener: ListenerRegistration? = null
+    private var goalsListener: ListenerRegistration? = null
+    private var profileListener: ListenerRegistration? = null
 
     private val _currentDietPlan = MutableStateFlow<DietPlan?>(null)
     val currentDietPlan = _currentDietPlan.asStateFlow()
@@ -31,31 +39,39 @@ class GoalsViewModel : ViewModel() {
     private val _hasAiGeneratedGoals = MutableStateFlow(false)
     val hasAiGeneratedGoals = _hasAiGeneratedGoals.asStateFlow()
 
-    // --- NEW LOADING STATE ---
     private val _isLoadingPlan = MutableStateFlow(true)
     val isLoadingPlan = _isLoadingPlan.asStateFlow()
 
     init {
-        fetchDietPlan()
-        fetchUserGoals()
-        fetchUserProfile()
+        // --- 7. ADD AUTH STATE LISTENER ---
+        auth.addAuthStateListener { firebaseAuth ->
+            if (firebaseAuth.currentUser != null) {
+                // User is signed in, NOW we fetch data
+                fetchDietPlan()
+                fetchUserGoals()
+                fetchUserProfile()
+            } else {
+                // User signed out, clear all data and listeners
+                clearAllListenersAndData()
+            }
+        }
     }
 
-    // --- FIX: Changed from .get() to addSnapshotListener ---
     private fun fetchDietPlan() {
+        dietPlanListener?.remove() // Clear previous listener
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("GoalsViewModel", "Cannot fetch diet plan: User not logged in.")
-            _isLoadingPlan.value = false // Stop loading if user is not logged in
+            _isLoadingPlan.value = false
             return
         }
 
-        _isLoadingPlan.value = true // Start loading
+        _isLoadingPlan.value = true
 
-        firestore.collection("users").document(userId)
+        // 8. SAVE THE LISTENER
+        dietPlanListener = firestore.collection("users").document(userId)
             .collection("diet_plans").document("current_plan")
             .addSnapshotListener { snapshot, e ->
-                // Stop loading as soon as we get a response (or error)
                 _isLoadingPlan.value = false
 
                 if (e != null) {
@@ -74,23 +90,23 @@ class GoalsViewModel : ViewModel() {
                 }
             }
     }
-    // --- END OF FIX ---
 
     private fun fetchUserGoals() {
+        goalsListener?.remove() // Clear previous listener
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("GoalsViewModel", "Cannot fetch goals: User not logged in.")
             return
         }
 
-        // --- FIX 1: Update the question text to match what is being saved ---
         val allGoals = listOf(
             Goal(id = "calories", text = "How many calories a day is your target?"),
             Goal(id = "protein", text = "How many grams of protein a day is your target?"),
             Goal(id = "target_weight", text = "Do you have a target weight or body composition goal in mind?")
         )
 
-        firestore.collection("users").document(userId)
+        // 9. SAVE THE LISTENER
+        goalsListener = firestore.collection("users").document(userId)
             .collection("user_answers").document("goals")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -110,15 +126,12 @@ class GoalsViewModel : ViewModel() {
                     val mergedGoals = allGoals.map { goal ->
                         val answer = userAnswers[goal.text]
 
-                        // --- FIX 2: Parse the target weight answer to just the number ---
                         if (goal.id == "target_weight" && answer != null) {
-                            // Parses "70.5 kg" to "70.5"
                             val parsedValue = answer.split(" ").firstOrNull() ?: ""
                             goal.copy(value = parsedValue)
                         } else {
                             goal.copy(value = answer)
                         }
-                        // --- END OF FIX 2 ---
                     }
 
                     _goals.value = mergedGoals
@@ -133,13 +146,15 @@ class GoalsViewModel : ViewModel() {
     }
 
     private fun fetchUserProfile() {
+        profileListener?.remove() // Clear previous listener
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("GoalsViewModel", "Cannot fetch profile: User not logged in.")
             return
         }
 
-        firestore.collection("users").document(userId)
+        // 10. SAVE THE LISTENER
+        profileListener = firestore.collection("users").document(userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e("GoalsViewModel", "Error listening to user profile", e)
@@ -165,7 +180,6 @@ class GoalsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val userAnswersToSave = _goals.value.map { goal ->
-                    // This is fine. If the user saves "71", FoodLogViewModel will parse "71" correctly.
                     mapOf("question" to goal.text, "answer" to (goal.value ?: ""))
                 }
 
@@ -191,5 +205,27 @@ class GoalsViewModel : ViewModel() {
         _goals.value = _goals.value.map { goal ->
             if (goal.id == goalId) goal.copy(value = answer) else goal
         }
+    }
+
+    // --- 11. ADD CLEANUP FUNCTIONS ---
+    private fun clearAllListenersAndData() {
+        dietPlanListener?.remove()
+        dietPlanListener = null
+        goalsListener?.remove()
+        goalsListener = null
+        profileListener?.remove()
+        profileListener = null
+
+        _currentDietPlan.value = null
+        _goals.value = emptyList()
+        _userWeight.value = 0f
+        _hasAiGeneratedGoals.value = false
+        _isLoadingPlan.value = false // Set to false, not true
+        Log.d("GoalsViewModel", "Cleared all listeners and data.")
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        clearAllListenersAndData()
     }
 }

@@ -44,10 +44,14 @@ class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
     private val functions = Firebase.functions("me-west1")
-    private val preferencesCollection = firestore.collection("users").document(auth.currentUser?.uid ?: "no_user").collection("preferences")
+
+    // --- THIS LINE HAS BEEN REMOVED ---
+    // private val preferencesCollection = ...
 
     private val _selectedDateState = MutableStateFlow(LocalDate.now())
     val selectedDateState = _selectedDateState.asStateFlow()
+
+    // ... (rest of your state flows) ...
 
     private val _currentWeekStartDateState = MutableStateFlow(LocalDate.now().minusDays(6))
     val currentWeekStartDateState = _currentWeekStartDateState.asStateFlow()
@@ -56,12 +60,10 @@ class FoodLogViewModel : ViewModel() {
     val mealsForSelectedDate = _mealsForSelectedDateState.asStateFlow()
 
     private var mealsListenerRegistration: ListenerRegistration? = null
-
     private var weightHistoryListener: ListenerRegistration? = null
     private var targetWeightListener: ListenerRegistration? = null
 
     private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
-    val graphPreferences = _graphPreferences.asStateFlow()
 
     private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
     val weightHistory = _weightHistory.asStateFlow()
@@ -106,7 +108,6 @@ class FoodLogViewModel : ViewModel() {
         mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
     )
 
-
     private val _geminiResult = MutableStateFlow<GeminiResult>(GeminiResult.Idle)
     val geminiResult: MutableStateFlow<GeminiResult> = _geminiResult
 
@@ -114,7 +115,6 @@ class FoodLogViewModel : ViewModel() {
 
     private val _isFutureTimeSelected = MutableStateFlow(false)
     val isFutureTimeSelected = _isFutureTimeSelected.asStateFlow()
-
 
     init {
         val today = LocalDate.now()
@@ -126,7 +126,7 @@ class FoodLogViewModel : ViewModel() {
                 if (firebaseAuth.currentUser != null) {
                     listenForMealsForDate(selectedDateState.value)
                     fetchMealsForLastSevenDays()
-                    fetchGraphPreferences()
+                    fetchGraphPreferences() // <-- This is now safe
                     listenForWeightHistory()
                     listenForTargetWeight()
                 } else {
@@ -179,10 +179,21 @@ class FoodLogViewModel : ViewModel() {
     )
 
     fun fetchGraphPreferences() {
-        auth.currentUser?.uid ?: return
+        // --- THIS IS THE FIX (PART 1) ---
+        // Get the current user ID *inside* the function.
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.d("FoodLogViewModel", "Cannot fetch graph preferences, user not logged in.")
+            return
+        }
+        // Build the path here, not at the class level
+        val preferencesDocRef = firestore.collection("users").document(userId)
+            .collection("preferences").document("graph_order")
+        // --- END OF FIX (PART 1) ---
+
         viewModelScope.launch {
             try {
-                val snapshot = preferencesCollection.document("graph_order").get().await()
+                val snapshot = preferencesDocRef.get().await() // Use the local ref
 
                 val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
 
@@ -226,17 +237,28 @@ class FoodLogViewModel : ViewModel() {
     }
 
     fun saveGraphPreferences(preferences: List<GraphPreference>) {
-        auth.currentUser?.uid ?: return
+        // --- THIS IS THE FIX (PART 2) ---
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.d("FoodLogViewModel", "Cannot save graph preferences, user not logged in.")
+            return
+        }
+        val preferencesDocRef = firestore.collection("users").document(userId)
+            .collection("preferences").document("graph_order")
+        // --- END OF FIX (PART 2) ---
+
         _graphPreferences.value = preferences
         viewModelScope.launch {
             try {
                 val dataToSave = hashMapOf("list" to preferences.map { it.toMap() })
-                preferencesCollection.document("graph_order").set(dataToSave).await()
+                preferencesDocRef.set(dataToSave).await() // Use the local ref
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error saving graph preferences: ${e.message}")
             }
         }
     }
+
+    // ... (rest of the file is unchanged) ...
 
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
@@ -349,8 +371,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // --- Weight Logging ---
-
     private fun listenForWeightHistory() {
         weightHistoryListener?.remove()
         val userId = auth.currentUser?.uid ?: return
@@ -364,7 +384,6 @@ class FoodLogViewModel : ViewModel() {
                     _weightHistory.value = emptyList()
                     return@addSnapshotListener
                 }
-                // Updated to map document ID
                 val historyList = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject<WeightEntry>()?.copy(id = doc.id)
                 } ?: emptyList()
@@ -372,13 +391,12 @@ class FoodLogViewModel : ViewModel() {
             }
     }
 
-    // --- FIX: This function has been updated to match the question in QuestionsScreen.kt ---
     private fun listenForTargetWeight() {
         targetWeightListener?.remove()
         val userId = auth.currentUser?.uid ?: return
 
         targetWeightListener = firestore.collection("users").document(userId)
-            .collection("user_answers").document("goals") // <-- This path is correct
+            .collection("user_answers").document("goals")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e("FoodLogViewModel", "Error listening to target weight", e)
@@ -390,19 +408,16 @@ class FoodLogViewModel : ViewModel() {
                     @Suppress("UNCHECKED_CAST")
                     val answersMap = snapshot.get("answers") as? List<Map<String, String>>
 
-                    // --- THE FIX IS HERE ---
                     val targetWeightAnswer = answersMap?.firstOrNull {
-                        it["question"] == "Do you have a target weight or body composition goal in mind?" // <-- This now matches QuestionsScreen.kt
+                        it["question"] == "Do you have a target weight or body composition goal in mind?"
                     }?.get("answer")
 
-                    // Parse the answer string (e.g., "70.5 kg") to get the float
                     _targetWeight.value = targetWeightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull() ?: 0f
                 } else {
                     _targetWeight.value = 0f
                 }
             }
     }
-    // --- END OF FIX ---
 
     fun addWeightEntry(weight: Float, date: Calendar) {
         val userId = auth.currentUser?.uid ?: return
@@ -411,8 +426,6 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val timestamp = Timestamp(date.time)
-                // We set timestamp here manually so it's not null,
-                // but @ServerTimestamp in WeightEntry will overwrite it on the server.
                 val newEntry = WeightEntry(weight = weight, timestamp = timestamp)
 
                 firestore.collection("users").document(userId)
@@ -426,7 +439,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // New function to update a weight entry
     fun updateWeightEntry(id: String, newWeight: Float, newDate: Calendar) {
         val userId = auth.currentUser?.uid ?: return
         if (id.isBlank()) {
@@ -455,7 +467,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // New function to delete a weight entry
     fun deleteWeightEntry(id: String) {
         val userId = auth.currentUser?.uid ?: return
         if (id.isBlank()) {
@@ -473,8 +484,6 @@ class FoodLogViewModel : ViewModel() {
             }
         }
     }
-
-    // --- Meal CRUD Operations ---
 
     fun logMeal(
         foodName: String,
@@ -612,8 +621,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // --- Date/UI Methods ---
-
     private fun listenForMealsForDate(date: LocalDate) {
         mealsListenerRegistration?.remove()
         val userId = auth.currentUser?.uid ?: return
@@ -680,8 +687,6 @@ class FoodLogViewModel : ViewModel() {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
 
-    // --- Gemini API Methods ---
-
     fun analyzeImageWithGemini(foodName: String, imageB64: String? = null) {
         _geminiResult.value = GeminiResult.Loading
         viewModelScope.launch {
@@ -716,7 +721,6 @@ class FoodLogViewModel : ViewModel() {
                     _geminiResult.value = if (parsedList.isNotEmpty()) {
                         GeminiResult.Success(parsedList)
                     } else {
-                        // --- TYPO FIX HERE ---
                         GeminiResult.Error("No food information found.")
                     }
                 } else {

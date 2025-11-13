@@ -108,7 +108,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                 false
             } else {
                 val isNameMissing = profile.name.isBlank()
-                val isWeightMissing = profile.startingWeight <= 0f // Changed
+                val isWeightMissing = profile.startingWeight <= 0f
                 val isHeightMissing = profile.height <= 0f
 
                 isNameMissing || isWeightMissing || isHeightMissing
@@ -135,7 +135,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     if (snapshot != null && snapshot.exists()) {
                         try {
                             val name = snapshot.getString("name") ?: ""
-                            val startingWeight = (snapshot.get("startingWeight") as? Number)?.toFloat() ?: 0f // Changed
+                            val startingWeight = (snapshot.get("startingWeight") as? Number)?.toFloat() ?: 0f
                             val height = (snapshot.get("height") as? Number)?.toFloat() ?: 0f
                             val dateOfBirth = snapshot.getDate("dateOfBirth")
                             val avatarId = snapshot.getString("avatarId")
@@ -148,7 +148,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
                             _userProfile.value = UserProfile(
                                 name = name,
-                                startingWeight = startingWeight, // Changed
+                                startingWeight = startingWeight,
                                 height = height,
                                 dateOfBirth = dateOfBirth,
                                 avatarId = avatarId,
@@ -181,7 +181,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         if (userId != null) {
             val userProfileMap = hashMapOf(
                 "name" to profile.name,
-                "startingWeight" to profile.startingWeight, // Changed
+                "startingWeight" to profile.startingWeight,
                 "height" to profile.height,
                 "dateOfBirth" to profile.dateOfBirth,
                 "avatarId" to profile.avatarId,
@@ -207,7 +207,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
         _authResult.value = AuthResult.Loading
 
-        // Capture the values *before* clearing the state
         val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
         val newAvatarId = selectedAvatarId.value
         val emailForPrefs = emailState.value
@@ -234,7 +233,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         saveUserProfile(newProfile)
                     }
                     onSuccess()
-                    clearInputFields() // This is now safe to call
+                    clearInputFields()
                 } else {
                     val errorMessage = task.exception?.message ?: "Sign up failed."
                     _authResult.value = AuthResult.Error(errorMessage)
@@ -242,7 +241,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // --- FIX: Changed signature to (isNewUser: Boolean) -> Unit ---
     fun signIn(email: String, password: String, onSuccess: (isNewUser: Boolean) -> Unit) {
         if (email.isBlank() || password.isBlank()) {
             _authResult.value = AuthResult.Error("Email and password cannot be empty.")
@@ -260,7 +258,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             preferencesRepository.clearUserPreferences()
                         }
                     }
-                    onSuccess(false) // Email/pass login is never a new user
+                    onSuccess(false)
                     clearInputFields()
                 } else {
                     val errorMessage = task.exception?.message ?: "Sign in failed."
@@ -304,9 +302,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return GoogleSignIn.getClient(context, gso)
     }
 
-    // --- This function is now removed, handleGoogleSignInResult is used everywhere ---
-    // fun firebaseAuthWithGoogle(...)
-
     fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: (isNewUser: Boolean) -> Unit) {
         _authResult.value = AuthResult.Loading
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
@@ -321,18 +316,18 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                             preferencesRepository.clearUserPreferences()
                         }
                         val userId = auth.currentUser?.uid
-                        var isNewUser = false // Flag to track
+                        var isNewUser = false
                         if (userId != null) {
                             val userDoc = firestore.collection("users").document(userId).get().await()
                             if (!userDoc.exists()) {
-                                isNewUser = true // This is a new user
+                                isNewUser = true
                                 val newProfile = UserProfile(
                                     name = account.displayName ?: ""
                                 )
                                 saveUserProfile(newProfile)
                             }
                         }
-                        onSuccess(isNewUser) // Pass the flag back
+                        onSuccess(isNewUser)
                     }
                 } else {
                     val errorMessage = task.exception?.message ?: "Google sign-in failed."
@@ -344,19 +339,19 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     fun updateProfile(
         name: String,
-        weight: String, // This string now represents STARTING weight
+        weight: String,
         height: String,
         dateOfBirth: Date?,
         avatarId: String?,
         gender: Gender,
     ) {
         viewModelScope.launch {
-            val parsedStartingWeight = weight.toFloatOrNull() ?: _userProfile.value.startingWeight // Changed
+            val parsedStartingWeight = weight.toFloatOrNull() ?: _userProfile.value.startingWeight
             val parsedHeight = height.toFloatOrNull() ?: _userProfile.value.height
 
             val updatedProfile = _userProfile.value.copy(
                 name = name,
-                startingWeight = parsedStartingWeight, // Changed
+                startingWeight = parsedStartingWeight,
                 height = parsedHeight,
                 dateOfBirth = dateOfBirth,
                 avatarId = avatarId,
@@ -396,6 +391,23 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
+    // --- NEW HELPER FUNCTION TO DELETE SUB-COLLECTIONS ---
+    private suspend fun deleteSubCollection(userId: String, collectionName: String) {
+        try {
+            val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
+            val querySnapshot = collectionRef.get().await()
+            val batch = firestore.batch()
+            for (document in querySnapshot.documents) {
+                batch.delete(document.reference)
+            }
+            batch.commit().await()
+            Log.d("AuthViewModel", "Successfully deleted sub-collection: $collectionName")
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error deleting sub-collection $collectionName", e)
+            // We log the error but don't throw, to allow other deletions to proceed
+        }
+    }
+
     fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
         if (user != null) {
@@ -404,19 +416,50 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
             viewModelScope.launch {
                 try {
-                    // 1. DELETE FIRESTORE DATA FIRST (while user is still authenticated)
-                    // Note: This won't delete sub-collections.
-                    firestore.collection("users").document(userId).delete().await()
-                    Log.d("AuthViewModel", "Successfully deleted user data from Firestore.")
+                    // --- THIS IS THE FIX ---
+                    Log.d("AuthViewModel", "Starting Firestore data deletion for user: $userId")
 
-                    // 2. NOW DELETE THE AUTH USER
+                    // 1. Delete all sub-collections
+                    deleteSubCollection(userId, "meals")
+                    deleteSubCollection(userId, "weight_history")
+                    deleteSubCollection(userId, "notifications")
+
+                    // 2. Delete all known documents in sub-collections
+                    // (From QuestionsViewModel, GoalsViewModel)
+                    firestore.collection("users").document(userId)
+                        .collection("user_answers").document("diet_habits")
+                        .delete().await()
+                    Log.d("AuthViewModel", "Deleted user_answers/diet_habits")
+
+                    firestore.collection("users").document(userId)
+                        .collection("user_answers").document("goals")
+                        .delete().await()
+                    Log.d("AuthViewModel", "Deleted user_answers/goals")
+
+                    firestore.collection("users").document(userId)
+                        .collection("diet_plans").document("current_plan")
+                        .delete().await()
+                    Log.d("AuthViewModel", "Deleted diet_plans/current_plan")
+
+                    // (From FoodLogViewModel)
+                    firestore.collection("users").document(userId)
+                        .collection("preferences").document("graph_order")
+                        .delete().await()
+                    Log.d("AuthViewModel", "Deleted preferences/graph_order")
+
+                    // 3. Now delete the main user profile document
+                    firestore.collection("users").document(userId).delete().await()
+                    Log.d("AuthViewModel", "Successfully deleted main user document.")
+
+                    // 4. NOW delete the Auth user
                     user.delete().await()
                     Log.d("AuthViewModel", "Successfully deleted user from Firebase Auth.")
+                    // --- END OF FIX ---
 
-                    // 3. Clean up local preferences
+                    // 5. Clean up local preferences
                     preferencesRepository.clearUserPreferences()
                     _authResult.value = AuthResult.Success
-                    onSuccess() // AuthStateListener will handle resetting the user profile
+                    onSuccess()
 
                 } catch (e: Exception) {
                     val errorMessage = e.message ?: "Failed to delete account."
@@ -426,7 +469,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     if (e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
                         onError("re-authenticate-required")
                     } else if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                        // This error might still happen if your rules are very strict
                         onError("Permission denied. Could not delete user data.")
                     } else {
                         onError(errorMessage)
