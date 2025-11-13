@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,7 +28,6 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.ui.stats.*
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
-import java.util.Locale
 
 // Reuse color palette
 private val PrimaryGreen = Color(0xFF00C853)
@@ -119,7 +120,6 @@ fun MacrosDetailScreen(
     navController: NavController
 ) {
     val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsState()
-    val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
 
     LaunchedEffect(Unit) {
         foodLogViewModel.refreshStatistics()
@@ -391,7 +391,7 @@ private fun DetailScreenScaffold(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -634,4 +634,17 @@ private fun InsightCard(insights: List<String>) {
             }
         }
     }
+}
+
+@Composable
+fun EmptyChartState(message: String) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodyLarge,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 48.dp)
+    )
 }

@@ -1,8 +1,6 @@
 package com.nadavariel.dietapp.ui.stats
 
 import android.graphics.Color
-import android.graphics.DashPathEffect
-import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Build
 import android.view.View
@@ -30,17 +28,17 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
 import kotlin.math.ceil
-import kotlin.math.floor // <-- IMPORT ADDED
-import kotlin.math.log10 // <-- IMPORT ADDED
-import kotlin.math.pow  // <-- IMPORT ADDED
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
+import androidx.core.graphics.toColorInt
 
 // Consistent Color Definitions
 private val HealthyGreenCompose = androidx.compose.ui.graphics.Color(0xFF4CAF50)
 private val AccentGreenCompose = androidx.compose.ui.graphics.Color(0xFF81C784)
-private val GridLineColor = Color.parseColor("#EEEEEE")
-private val AxisTextColor = Color.parseColor("#616161")
-private val TargetLineColor = Color.parseColor("#FF6E40") // Warm orange for target
-private val TargetBackgroundColor = Color.parseColor("#FFF3E0") // Light orange background
+private val GridLineColor = "#EEEEEE".toColorInt()
+private val AxisTextColor = "#616161".toColorInt()
+private val TargetLineColor = "#FF6E40".toColorInt() // Warm orange for target
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -174,14 +172,13 @@ fun BeautifulBarChart(
 fun BeautifulPieChart(
     data: Map<String, Float>
 ) {
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val centerTextColor = HealthyGreenCompose.toArgb()
 
     val macroColors = remember {
         listOf(
             HealthyGreenCompose.toArgb(),
-            Color.parseColor("#42A5F5"),
-            Color.parseColor("#FFA726")
+            "#42A5F5".toColorInt(),
+            "#FFA726".toColorInt()
         )
     }
 
