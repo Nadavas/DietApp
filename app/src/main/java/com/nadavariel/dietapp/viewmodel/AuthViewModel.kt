@@ -175,7 +175,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         userProfileListener?.remove()
     }
 
-    private suspend fun saveUserProfile(profile: UserProfile) {
+    // This is public but should only be called by QuestionsViewModel
+    suspend fun saveUserProfile(profile: UserProfile) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
             val userProfileMap = hashMapOf(
@@ -195,6 +196,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return auth.currentUser != null
     }
 
+    // --- 1. MODIFIED SIGNUP FUNCTION ---
+    // This function now ONLY validates the inputs and triggers navigation.
+    // It does NOT create a user.
     fun signUp(onSuccess: () -> Unit) {
         if (nameState.value.isBlank() || emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
             _authResult.value = AuthResult.Error("Name, email and passwords cannot be empty.")
@@ -204,41 +208,54 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             _authResult.value = AuthResult.Error("Passwords do not match.")
             return
         }
+
+        // Validation passed. Reset result and call onSuccess to navigate.
+        _authResult.value = AuthResult.Idle
+        onSuccess()
+    }
+
+    // --- 2. NEW FUNCTION TO CREATE USER (CALLED BY QuestionsViewModel) ---
+    /**
+     * Creates the user in Firebase Auth and saves their initial profile.
+     * This should only be called by QuestionsViewModel AFTER questions are answered.
+     * Throws an exception on failure, which QuestionsViewModel must catch.
+     */
+    suspend fun createUserAndProfile() {
+        if (emailState.value.isBlank() || passwordState.value.isBlank()) {
+            throw Exception("Email or password was blank.")
+        }
         _authResult.value = AuthResult.Loading
 
         val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
         val newAvatarId = selectedAvatarId.value
         val emailForPrefs = emailState.value
 
-        auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim())
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    _authResult.value = AuthResult.Success
-                    viewModelScope.launch {
-                        if (rememberMeState.value) {
-                            preferencesRepository.saveUserPreferences(emailForPrefs, rememberMeState.value)
-                        } else {
-                            preferencesRepository.clearUserPreferences()
-                        }
+        // This will throw an exception on failure
+        auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim()).await()
 
-                        val newProfile = UserProfile(
-                            name = newName,
-                            startingWeight = 0f,
-                            height = 0f,
-                            dateOfBirth = null,
-                            avatarId = newAvatarId,
-                            gender = Gender.UNKNOWN
-                        )
-                        saveUserProfile(newProfile)
-                    }
-                    onSuccess()
-                    clearInputFields()
-                } else {
-                    val errorMessage = task.exception?.message ?: "Sign up failed."
-                    _authResult.value = AuthResult.Error(errorMessage)
-                }
-            }
+        // User creation was successful
+        _authResult.value = AuthResult.Success
+
+        if (rememberMeState.value) {
+            preferencesRepository.saveUserPreferences(emailForPrefs, rememberMeState.value)
+        } else {
+            preferencesRepository.clearUserPreferences()
+        }
+
+        val newProfile = UserProfile(
+            name = newName,
+            startingWeight = 0f,
+            height = 0f,
+            dateOfBirth = null,
+            avatarId = newAvatarId,
+            gender = Gender.UNKNOWN
+        )
+        // This is a suspend function, so it will complete before moving on
+        saveUserProfile(newProfile)
+
+        // We don't call clearInputFields() here, let the navigation stack handle it
     }
+
 
     fun signIn(email: String, password: String, onSuccess: (isNewUser: Boolean) -> Unit) {
         if (email.isBlank() || password.isBlank()) {
@@ -360,7 +377,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    // --- 1. MODIFIED FUNCTION SIGNATURE ---
     fun changePassword(
         oldPassword: String,
         newPassword: String,
@@ -370,7 +386,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         val user = auth.currentUser
         val email = user?.email
 
-        // --- 2. ADDED CHECKS FOR ALL FIELDS ---
         if (user == null || email == null) {
             val noUserError = "No user is currently signed in."
             _authResult.value = AuthResult.Error(noUserError)
@@ -392,24 +407,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
         _authResult.value = AuthResult.Loading
 
-        // --- 3. RE-AUTHENTICATE FIRST ---
         val credential = EmailAuthProvider.getCredential(email, oldPassword)
         user.reauthenticate(credential).addOnCompleteListener { reauthTask ->
             if (reauthTask.isSuccessful) {
-                // Re-authentication successful, now update the password
                 user.updatePassword(newPassword).addOnCompleteListener { updateTask ->
                     if (updateTask.isSuccessful) {
                         _authResult.value = AuthResult.Success
                         onSuccess()
                     } else {
-                        // This might fail if the new password is weak
                         val errorMessage = updateTask.exception?.message ?: "Failed to update password."
                         _authResult.value = AuthResult.Error(errorMessage)
                         onError(errorMessage)
                     }
                 }
             } else {
-                // Re-authentication failed (e.g., wrong current password)
                 val errorMessage = reauthTask.exception?.message ?: "Incorrect current password."
                 _authResult.value = AuthResult.Error(errorMessage)
                 onError(errorMessage)
@@ -470,11 +481,11 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     Log.d("AuthViewModel", "Successfully deleted main user document.")
 
                     user.delete().await()
-                    Log.d("AuthViewModel","Failure deleted user from Firebase Auth.")
+                    Log.d("AuthViewModel","Successfully deleted user from Firebase Auth.")
 
-                            preferencesRepository.clearUserPreferences()
-                            _authResult.value = AuthResult.Success
-                            onSuccess()
+                    preferencesRepository.clearUserPreferences()
+                    _authResult.value = AuthResult.Success
+                    onSuccess()
 
                 } catch (e: Exception) {
                     val errorMessage = e.message ?: "Failed to delete account."

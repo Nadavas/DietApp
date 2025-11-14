@@ -81,7 +81,6 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 NotificationViewModel(application) as T
                             }
-                            // --- ADDED VIEWMODELS FOR QUESTIONS/GOALS ---
                             modelClass.isAssignableFrom(QuestionsViewModel::class.java) -> {
                                 @Suppress("UNCHECKED_CAST")
                                 QuestionsViewModel() as T
@@ -100,7 +99,6 @@ class MainActivity : ComponentActivity() {
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
             val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory)
             val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory)
-            // --- ADDED VIEWMODELS FOR QUESTIONS/GOALS ---
             val questionsViewModel: QuestionsViewModel = viewModel(factory = appViewModelFactory)
             val goalsViewModel: GoalsViewModel = viewModel(factory = appViewModelFactory)
 
@@ -137,9 +135,6 @@ class MainActivity : ComponentActivity() {
                     ?.split("?")?.firstOrNull()
                     ?.split("/")?.firstOrNull()
 
-                // --- FIX: Removed the val showLoadingScreen line ---
-
-                // --- FIX: Removed the outer Box composable ---
                 Scaffold(
                     modifier = Modifier,
                     bottomBar = {
@@ -302,12 +297,8 @@ class MainActivity : ComponentActivity() {
                                     authViewModel.clearInputFields()
                                     navController.popBackStack()
                                 },
-                                onSignUpSuccess = { isNewUser ->
-                                    val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
-                                    navController.navigate(route) {
-                                        popUpTo(NavRoutes.LANDING) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
+                                onSignUpSuccess = {
+                                    navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true")
                                 },
                                 onNavigateToSignIn = {
                                     navController.navigate(NavRoutes.SIGN_IN) {
@@ -412,6 +403,7 @@ class MainActivity : ComponentActivity() {
                             QuestionsScreen(
                                 navController = navController,
                                 questionsViewModel = questionsViewModel,
+                                authViewModel = authViewModel, // <-- 1. PASS THE VIEWMODEL
                                 startQuiz = startQuiz
                             )
                         }
@@ -488,7 +480,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                // --- FIX: The if (showLoadingScreen) { ... } block has been removed ---
             }
         }
     }

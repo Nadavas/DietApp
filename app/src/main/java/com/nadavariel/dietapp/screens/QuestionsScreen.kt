@@ -9,10 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.ui.QuestionColors.DarkGreyText
 import com.nadavariel.dietapp.ui.QuestionColors.ScreenBackgroundColor
 import com.nadavariel.dietapp.ui.questions.*
+import com.nadavariel.dietapp.viewmodel.AuthViewModel // <-- Import is already here
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,7 +20,8 @@ import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 fun QuestionsScreen(
     navController: NavController,
     questionsViewModel: QuestionsViewModel = viewModel(),
-    startQuiz: Boolean // <-- 1. ADD NEW PARAMETER
+    authViewModel: AuthViewModel, // <-- 2. REMOVED "= viewModel()"
+    startQuiz: Boolean
 ) {
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
@@ -44,10 +45,6 @@ fun QuestionsScreen(
         }
     }
 
-    // --- 2. ADD THIS LAUNCHED EFFECT ---
-    // This will run once when the screen is composed.
-    // If we're navigated here with startQuiz=true,
-    // it will set up the quiz and change the state.
     LaunchedEffect(Unit) {
         if (startQuiz) {
             // This is the same logic from the onRetakeQuiz lambda
@@ -56,7 +53,6 @@ fun QuestionsScreen(
             screenState = ScreenState.QUIZ_MODE
         }
     }
-    // --- END OF FIX ---
 
     // --- DIALOGS for API Results ---
     HandleDietPlanResultDialogs(navController, questionsViewModel)
@@ -80,23 +76,15 @@ fun QuestionsScreen(
                     IconButton(onClick = {
                         when (screenState) {
                             ScreenState.LANDING -> {
-                                // This logic is from our previous fix
-                                if (navController.previousBackStackEntry != null) {
-                                    navController.popBackStack()
-                                } else {
-                                    navController.navigate(NavRoutes.HOME) {
-                                        popUpTo(navController.graph.id) { inclusive = true }
-                                    }
-                                }
+                                navController.popBackStack()
                             }
                             ScreenState.QUIZ_MODE -> {
                                 // Go back to previous question or landing
                                 if (quizCurrentIndex > 0) {
                                     quizCurrentIndex--
                                 } else {
-                                    quizAnswers = emptyList()
-                                    quizCurrentIndex = 0
-                                    screenState = ScreenState.LANDING
+                                    // Back from 1st question now goes to SignUp
+                                    navController.popBackStack()
                                 }
                             }
                             else -> {
@@ -143,7 +131,11 @@ fun QuestionsScreen(
                     answers = editAnswers,
                     onEditClick = { index -> questionToEditIndex = index },
                     onSaveAndGenerate = {
-                        questionsViewModel.saveAnswersAndRegeneratePlan(questions, editAnswers)
+                        questionsViewModel.saveAnswersAndRegeneratePlan(
+                            authViewModel, // <-- Pass it here
+                            questions,
+                            editAnswers
+                        )
                         screenState = ScreenState.LANDING
                     }
                 )
@@ -167,7 +159,11 @@ fun QuestionsScreen(
                             quizCurrentIndex++
                         } else {
                             // Submit the quiz
-                            questionsViewModel.saveAnswersAndRegeneratePlan(questions, quizAnswers)
+                            questionsViewModel.saveAnswersAndRegeneratePlan(
+                                authViewModel, // <-- And pass it here
+                                questions,
+                                quizAnswers
+                            )
                             quizAnswers = emptyList()
                             quizCurrentIndex = 0
                             screenState = ScreenState.LANDING

@@ -9,7 +9,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.nadavariel.dietapp.model.DietPlan // <-- This now imports the NEW DietPlan
+import com.nadavariel.dietapp.model.DietPlan
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.model.Gender
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +57,8 @@ class QuestionsViewModel : ViewModel() {
     }
 
     init {
+        // We only fetch answers if the user is already logged in
+        // For a new user, this will (correctly) return nothing.
         fetchUserAnswers()
     }
 
@@ -82,6 +84,7 @@ class QuestionsViewModel : ViewModel() {
         questions: List<Question>,
         answers: List<String?>
     ) {
+        // This will now get the NEWLY created user's ID
         val userId = auth.currentUser?.uid ?: return
 
         val userAnswersToSave = questions.mapIndexedNotNull { index, question ->
@@ -103,7 +106,6 @@ class QuestionsViewModel : ViewModel() {
                     Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'")
                     val numericWeight = answerText.filter { it.isDigit() || it == '.' }
                     numericWeight.toFloatOrNull()?.let {
-                        // FIX: Save to 'startingWeight' field
                         profileUpdates["startingWeight"] = it
                         Log.d("QuestionsViewModel", "Adding startingWeight update: $it")
                     } ?: Log.w("QuestionsViewModel", "Could not parse weight: '$answerText'")
@@ -128,7 +130,6 @@ class QuestionsViewModel : ViewModel() {
                     }
                 }
                 GENDER_QUESTION -> {
-                    // Use the centralized mapping function from the Gender companion object
                     val genderEnum = Gender.fromString(answerText)
                     profileUpdates["gender"] = genderEnum.name
                     Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}")
@@ -197,16 +198,15 @@ class QuestionsViewModel : ViewModel() {
     private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
         val userId = auth.currentUser?.uid ?: return
         try {
-            // We convert the full, new data class into a nested map for Firestore
             val planData = mapOf(
                 "healthOverview" to dietPlan.healthOverview,
                 "goalStrategy" to dietPlan.goalStrategy,
                 "concretePlan" to mapOf(
-                    "targets" to dietPlan.concretePlan.targets, // This will save the Targets data class as a map
-                    "mealGuidelines" to dietPlan.concretePlan.mealGuidelines, // Saves MealGuidelines as a map
+                    "targets" to dietPlan.concretePlan.targets,
+                    "mealGuidelines" to dietPlan.concretePlan.mealGuidelines,
                     "trainingAdvice" to dietPlan.concretePlan.trainingAdvice
                 ),
-                "exampleMealPlan" to dietPlan.exampleMealPlan, // Saves ExampleMealPlan as a map
+                "exampleMealPlan" to dietPlan.exampleMealPlan,
                 "disclaimer" to dietPlan.disclaimer,
                 "generatedAt" to com.google.firebase.Timestamp.now()
             )
@@ -219,39 +219,48 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    fun saveAnswersAndRegeneratePlan(questions: List<Question>, answers: List<String?>) {
+    // --- 1. MODIFIED FUNCTION SIGNATURE ---
+    fun saveAnswersAndRegeneratePlan(
+        authViewModel: AuthViewModel, // <-- ADDED PARAM
+        questions: List<Question>,
+        answers: List<String?>
+    ) {
         viewModelScope.launch {
-            saveUserAnswersAndUpdateProfile(questions, answers)
             _dietPlanResult.value = DietPlanResult.Loading
-            val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
             try {
+                // --- 2. CREATE USER AND PROFILE FIRST ---
+                Log.d("QuestionsViewModel", "Attempting to create user and profile...")
+                authViewModel.createUserAndProfile()
+                Log.d("QuestionsViewModel", "User and profile created successfully.")
+
+                // --- 3. SAVE ANSWERS (now that user exists) ---
+                saveUserAnswersAndUpdateProfile(questions, answers)
+
+                // --- 4. CALL AI FUNCTION ---
+                val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
                 val data = hashMapOf("userProfile" to updatedAnswersString)
                 val result = functions.getHttpsCallable("generateDietPlan").call(data).await()
                 val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
+
                 if (responseData["success"] == true) {
                     val gson = Gson()
                     val dietPlan = gson.fromJson(gson.toJson(responseData["data"]), DietPlan::class.java)
 
-                    // --- THIS IS THE NEW LOGIC ---
-                    // 1. Save the plan to Firestore
                     saveDietPlanToFirestore(dietPlan)
-                    // 2. Automatically apply it to goals
                     applyDietPlanToGoals(dietPlan)
-                    // 3. Set success state to trigger navigation
                     _dietPlanResult.value = DietPlanResult.Success(dietPlan)
-                    // --- END OF NEW LOGIC ---
 
                 } else {
                     throw Exception(responseData["error"]?.toString() ?: "Unknown error from function")
                 }
             } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error generating diet plan", e)
+                // This will now catch errors from createUserAndProfile() OR the AI call
+                Log.e("QuestionsViewModel", "Error generating diet plan or creating user", e)
                 _dietPlanResult.value = DietPlanResult.Error(e.message ?: "An unexpected error occurred.")
             }
         }
     }
 
-    // --- THIS FUNCTION IS NOW PRIVATE AND SUSPEND ---
     private suspend fun applyDietPlanToGoals(plan: DietPlan) {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -259,7 +268,6 @@ class QuestionsViewModel : ViewModel() {
             return
         }
 
-        // No new viewModelScope, uses the caller's
         try {
             val goalsRef = firestore.collection("users").document(userId)
                 .collection("user_answers").document("goals")
@@ -268,7 +276,6 @@ class QuestionsViewModel : ViewModel() {
                 (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
             } else { mutableListOf() }
 
-            // UPDATED: Reads from the new nested structure
             val aiGoalsMap = mapOf(
                 "How many calories a day is your target?" to plan.concretePlan.targets.dailyCalories.toString(),
                 "How many grams of protein a day is your target?" to plan.concretePlan.targets.proteinGrams.toString()
