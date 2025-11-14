@@ -50,7 +50,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
 
-    // --- STATES FOR SIGN UP ---
     val nameState = mutableStateOf("")
     val emailState = mutableStateOf("")
     val passwordState = mutableStateOf("")
@@ -361,37 +360,63 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    fun changePassword(newPassword: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    // --- 1. MODIFIED FUNCTION SIGNATURE ---
+    fun changePassword(
+        oldPassword: String,
+        newPassword: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         val user = auth.currentUser
-        if (user != null) {
-            if (newPassword.isBlank() || newPassword.length < 6) {
-                onError("Password must be at least 6 characters long.")
-                return
-            }
-            _authResult.value = AuthResult.Loading
-            user.updatePassword(newPassword)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
+        val email = user?.email
+
+        // --- 2. ADDED CHECKS FOR ALL FIELDS ---
+        if (user == null || email == null) {
+            val noUserError = "No user is currently signed in."
+            _authResult.value = AuthResult.Error(noUserError)
+            onError(noUserError)
+            return
+        }
+        if (oldPassword.isBlank() || newPassword.isBlank()) {
+            val emptyError = "Passwords cannot be blank."
+            _authResult.value = AuthResult.Error(emptyError)
+            onError(emptyError)
+            return
+        }
+        if (newPassword.length < 6) {
+            val lengthError = "Password must be at least 6 characters long."
+            _authResult.value = AuthResult.Error(lengthError)
+            onError(lengthError)
+            return
+        }
+
+        _authResult.value = AuthResult.Loading
+
+        // --- 3. RE-AUTHENTICATE FIRST ---
+        val credential = EmailAuthProvider.getCredential(email, oldPassword)
+        user.reauthenticate(credential).addOnCompleteListener { reauthTask ->
+            if (reauthTask.isSuccessful) {
+                // Re-authentication successful, now update the password
+                user.updatePassword(newPassword).addOnCompleteListener { updateTask ->
+                    if (updateTask.isSuccessful) {
                         _authResult.value = AuthResult.Success
                         onSuccess()
                     } else {
-                        val errorMessage = task.exception?.message ?: "Failed to change password."
+                        // This might fail if the new password is weak
+                        val errorMessage = updateTask.exception?.message ?: "Failed to update password."
                         _authResult.value = AuthResult.Error(errorMessage)
-                        if (task.exception is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
-                            onError("re-authenticate-required")
-                        } else {
-                            onError(errorMessage)
-                        }
+                        onError(errorMessage)
                     }
                 }
-        } else {
-            val noUserError = "No user is currently signed in to change password."
-            _authResult.value = AuthResult.Error(noUserError)
-            onError(noUserError)
+            } else {
+                // Re-authentication failed (e.g., wrong current password)
+                val errorMessage = reauthTask.exception?.message ?: "Incorrect current password."
+                _authResult.value = AuthResult.Error(errorMessage)
+                onError(errorMessage)
+            }
         }
     }
 
-    // --- NEW HELPER FUNCTION TO DELETE SUB-COLLECTIONS ---
     private suspend fun deleteSubCollection(userId: String, collectionName: String) {
         try {
             val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
@@ -404,7 +429,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             Log.d("AuthViewModel", "Successfully deleted sub-collection: $collectionName")
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error deleting sub-collection $collectionName", e)
-            // We log the error but don't throw, to allow other deletions to proceed
         }
     }
 
@@ -416,16 +440,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
             viewModelScope.launch {
                 try {
-                    // --- THIS IS THE FIX ---
                     Log.d("AuthViewModel", "Starting Firestore data deletion for user: $userId")
 
-                    // 1. Delete all sub-collections
                     deleteSubCollection(userId, "meals")
                     deleteSubCollection(userId, "weight_history")
                     deleteSubCollection(userId, "notifications")
 
-                    // 2. Delete all known documents in sub-collections
-                    // (From QuestionsViewModel, GoalsViewModel)
                     firestore.collection("users").document(userId)
                         .collection("user_answers").document("diet_habits")
                         .delete().await()
@@ -441,25 +461,20 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         .delete().await()
                     Log.d("AuthViewModel", "Deleted diet_plans/current_plan")
 
-                    // (From FoodLogViewModel)
                     firestore.collection("users").document(userId)
                         .collection("preferences").document("graph_order")
                         .delete().await()
                     Log.d("AuthViewModel", "Deleted preferences/graph_order")
 
-                    // 3. Now delete the main user profile document
                     firestore.collection("users").document(userId).delete().await()
                     Log.d("AuthViewModel", "Successfully deleted main user document.")
 
-                    // 4. NOW delete the Auth user
                     user.delete().await()
-                    Log.d("AuthViewModel", "Successfully deleted user from Firebase Auth.")
-                    // --- END OF FIX ---
+                    Log.d("AuthViewModel","Failure deleted user from Firebase Auth.")
 
-                    // 5. Clean up local preferences
-                    preferencesRepository.clearUserPreferences()
-                    _authResult.value = AuthResult.Success
-                    onSuccess()
+                            preferencesRepository.clearUserPreferences()
+                            _authResult.value = AuthResult.Success
+                            onSuccess()
 
                 } catch (e: Exception) {
                     val errorMessage = e.message ?: "Failed to delete account."

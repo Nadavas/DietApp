@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.viewmodel.AuthResult
@@ -22,34 +23,28 @@ fun ChangePasswordScreen(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
-    // Get data from the viewmodel
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
 
-    // State variables
+    var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmNewPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showReauthDialog by remember { mutableStateOf(false) }
-    var reauthPassword by remember { mutableStateOf("") }
 
     // Handle authentication results
     LaunchedEffect(authResult) {
-        when (authResult) {
+        when (val result = authResult) {
             AuthResult.Success -> {
                 errorMessage = null
+                currentPassword = ""
                 newPassword = ""
                 confirmNewPassword = ""
                 authViewModel.resetAuthResult()
                 navController.popBackStack()
             }
             is AuthResult.Error -> {
-                val error = (authResult as AuthResult.Error).message
-                if (error == "re-authenticate-required") {
-                    showReauthDialog = true
-                    errorMessage = "Please re-enter your current password to change your password."
-                } else {
-                    errorMessage = error
-                }
+                // We no longer need the "re-authenticate-required" check
+                // The error message from the VM will be descriptive (e.g., "Wrong password")
+                errorMessage = result.message
             }
             AuthResult.Loading -> {
                 errorMessage = null
@@ -65,7 +60,6 @@ fun ChangePasswordScreen(
             TopAppBar(
                 title = { Text("Change Password") },
                 navigationIcon = {
-                    // Back button
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
@@ -83,128 +77,98 @@ fun ChangePasswordScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // New password field
-            OutlinedTextField(
-                value = newPassword,
-                onValueChange = { newPassword = it },
-                label = { Text("New Password") },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // Only show the fields if the user is an email/password user
+            if (authViewModel.isEmailPasswordUser) {
+                // --- 1. ADDED CURRENT PASSWORD FIELD ---
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = { currentPassword = it },
+                    label = { Text("Current Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Confirm new password field
-            OutlinedTextField(
-                value = confirmNewPassword,
-                onValueChange = { confirmNewPassword = it },
-                label = { Text("Confirm New Password") },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Change password button
-            Button(
-                onClick = {
-                    errorMessage = null
-                    if (newPassword.isBlank() || confirmNewPassword.isBlank()) {
-                        errorMessage = "Please fill in both password fields."
-                        return@Button
-                    }
-                    if (newPassword != confirmNewPassword) {
-                        errorMessage = "New passwords do not match."
-                        return@Button
-                    }
-                    if (newPassword.length < 6) {
-                        errorMessage = "Password must be at least 6 characters long."
-                        return@Button
-                    }
-                    // Calls the viewmodel to change password
-                    authViewModel.changePassword(
-                        newPassword = newPassword,
-                        onSuccess = { /* Handled by LaunchedEffect */ },
-                        onError = { /* Handled by LaunchedEffect */ }
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Change Password")
-            }
-
-            errorMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // New password field
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    label = { Text("New Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Confirm new password field
+                OutlinedTextField(
+                    value = confirmNewPassword,
+                    onValueChange = { confirmNewPassword = it },
+                    label = { Text("Confirm New Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Change password button
+                Button(
+                    onClick = {
+                        errorMessage = null
+                        // --- 2. UPDATED VALIDATION ---
+                        if (currentPassword.isBlank() || newPassword.isBlank() || confirmNewPassword.isBlank()) {
+                            errorMessage = "Please fill in all password fields."
+                            return@Button
+                        }
+                        if (newPassword != confirmNewPassword) {
+                            errorMessage = "New passwords do not match."
+                            return@Button
+                        }
+                        if (newPassword.length < 6) {
+                            errorMessage = "Password must be at least 6 characters long."
+                            return@Button
+                        }
+
+                        // --- 3. UPDATED VIEWMODEL CALL ---
+                        authViewModel.changePassword(
+                            oldPassword = currentPassword,
+                            newPassword = newPassword,
+                            onSuccess = { /* Handled by LaunchedEffect */ },
+                            onError = { /* Handled by LaunchedEffect */ }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Change Password")
+                }
+
+                errorMessage?.let { msg ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = msg,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                }
+            } else {
+                // Show this message for Google Sign-In users
                 Text(
-                    text = msg,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    text = "Password management is not available for accounts created with Google Sign-In.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
     }
 
-    // Re-authentication dialog
-    if (showReauthDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showReauthDialog = false
-                reauthPassword = ""
-                authViewModel.resetAuthResult()
-            },
-            title = { Text("Re-authentication Required") },
-            text = {
-                Column {
-                    Text(errorMessage ?: "Please re-enter your current password to proceed.")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = reauthPassword,
-                        onValueChange = { reauthPassword = it },
-                        label = { Text("Current Password") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val currentEmail = authViewModel.currentUser?.email
-                        if (currentEmail != null && reauthPassword.isNotBlank()) {
-                            errorMessage = null
-                            authViewModel.signIn(currentEmail, reauthPassword) {
-                                showReauthDialog = false
-                                reauthPassword = ""
-                                authViewModel.changePassword(
-                                    newPassword = newPassword,
-                                    onSuccess = { /* Handled by LaunchedEffect */ },
-                                    onError = { /* Handled by LaunchedEffect */ }
-                                )
-                            }
-                        } else {
-                            errorMessage = "Please enter your current password."
-                        }
-                    },
-                    enabled = reauthPassword.isNotBlank()
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showReauthDialog = false
-                    reauthPassword = ""
-                    authViewModel.resetAuthResult()
-                }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    // --- 4. REMOVED THE RE-AUTHENTICATION DIALOG ---
+    // (It's no longer needed as we proactively ask for the password)
 }
