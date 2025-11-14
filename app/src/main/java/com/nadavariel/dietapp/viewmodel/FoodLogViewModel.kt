@@ -45,13 +45,13 @@ class FoodLogViewModel : ViewModel() {
     private val firestore: FirebaseFirestore = Firebase.firestore
     private val functions = Firebase.functions("me-west1")
 
-    // --- THIS LINE HAS BEEN REMOVED ---
-    // private val preferencesCollection = ...
+    // --- 1. ADD NEW LOADING STATE ---
+    private val _isLoadingLogs = MutableStateFlow(true)
+    val isLoadingLogs = _isLoadingLogs.asStateFlow()
+    // --- END OF FIX ---
 
     private val _selectedDateState = MutableStateFlow(LocalDate.now())
     val selectedDateState = _selectedDateState.asStateFlow()
-
-    // ... (rest of your state flows) ...
 
     private val _currentWeekStartDateState = MutableStateFlow(LocalDate.now().minusDays(6))
     val currentWeekStartDateState = _currentWeekStartDateState.asStateFlow()
@@ -121,14 +121,28 @@ class FoodLogViewModel : ViewModel() {
         _currentWeekStartDateState.value = calculateWeekStartDate(today)
         _selectedDateState.value = today
 
+        // --- 3. MODIFY AUTH LISTENER FOR LOADING STATE ---
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 if (firebaseAuth.currentUser != null) {
+                    _isLoadingLogs.value = true // Start loading
+
+                    // Start all live listeners
                     listenForMealsForDate(selectedDateState.value)
-                    fetchMealsForLastSevenDays()
-                    fetchGraphPreferences() // <-- This is now safe
                     listenForWeightHistory()
                     listenForTargetWeight()
+
+                    // Launch a separate job for one-time fetches
+                    viewModelScope.launch {
+                        try {
+                            fetchMealsForLastSevenDays() // await suspend fun
+                            fetchGraphPreferences()    // await suspend fun
+                        } catch (e: Exception) {
+                            Log.e("FoodLogViewModel", "Error in initial data fetch: $e")
+                        } finally {
+                            _isLoadingLogs.value = false // All initial fetches are done
+                        }
+                    }
                 } else {
                     mealsListenerRegistration?.remove()
                     mealsListenerRegistration = null
@@ -143,6 +157,7 @@ class FoodLogViewModel : ViewModel() {
     }
 
     private fun resetAllStates() {
+        _isLoadingLogs.value = true // Reset loading state
         _mealsForSelectedDateState.value = emptyList()
         _weeklyCalories.value = emptyMap()
         _weeklyProtein.value = emptyMap()
@@ -178,66 +193,60 @@ class FoodLogViewModel : ViewModel() {
         GraphPreference("vitamin_c", "Weekly Vitamin C Intake", 9, true, false)
     )
 
-    fun fetchGraphPreferences() {
-        // --- THIS IS THE FIX (PART 1) ---
-        // Get the current user ID *inside* the function.
+    // --- 4. MAKE FUNCTION SUSPEND and REMOVE INTERNAL SCOPE ---
+    private suspend fun fetchGraphPreferences() {
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.d("FoodLogViewModel", "Cannot fetch graph preferences, user not logged in.")
             return
         }
-        // Build the path here, not at the class level
         val preferencesDocRef = firestore.collection("users").document(userId)
             .collection("preferences").document("graph_order")
-        // --- END OF FIX (PART 1) ---
 
-        viewModelScope.launch {
-            try {
-                val snapshot = preferencesDocRef.get().await() // Use the local ref
+        try {
+            val snapshot = preferencesDocRef.get().await() // Use the local ref
 
-                val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
+            val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
 
-                val preferences = if (snapshot.exists()) {
-                    @Suppress("UNCHECKED_CAST")
-                    val storedList = snapshot.get("list") as? List<Map<String, Any>>
+            val preferences = if (snapshot.exists()) {
+                @Suppress("UNCHECKED_CAST")
+                val storedList = snapshot.get("list") as? List<Map<String, Any>>
 
-                    val storedPreferences = storedList?.mapNotNull { map ->
-                        GraphPreference(
-                            id = map["id"] as? String ?: return@mapNotNull null,
-                            title = map["title"] as? String ?: return@mapNotNull null,
-                            order = (map["order"] as? Long)?.toInt() ?: 0,
-                            isVisible = map["isVisible"] as? Boolean != false,
-                            isMacro = map["isMacro"] as? Boolean == true
-                        )
-                    } ?: getDefaultGraphPreferences()
+                val storedPreferences = storedList?.mapNotNull { map ->
+                    GraphPreference(
+                        id = map["id"] as? String ?: return@mapNotNull null,
+                        title = map["title"] as? String ?: return@mapNotNull null,
+                        order = (map["order"] as? Long)?.toInt() ?: 0,
+                        isVisible = map["isVisible"] as? Boolean != false,
+                        isMacro = map["isMacro"] as? Boolean == true
+                    )
+                } ?: getDefaultGraphPreferences()
 
-                    val storedMap = storedPreferences.associateBy { it.id }
+                val storedMap = storedPreferences.associateBy { it.id }
 
-                    defaultMap.keys.mapNotNull { id ->
-                        if (storedMap.containsKey(id)) {
-                            storedMap[id]?.copy(title = defaultMap[id]?.title ?: storedMap[id]!!.title)
-                        } else {
-                            defaultMap[id]?.copy(order = defaultMap.size + storedMap.size)
-                        }
-                    }.sortedBy { it.order }
+                defaultMap.keys.mapNotNull { id ->
+                    if (storedMap.containsKey(id)) {
+                        storedMap[id]?.copy(title = defaultMap[id]?.title ?: storedMap[id]!!.title)
+                    } else {
+                        defaultMap[id]?.copy(order = defaultMap.size + storedMap.size)
+                    }
+                }.sortedBy { it.order }
 
-                } else {
-                    getDefaultGraphPreferences()
-                }
-
-                _graphPreferences.value = preferences
-                if (!snapshot.exists()) {
-                    saveGraphPreferences(preferences)
-                }
-            } catch (e: Exception) {
-                Log.e("FoodLogViewModel", "Error fetching graph preferences: ${e.message}")
-                _graphPreferences.value = getDefaultGraphPreferences()
+            } else {
+                getDefaultGraphPreferences()
             }
+
+            _graphPreferences.value = preferences
+            if (!snapshot.exists()) {
+                saveGraphPreferences(preferences)
+            }
+        } catch (e: Exception) {
+            Log.e("FoodLogViewModel", "Error fetching graph preferences: ${e.message}")
+            _graphPreferences.value = getDefaultGraphPreferences()
         }
     }
 
     fun saveGraphPreferences(preferences: List<GraphPreference>) {
-        // --- THIS IS THE FIX (PART 2) ---
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.d("FoodLogViewModel", "Cannot save graph preferences, user not logged in.")
@@ -245,20 +254,17 @@ class FoodLogViewModel : ViewModel() {
         }
         val preferencesDocRef = firestore.collection("users").document(userId)
             .collection("preferences").document("graph_order")
-        // --- END OF FIX (PART 2) ---
 
         _graphPreferences.value = preferences
         viewModelScope.launch {
             try {
                 val dataToSave = hashMapOf("list" to preferences.map { it.toMap() })
-                preferencesDocRef.set(dataToSave).await() // Use the local ref
+                preferencesDocRef.set(dataToSave).await()
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error saving graph preferences: ${e.message}")
             }
         }
     }
-
-    // ... (rest of the file is unchanged) ...
 
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
@@ -268,39 +274,41 @@ class FoodLogViewModel : ViewModel() {
         return date.minusDays(daysToSubtract.toLong())
     }
 
+    // --- 5. LAUNCH A NEW SCOPE FOR SUSPEND FUNCTIONS ---
     fun refreshStatistics() {
-        fetchMealsForLastSevenDays()
-        fetchGraphPreferences()
+        viewModelScope.launch {
+            fetchMealsForLastSevenDays()
+            fetchGraphPreferences()
+        }
     }
 
-    private fun fetchMealsForLastSevenDays() {
+    // --- 6. MAKE FUNCTION SUSPEND and REMOVE INTERNAL SCOPE ---
+    private suspend fun fetchMealsForLastSevenDays() {
         val userId = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
-            try {
-                val sevenDaysAgo = LocalDate.now().minusDays(6)
-                val startOfPeriod = Date.from(sevenDaysAgo.atStartOfDay(ZoneId.systemDefault()).toInstant())
-                val querySnapshot = firestore.collection("users").document(userId).collection("meals")
-                    .whereGreaterThanOrEqualTo("timestamp", startOfPeriod)
-                    .get()
-                    .await()
-                val meals = querySnapshot.toObjects(Meal::class.java)
+        try {
+            val sevenDaysAgo = LocalDate.now().minusDays(6)
+            val startOfPeriod = Date.from(sevenDaysAgo.atStartOfDay(ZoneId.systemDefault()).toInstant())
+            val querySnapshot = firestore.collection("users").document(userId).collection("meals")
+                .whereGreaterThanOrEqualTo("timestamp", startOfPeriod)
+                .get()
+                .await()
+            val meals = querySnapshot.toObjects(Meal::class.java)
 
-                processWeeklyNutrient(meals, Meal::calories, _weeklyCalories)
-                processWeeklyNutrient(meals, Meal::protein, _weeklyProtein)
-                processWeeklyNutrient(meals, Meal::fiber, _weeklyFiber)
-                processWeeklyNutrient(meals, Meal::sugar, _weeklySugar)
-                processWeeklyNutrient(meals, Meal::sodium, _weeklySodium)
-                processWeeklyNutrient(meals, Meal::potassium, _weeklyPotassium)
-                processWeeklyNutrient(meals, Meal::calcium, _weeklyCalcium)
-                processWeeklyNutrient(meals, Meal::iron, _weeklyIron)
-                processWeeklyNutrient(meals, Meal::vitaminC, _weeklyVitaminC)
+            processWeeklyNutrient(meals, Meal::calories, _weeklyCalories)
+            processWeeklyNutrient(meals, Meal::protein, _weeklyProtein)
+            processWeeklyNutrient(meals, Meal::fiber, _weeklyFiber)
+            processWeeklyNutrient(meals, Meal::sugar, _weeklySugar)
+            processWeeklyNutrient(meals, Meal::sodium, _weeklySodium)
+            processWeeklyNutrient(meals, Meal::potassium, _weeklyPotassium)
+            processWeeklyNutrient(meals, Meal::calcium, _weeklyCalcium)
+            processWeeklyNutrient(meals, Meal::iron, _weeklyIron)
+            processWeeklyNutrient(meals, Meal::vitaminC, _weeklyVitaminC)
 
-                processCaloriesByTimeOfDay(meals)
-                processWeeklyMacroPercentages(meals)
+            processCaloriesByTimeOfDay(meals)
+            processWeeklyMacroPercentages(meals)
 
-            } catch (e: Exception) {
-                Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
-            }
+        } catch (e: Exception) {
+            Log.e("FoodLogViewModel", "Error fetching weekly meals for stats: ${e.message}", e)
         }
     }
 
@@ -523,8 +531,9 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 firestore.collection("users").document(userId).collection("meals").add(meal).await()
-                fetchMealsForLastSevenDays()
-                listenForMealsForDate(selectedDateState.value)
+                // --- 7. REMOVE REDUNDANT CALLS (listener handles this) ---
+                // fetchMealsForLastSevenDays() // No longer needed here
+                // listenForMealsForDate(selectedDateState.value) // No longer needed here
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
@@ -599,8 +608,9 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 mealRef.update(updatedData).await()
-                fetchMealsForLastSevenDays()
-                listenForMealsForDate(selectedDateState.value)
+                // --- 7. REMOVE REDUNDANT CALLS (listener handles this) ---
+                // fetchMealsForLastSevenDays()
+                // listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -613,8 +623,9 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 mealRef.delete().await()
-                fetchMealsForLastSevenDays()
-                listenForMealsForDate(selectedDateState.value)
+                // --- 7. REMOVE REDUNDANT CALLS (listener handles this) ---
+                // fetchMealsForLastSevenDays()
+                // listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }

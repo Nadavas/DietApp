@@ -49,17 +49,20 @@ fun HomeScreen(
     openWeightLog: Boolean = false
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
+
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
-    val goals by goalViewModel.goals.collectAsState()
+    val weightHistory by foodLogViewModel.weightHistory.collectAsState()
+    val targetWeight by foodLogViewModel.targetWeight.collectAsState()
+    val isLoadingLogs by foodLogViewModel.isLoadingLogs.collectAsStateWithLifecycle()
 
-    // --- FIX 1: Collect the loading and diet plan states ---
+    val goals by goalViewModel.goals.collectAsState()
     val dietPlan by goalViewModel.currentDietPlan.collectAsStateWithLifecycle()
     val isLoadingPlan by goalViewModel.isLoadingPlan.collectAsStateWithLifecycle()
 
-    val weightHistory by foodLogViewModel.weightHistory.collectAsState()
-    val targetWeight by foodLogViewModel.targetWeight.collectAsState()
+    val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan
 
     var showLogWeightDialog by remember { mutableStateOf(false) }
     var showManageWeightDialog by remember { mutableStateOf(false) }
@@ -67,14 +70,13 @@ fun HomeScreen(
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
     var mealWithActionsShownId by remember { mutableStateOf<String?>(null) }
-
     var showWeightGraphDialog by remember { mutableStateOf(false) }
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
     }
     val goalCalories = remember(goals) {
-        goals.firstOrNull()?.value?.toIntOrNull() ?: 2000
+        goals.firstOrNull()?.value?.toIntOrNull() ?: 0
     }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -155,166 +157,177 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Brush.verticalGradient(BackgroundGradient))
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            ModernHomeHeader(
-                userName = userProfile.name,
-                avatarId = userProfile.avatarId,
-                onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
-            )
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { mealWithActionsShownId = null },
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        if (isScreenLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
+                CircularProgressIndicator(color = TextPrimary)
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                ModernHomeHeader(
+                    userName = userProfile.name,
+                    avatarId = userProfile.avatarId,
+                    onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
+                )
 
-                // --- FIX 2: Alert logic is now based on loading state and diet plan ---
-                if (!isLoadingPlan && dietPlan == null) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate(NavRoutes.QUESTIONS) }, // Navigate to Questions
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { mealWithActionsShownId = null },
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
+                    // --- THIS IS THE FIX ---
+                    // The check for !isLoadingPlan is removed, as it's guaranteed
+                    // to be false by the outer 'isScreenLoading' check.
+                    if (dietPlan == null) {
+                        // --- END OF FIX ---
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { navController.navigate(NavRoutes.QUESTIONS) }, // Navigate to Questions
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = "Warning",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(Modifier.width(16.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Answer the Questionnaire",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = "Warning",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(32.dp)
                                     )
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Answer the Questionnaire",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                        Text(
+                                            text = "Complete the questionnaire to get your personalized diet plan.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(16.dp))
                                     Text(
-                                        text = "Complete the questionnaire to get your personalized diet plan.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                        text = "START",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error
                                     )
                                 }
-                                Spacer(Modifier.width(16.dp))
+                            }
+                        }
+                    }
+
+                    item {
+                        CompactWeightDateRow(
+                            startingWeight = userProfile.startingWeight,
+                            currentWeight = weightHistory.lastOrNull()?.weight
+                                ?: userProfile.startingWeight,
+                            targetWeight = targetWeight,
+                            history = weightHistory,
+                            onWeightClick = {
+                                weightEntryToEdit = null
+                                showLogWeightDialog = true
+                            },
+                            onGraphClick = {
+                                showWeightGraphDialog = true
+                            }
+                        )
+                    }
+
+                    item {
+                        DatePickerSection(
+                            currentWeekStartDate = currentWeekStartDate,
+                            selectedDate = selectedDate,
+                            onPreviousWeek = { foodLogViewModel.previousWeek() },
+                            onNextWeek = { foodLogViewModel.nextWeek() },
+                            onDateSelected = { date ->
+                                foodLogViewModel.selectDate(date)
+                                mealWithActionsShownId = null
+                            },
+                            onGoToToday = { foodLogViewModel.goToToday() }
+                        )
+                    }
+
+                    item {
+                        CalorieSummaryCard(
+                            totalCalories = totalCaloriesForSelectedDate,
+                            goalCalories = goalCalories
+                        )
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Today's Meals",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            if (mealsForSelectedDate.isNotEmpty()) {
                                 Text(
-                                    text = "START",
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
+                                    text = "${mealsForSelectedDate.size} meals",
+                                    fontSize = 14.sp,
+                                    color = TextSecondary
                                 )
                             }
                         }
                     }
-                }
-                // --- END OF CHANGE ---
 
-                item {
-                    CompactWeightDateRow(
-                        startingWeight = userProfile.startingWeight,
-                        currentWeight = weightHistory.lastOrNull()?.weight
-                            ?: userProfile.startingWeight,
-                        targetWeight = targetWeight,
-                        history = weightHistory,
-                        onWeightClick = {
-                            weightEntryToEdit = null
-                            showLogWeightDialog = true
-                        },
-                        onGraphClick = {
-                            showWeightGraphDialog = true
-                        }
-                    )
-                }
-
-                item {
-                    DatePickerSection(
-                        currentWeekStartDate = currentWeekStartDate,
-                        selectedDate = selectedDate,
-                        onPreviousWeek = { foodLogViewModel.previousWeek() },
-                        onNextWeek = { foodLogViewModel.nextWeek() },
-                        onDateSelected = { date ->
-                            foodLogViewModel.selectDate(date)
-                            mealWithActionsShownId = null
-                        },
-                        onGoToToday = { foodLogViewModel.goToToday() }
-                    )
-                }
-
-                item {
-                    CalorieSummaryCard(
-                        totalCalories = totalCaloriesForSelectedDate,
-                        goalCalories = goalCalories
-                    )
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Today's Meals",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        if (mealsForSelectedDate.isNotEmpty()) {
-                            Text(
-                                text = "${mealsForSelectedDate.size} meals",
-                                fontSize = 14.sp,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-                }
-
-                if (mealsForSelectedDate.isEmpty()) {
-                    item { EmptyState() }
-                } else {
-                    groupedMeals.forEach { (section, mealsInSection) ->
-                        stickyHeader {
-                            MealSectionHeader(
-                                section,
-                                Modifier.background(
-                                    PageBackgroundColor
+                    if (mealsForSelectedDate.isEmpty()) {
+                        item { EmptyState() }
+                    } else {
+                        groupedMeals.forEach { (section, mealsInSection) ->
+                            stickyHeader {
+                                MealSectionHeader(
+                                    section,
+                                    Modifier.background(
+                                        PageBackgroundColor
+                                    )
                                 )
-                            )
-                        }
-                        items(mealsInSection, key = { it.id }) { meal ->
-                            MealItem(
-                                meal = meal,
-                                sectionColor = section.color,
-                                showActions = mealWithActionsShownId == meal.id,
-                                onToggleActions = { clickedMealId ->
-                                    mealWithActionsShownId =
-                                        if (mealWithActionsShownId == clickedMealId) null else clickedMealId
-                                },
-                                onDelete = {
-                                    mealToDelete = it
-                                    showDeleteConfirmationDialog = true
-                                    mealWithActionsShownId = null
-                                },
-                                onEdit = {
-                                    navController.navigate("${NavRoutes.ADD_EDIT_MEAL}/${it.id}")
-                                    mealWithActionsShownId = null
-                                }
-                            )
+                            }
+                            items(mealsInSection, key = { it.id }) { meal ->
+                                MealItem(
+                                    meal = meal,
+                                    sectionColor = section.color,
+                                    showActions = mealWithActionsShownId == meal.id,
+                                    onToggleActions = { clickedMealId ->
+                                        mealWithActionsShownId =
+                                            if (mealWithActionsShownId == clickedMealId) null else clickedMealId
+                                    },
+                                    onDelete = {
+                                        mealToDelete = it
+                                        showDeleteConfirmationDialog = true
+                                        mealWithActionsShownId = null
+                                    },
+                                    onEdit = {
+                                        navController.navigate("${NavRoutes.ADD_EDIT_MEAL}/${it.id}")
+                                        mealWithActionsShownId = null
+                                    }
+                                )
+                            }
                         }
                     }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
