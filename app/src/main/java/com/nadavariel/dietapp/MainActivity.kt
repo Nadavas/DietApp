@@ -6,16 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -25,7 +20,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -143,378 +137,358 @@ class MainActivity : ComponentActivity() {
                     ?.split("?")?.firstOrNull()
                     ?.split("/")?.firstOrNull()
 
-                val showLoadingScreen = authViewModel.isUserSignedIn() && isLoadingProfile
+                // --- FIX: Removed the val showLoadingScreen line ---
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Scaffold(
-                        modifier = Modifier,
-                        bottomBar = {
-                            val isStatsDetailScreen = selectedRoute?.startsWith("stats/") == true
-                            if (!isStatsDetailScreen && (
-                                        selectedRoute == NavRoutes.HOME ||
-                                                selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
-                                                selectedRoute == NavRoutes.STATISTICS ||
-                                                selectedRoute == NavRoutes.THREADS ||
-                                                selectedRoute == NavRoutes.ACCOUNT
-                                        )) {
-                                NavigationBar(
-                                    containerColor = Color(0xFF4CAF50),
-                                    contentColor = Color.White.copy(alpha = 0.9f)
-                                ) {
-                                    NavigationBarItem(
-                                        selected = selectedRoute == NavRoutes.HOME,
-                                        onClick = {
-                                            navController.navigate(NavRoutes.HOME) {
-                                                popUpTo(NavRoutes.HOME) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
-                                        label = { Text("Home") },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White,
-                                            selectedTextColor = Color.White,
-                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                            indicatorColor = Color.White.copy(alpha = 0.15f)
-                                        )
-                                    )
-                                    NavigationBarItem(
-                                        selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL,
-                                        onClick = {
-                                            navController.navigate(NavRoutes.ADD_EDIT_MEAL) {
-                                                popUpTo(NavRoutes.HOME) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Filled.Add, contentDescription = "Add Meal") },
-                                        label = { Text("Add Meal") },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White,
-                                            selectedTextColor = Color.White,
-                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                            indicatorColor = Color.White.copy(alpha = 0.15f)
-                                        )
-                                    )
-                                    NavigationBarItem(
-                                        selected = selectedRoute == NavRoutes.STATISTICS,
-                                        onClick = {
-                                            navController.navigate(NavRoutes.STATISTICS) {
-                                                popUpTo(NavRoutes.HOME) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        icon = { Icon(painterResource(id = R.drawable.ic_bar_filled), contentDescription = "Stats") },
-                                        label = { Text("Stats") },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White,
-                                            selectedTextColor = Color.White,
-                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                            indicatorColor = Color.White.copy(alpha = 0.15f)
-                                        )
-                                    )
-                                    NavigationBarItem(
-                                        selected = selectedRoute == NavRoutes.THREADS,
-                                        onClick = {
-                                            navController.navigate(NavRoutes.THREADS) {
-                                                popUpTo(NavRoutes.HOME) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        icon = { Icon(painterResource(id = R.drawable.ic_forum), contentDescription = "Threads") },
-                                        label = { Text("Threads") },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White,
-                                            selectedTextColor = Color.White,
-                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                            indicatorColor = Color.White.copy(alpha = 0.15f)
-                                        )
-                                    )
-                                    NavigationBarItem(
-                                        selected = selectedRoute == NavRoutes.ACCOUNT,
-                                        onClick = {
-                                            navController.navigate(NavRoutes.ACCOUNT) {
-                                                popUpTo(NavRoutes.HOME) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        icon = {
-                                            Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
-                                        },
-                                        label = { Text("Account") },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White,
-                                            selectedTextColor = Color.White,
-                                            unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                            unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                            indicatorColor = Color.White.copy(alpha = 0.15f)
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    ) { innerPadding ->
-                        NavHost(
-                            navController = navController,
-                            startDestination = startDestination,
-                            modifier = Modifier.padding(innerPadding)
-                        ) {
-                            composable(NavRoutes.LANDING) {
-                                authViewModel.resetAuthResult()
-                                Greeting(
-                                    onSignInClick = {
-                                        authViewModel.clearInputFields()
-                                        navController.navigate(NavRoutes.SIGN_IN)
-                                    },
-                                    onSignUpClick = {
-                                        authViewModel.clearInputFields()
-                                        navController.navigate(NavRoutes.SIGN_UP)
-                                    }
-                                )
-                            }
-                            composable(NavRoutes.SIGN_IN) {
-                                SignInScreen(
-                                    authViewModel = authViewModel,
-                                    onBack = {
-                                        authViewModel.clearInputFields()
-                                        navController.popBackStack()
-                                    },
-                                    onSignInSuccess = { isNewUser ->
-                                        // --- THIS IS THE FIX ---
-                                        val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
-                                        // --- END OF FIX ---
-                                        navController.navigate(route) {
-                                            popUpTo(NavRoutes.LANDING) { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                    },
-                                    onNavigateToSignUp = {
-                                        navController.navigate(NavRoutes.SIGN_UP) {
-                                            popUpTo(NavRoutes.SIGN_IN) { inclusive = true }
-                                        }
-                                    }
-                                )
-                            }
-                            composable(NavRoutes.SIGN_UP) {
-                                SignUpScreen(
-                                    authViewModel = authViewModel,
-                                    onBack = {
-                                        authViewModel.clearInputFields()
-                                        navController.popBackStack()
-                                    },
-                                    onSignUpSuccess = { isNewUser ->
-                                        // --- THIS IS THE FIX ---
-                                        val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
-                                        // --- END OF FIX ---
-                                        navController.navigate(route) {
-                                            popUpTo(NavRoutes.LANDING) { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                    },
-                                    onNavigateToSignIn = {
-                                        navController.navigate(NavRoutes.SIGN_IN) {
-                                            popUpTo(NavRoutes.SIGN_UP) { inclusive = true }
-                                        }
-                                    }
-                                )
-                            }
-                            composable(
-                                route = "${NavRoutes.HOME}?openWeightLog={openWeightLog}",
-                                arguments = listOf(
-                                    navArgument("openWeightLog") {
-                                        type = NavType.BoolType
-                                        defaultValue = false
-                                    }
-                                ),
-                                deepLinks = listOf(
-                                    navDeepLink { uriPattern = "dietapp://home?openWeightLog={openWeightLog}" }
-                                )
-                            ) { backStackEntry ->
-                                val openWeightLog = backStackEntry.arguments?.getBoolean("openWeightLog") == true
-
-                                HomeScreen(
-                                    authViewModel = authViewModel,
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController,
-                                    openWeightLog = openWeightLog
-                                )
-                            }
-                            composable(NavRoutes.STATISTICS) {
-                                StatisticsScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-
-                            composable(NavRoutes.STATS_ENERGY) {
-                                EnergyDetailScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable(NavRoutes.STATS_MACROS) {
-                                MacrosDetailScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable(NavRoutes.STATS_CARBS) {
-                                CarbsDetailScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable(NavRoutes.STATS_MINERALS) {
-                                MineralsDetailScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable(NavRoutes.STATS_VITAMINS) {
-                                VitaminsDetailScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable(NavRoutes.ACCOUNT) {
-                                AccountScreen(
-                                    navController = navController,
-                                    authViewModel = authViewModel
-                                )
-                            }
-                            composable(NavRoutes.MY_PROFILE) {
-                                MyProfileScreen(
-                                    authViewModel = authViewModel,
-                                    navController = navController
-                                )
-                            }
-                            composable(NavRoutes.SETTINGS) {
-                                SettingsScreen(
-                                    navController = navController,
-                                    authViewModel = authViewModel
-                                )
-                            }
-                            composable(NavRoutes.NOTIFICATIONS) {
-                                NotificationScreen(
-                                    navController = navController,
-                                    notificationViewModel = notificationViewModel
-                                )
-                            }
-
-                            // --- THIS IS THE FIX ---
-                            // 1. Update route to accept an optional argument "startQuiz"
-                            // 2. Define the argument with a default value of false
-                            composable(
-                                route = "${NavRoutes.QUESTIONS}?startQuiz={startQuiz}",
-                                arguments = listOf(
-                                    navArgument("startQuiz") {
-                                        type = NavType.BoolType
-                                        defaultValue = false
-                                    }
-                                )
-                            ) { backStackEntry ->
-                                // 3. Extract the argument
-                                val startQuiz = backStackEntry.arguments?.getBoolean("startQuiz") == true
-                                QuestionsScreen(
-                                    navController = navController,
-                                    questionsViewModel = questionsViewModel,
-                                    startQuiz = startQuiz // 4. Pass it to the screen
-                                )
-                            }
-                            // --- END OF FIX ---
-
-                            composable(NavRoutes.GOALS) {
-                                GoalsScreen(
-                                    navController = navController,
-                                    goalsViewModel = goalsViewModel
-                                )
-                            }
-                            composable(NavRoutes.CHANGE_PASSWORD) {
-                                ChangePasswordScreen(
-                                    navController = navController,
-                                    authViewModel = authViewModel
-                                )
-                            }
-
-                            composable(
-                                route = NavRoutes.ADD_EDIT_MEAL,
-                                deepLinks = listOf(
-                                    navDeepLink { uriPattern = "dietapp://add_meal" }
-                                )
+                // --- FIX: Removed the outer Box composable ---
+                Scaffold(
+                    modifier = Modifier,
+                    bottomBar = {
+                        val isStatsDetailScreen = selectedRoute?.startsWith("stats/") == true
+                        if (!isStatsDetailScreen && (
+                                    selectedRoute == NavRoutes.HOME ||
+                                            selectedRoute == NavRoutes.ADD_EDIT_MEAL ||
+                                            selectedRoute == NavRoutes.STATISTICS ||
+                                            selectedRoute == NavRoutes.THREADS ||
+                                            selectedRoute == NavRoutes.ACCOUNT
+                                    )) {
+                            NavigationBar(
+                                containerColor = Color(0xFF4CAF50),
+                                contentColor = Color.White.copy(alpha = 0.9f)
                             ) {
-                                AddEditMealScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController,
-                                    mealToEdit = null
-                                )
-                            }
-                            composable(
-                                route = NavRoutes.ADD_EDIT_MEAL_WITH_ID,
-                                arguments = listOf(navArgument(NavRoutes.MEAL_ID_ARG) {
-                                    type = NavType.StringType; nullable = true
-                                })
-                            ) { backStackEntry ->
-                                val mealId = backStackEntry.arguments?.getString(NavRoutes.MEAL_ID_ARG)
-                                val mealToEdit: Meal? by produceState<Meal?>(initialValue = null, mealId) {
-                                    value = if (mealId != null) foodLogViewModel.getMealById(mealId) else null
-                                }
-                                AddEditMealScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController,
-                                    mealToEdit = mealToEdit
-                                )
-                            }
-
-                            composable(NavRoutes.THREADS) {
-                                ThreadsScreen(
-                                    navController = navController,
-                                    threadViewModel = threadViewModel,
-                                )
-                            }
-                            composable(NavRoutes.CREATE_THREAD) {
-                                CreateThreadScreen(
-                                    navController = navController,
-                                    threadViewModel = threadViewModel
-                                )
-                            }
-                            composable(
-                                route = NavRoutes.THREAD_DETAIL_WITH_ARG,
-                                arguments = listOf(navArgument("threadId") { type = NavType.StringType })
-                            ) { backStackEntry ->
-                                val threadId = backStackEntry.arguments?.getString("threadId")
-                                if (threadId != null) {
-                                    ThreadDetailScreen(
-                                        navController = navController,
-                                        threadId = threadId,
-                                        threadViewModel = threadViewModel,
-                                        authViewModel = authViewModel
+                                NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.HOME,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.HOME) {
+                                            popUpTo(NavRoutes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
+                                    label = { Text("Home") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color.White,
+                                        selectedTextColor = Color.White,
+                                        unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                        unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                        indicatorColor = Color.White.copy(alpha = 0.15f)
                                     )
-                                } else {
-                                    Text("Error: Thread ID is missing.")
-                                }
+                                )
+                                NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.ADD_EDIT_MEAL,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.ADD_EDIT_MEAL) {
+                                            popUpTo(NavRoutes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(Icons.Filled.Add, contentDescription = "Add Meal") },
+                                    label = { Text("Add Meal") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color.White,
+                                        selectedTextColor = Color.White,
+                                        unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                        unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                        indicatorColor = Color.White.copy(alpha = 0.15f)
+                                    )
+                                )
+                                NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.STATISTICS,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.STATISTICS) {
+                                            popUpTo(NavRoutes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(painterResource(id = R.drawable.ic_bar_filled), contentDescription = "Stats") },
+                                    label = { Text("Stats") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color.White,
+                                        selectedTextColor = Color.White,
+                                        unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                        unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                        indicatorColor = Color.White.copy(alpha = 0.15f)
+                                    )
+                                )
+                                NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.THREADS,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.THREADS) {
+                                            popUpTo(NavRoutes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(painterResource(id = R.drawable.ic_forum), contentDescription = "Threads") },
+                                    label = { Text("Threads") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color.White,
+                                        selectedTextColor = Color.White,
+                                        unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                        unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                        indicatorColor = Color.White.copy(alpha = 0.15f)
+                                    )
+                                )
+                                NavigationBarItem(
+                                    selected = selectedRoute == NavRoutes.ACCOUNT,
+                                    onClick = {
+                                        navController.navigate(NavRoutes.ACCOUNT) {
+                                            popUpTo(NavRoutes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = {
+                                        Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
+                                    },
+                                    label = { Text("Account") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color.White,
+                                        selectedTextColor = Color.White,
+                                        unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                        unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                        indicatorColor = Color.White.copy(alpha = 0.15f)
+                                    )
+                                )
                             }
                         }
                     }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = startDestination,
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        composable(NavRoutes.LANDING) {
+                            authViewModel.resetAuthResult()
+                            Greeting(
+                                onSignInClick = {
+                                    authViewModel.clearInputFields()
+                                    navController.navigate(NavRoutes.SIGN_IN)
+                                },
+                                onSignUpClick = {
+                                    authViewModel.clearInputFields()
+                                    navController.navigate(NavRoutes.SIGN_UP)
+                                }
+                            )
+                        }
+                        composable(NavRoutes.SIGN_IN) {
+                            SignInScreen(
+                                authViewModel = authViewModel,
+                                onBack = {
+                                    authViewModel.clearInputFields()
+                                    navController.popBackStack()
+                                },
+                                onSignInSuccess = { isNewUser ->
+                                    val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
+                                    navController.navigate(route) {
+                                        popUpTo(NavRoutes.LANDING) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                },
+                                onNavigateToSignUp = {
+                                    navController.navigate(NavRoutes.SIGN_UP) {
+                                        popUpTo(NavRoutes.SIGN_IN) { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        composable(NavRoutes.SIGN_UP) {
+                            SignUpScreen(
+                                authViewModel = authViewModel,
+                                onBack = {
+                                    authViewModel.clearInputFields()
+                                    navController.popBackStack()
+                                },
+                                onSignUpSuccess = { isNewUser ->
+                                    val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
+                                    navController.navigate(route) {
+                                        popUpTo(NavRoutes.LANDING) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                },
+                                onNavigateToSignIn = {
+                                    navController.navigate(NavRoutes.SIGN_IN) {
+                                        popUpTo(NavRoutes.SIGN_UP) { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        composable(
+                            route = "${NavRoutes.HOME}?openWeightLog={openWeightLog}",
+                            arguments = listOf(
+                                navArgument("openWeightLog") {
+                                    type = NavType.BoolType
+                                    defaultValue = false
+                                }
+                            ),
+                            deepLinks = listOf(
+                                navDeepLink { uriPattern = "dietapp://home?openWeightLog={openWeightLog}" }
+                            )
+                        ) { backStackEntry ->
+                            val openWeightLog = backStackEntry.arguments?.getBoolean("openWeightLog") == true
 
-                    if (showLoadingScreen) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)),
-                            contentAlignment = Alignment.Center
+                            HomeScreen(
+                                authViewModel = authViewModel,
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController,
+                                openWeightLog = openWeightLog
+                            )
+                        }
+                        composable(NavRoutes.STATISTICS) {
+                            StatisticsScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController
+                            )
+                        }
+
+                        composable(NavRoutes.STATS_ENERGY) {
+                            EnergyDetailScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController
+                            )
+                        }
+                        composable(NavRoutes.STATS_MACROS) {
+                            MacrosDetailScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController
+                            )
+                        }
+                        composable(NavRoutes.STATS_CARBS) {
+                            CarbsDetailScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController
+                            )
+                        }
+                        composable(NavRoutes.STATS_MINERALS) {
+                            MineralsDetailScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController
+                            )
+                        }
+                        composable(NavRoutes.STATS_VITAMINS) {
+                            VitaminsDetailScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController
+                            )
+                        }
+                        composable(NavRoutes.ACCOUNT) {
+                            AccountScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+                        composable(NavRoutes.MY_PROFILE) {
+                            MyProfileScreen(
+                                authViewModel = authViewModel,
+                                navController = navController
+                            )
+                        }
+                        composable(NavRoutes.SETTINGS) {
+                            SettingsScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+                        composable(NavRoutes.NOTIFICATIONS) {
+                            NotificationScreen(
+                                navController = navController,
+                                notificationViewModel = notificationViewModel
+                            )
+                        }
+
+                        composable(
+                            route = "${NavRoutes.QUESTIONS}?startQuiz={startQuiz}",
+                            arguments = listOf(
+                                navArgument("startQuiz") {
+                                    type = NavType.BoolType
+                                    defaultValue = false
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val startQuiz = backStackEntry.arguments?.getBoolean("startQuiz") == true
+                            QuestionsScreen(
+                                navController = navController,
+                                questionsViewModel = questionsViewModel,
+                                startQuiz = startQuiz
+                            )
+                        }
+
+                        composable(NavRoutes.GOALS) {
+                            GoalsScreen(
+                                navController = navController,
+                                goalsViewModel = goalsViewModel
+                            )
+                        }
+                        composable(NavRoutes.CHANGE_PASSWORD) {
+                            ChangePasswordScreen(
+                                navController = navController,
+                                authViewModel = authViewModel
+                            )
+                        }
+
+                        composable(
+                            route = NavRoutes.ADD_EDIT_MEAL,
+                            deepLinks = listOf(
+                                navDeepLink { uriPattern = "dietapp://add_meal" }
+                            )
                         ) {
-                            CircularProgressIndicator()
+                            AddEditMealScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController,
+                                mealToEdit = null
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.ADD_EDIT_MEAL_WITH_ID,
+                            arguments = listOf(navArgument(NavRoutes.MEAL_ID_ARG) {
+                                type = NavType.StringType; nullable = true
+                            })
+                        ) { backStackEntry ->
+                            val mealId = backStackEntry.arguments?.getString(NavRoutes.MEAL_ID_ARG)
+                            val mealToEdit: Meal? by produceState<Meal?>(initialValue = null, mealId) {
+                                value = if (mealId != null) foodLogViewModel.getMealById(mealId) else null
+                            }
+                            AddEditMealScreen(
+                                foodLogViewModel = foodLogViewModel,
+                                navController = navController,
+                                mealToEdit = mealToEdit
+                            )
+                        }
+
+                        composable(NavRoutes.THREADS) {
+                            ThreadsScreen(
+                                navController = navController,
+                                threadViewModel = threadViewModel,
+                            )
+                        }
+                        composable(NavRoutes.CREATE_THREAD) {
+                            CreateThreadScreen(
+                                navController = navController,
+                                threadViewModel = threadViewModel
+                            )
+                        }
+                        composable(
+                            route = NavRoutes.THREAD_DETAIL_WITH_ARG,
+                            arguments = listOf(navArgument("threadId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val threadId = backStackEntry.arguments?.getString("threadId")
+                            if (threadId != null) {
+                                ThreadDetailScreen(
+                                    navController = navController,
+                                    threadId = threadId,
+                                    threadViewModel = threadViewModel,
+                                    authViewModel = authViewModel
+                                )
+                            } else {
+                                Text("Error: Thread ID is missing.")
+                            }
                         }
                     }
                 }
+                // --- FIX: The if (showLoadingScreen) { ... } block has been removed ---
             }
         }
     }

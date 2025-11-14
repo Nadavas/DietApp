@@ -34,6 +34,7 @@ import com.nadavariel.dietapp.ui.HomeColors.BackgroundGradient
 import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
 import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
 import com.nadavariel.dietapp.ui.HomeColors.PageBackgroundColor
+import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen // <-- IMPORT ADDED
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
@@ -162,7 +163,9 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = TextPrimary)
+                // --- THIS IS THE FIX ---
+                CircularProgressIndicator(color = PrimaryGreen)
+                // --- END OF FIX ---
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -183,11 +186,7 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
 
-                    // --- THIS IS THE FIX ---
-                    // The check for !isLoadingPlan is removed, as it's guaranteed
-                    // to be false by the outer 'isScreenLoading' check.
                     if (dietPlan == null) {
-                        // --- END OF FIX ---
                         item {
                             Card(
                                 modifier = Modifier
