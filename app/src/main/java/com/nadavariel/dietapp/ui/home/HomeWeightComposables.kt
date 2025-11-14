@@ -5,6 +5,9 @@ import android.graphics.Paint
 import android.os.Build
 import android.widget.DatePicker
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,11 +23,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -43,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.WeightEntry
 import com.nadavariel.dietapp.ui.HomeColors.CardBackground
+import com.nadavariel.dietapp.ui.HomeColors.DividerColor
 import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen
 import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
 import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
@@ -50,6 +56,94 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExpandableWeightCard(
+    startingWeight: Float,
+    currentWeight: Float,
+    targetWeight: Float,
+    history: List<WeightEntry>,
+    onAddClick: () -> Unit,
+    onManageClick: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        onClick = { expanded = !expanded } // Click the whole card to toggle
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(animationSpec = spring()) // Correctly animates the Column
+        ) {
+            // This Box provides the correct padding for the collapsed state
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 16.dp, top = 24.dp, bottom = 24.dp)
+            ) {
+                // --- Collapsed Content ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Stats row
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        WeightStat(label = "Start", weight = startingWeight)
+                        WeightStat(label = "Current", weight = currentWeight, isMain = true)
+                        WeightStat(label = "Target", weight = targetWeight)
+                    }
+
+                    // Animated expansion icon
+                    val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "rotation")
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        tint = TextSecondary,
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .rotate(rotation)
+                    )
+                }
+            }
+
+            // --- Expanded Content ---
+            if (expanded) {
+                Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 16.dp)) {
+                    Divider(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                        color = DividerColor.copy(alpha = 0.5f)
+                    )
+
+                    // --- START OF FIX ---
+                    // Re-using the composable from the dialog, but telling it NOT to show stats
+                    WeightProgressDialogContent(
+                        startingWeight = startingWeight,
+                        targetWeight = targetWeight,
+                        history = history,
+                        onAddClick = onAddClick,
+                        onManageClick = onManageClick,
+                        showStats = false // <-- This prevents the duplication
+                    )
+                    // --- END OF FIX ---
+                }
+            }
+        }
+    }
+}
+
+// ... CompactWeightDateRow and MiniWeightLineChart are unchanged ...
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -348,13 +442,17 @@ fun WeightGraphDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         text = {
+            // --- START OF FIX ---
+            // The dialog version should continue to show the stats
             WeightProgressDialogContent(
                 startingWeight = startingWeight,
                 targetWeight = targetWeight,
                 history = history,
                 onAddClick = onAddClick,
-                onManageClick = onManageClick
+                onManageClick = onManageClick,
+                showStats = true
             )
+            // --- END OF FIX ---
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
@@ -365,12 +463,13 @@ fun WeightGraphDialog(
 }
 
 @Composable
-private fun WeightProgressDialogContent(
+internal fun WeightProgressDialogContent(
     startingWeight: Float,
     targetWeight: Float,
     history: List<WeightEntry>,
     onAddClick: () -> Unit,
-    onManageClick: () -> Unit
+    onManageClick: () -> Unit,
+    showStats: Boolean = true // <-- FIX: Added new parameter with a default
 ) {
     Column(
         modifier = Modifier.padding(top = 8.dp)
@@ -412,16 +511,22 @@ private fun WeightProgressDialogContent(
                 )
             }
         } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                WeightStat(label = "Start", weight = startingWeight)
-                WeightStat(label = "Current", weight = currentWeight, isMain = true)
-                WeightStat(label = "Target", weight = targetWeight)
+
+            // --- START OF FIX ---
+            // This Row will only be composed if showStats is true
+            if (showStats) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    WeightStat(label = "Start", weight = startingWeight)
+                    WeightStat(label = "Current", weight = currentWeight, isMain = true)
+                    WeightStat(label = "Target", weight = targetWeight)
+                }
             }
+            // --- END OF FIX ---
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -486,6 +591,8 @@ fun WeightStat(label: String, weight: Float, isMain: Boolean = false) {
         }
     }
 }
+
+// ... WeightLineChart, LogWeightDialog, and ManageWeightHistoryDialog are unchanged ...
 
 @Composable
 fun WeightLineChart(
@@ -694,7 +801,7 @@ fun LogWeightDialog(
     var isError by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyY", Locale.getDefault()) }
 
     val datePickerDialog = DatePickerDialog(
         context,

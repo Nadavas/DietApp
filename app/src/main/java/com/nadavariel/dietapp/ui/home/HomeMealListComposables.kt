@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,8 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -40,10 +43,27 @@ import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
 import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlin.math.max
 
+// --- START OF CHANGES ---
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun CalorieSummaryCard(totalCalories: Int, goalCalories: Int) {
+fun CalorieSummaryCard(
+    totalCalories: Int,
+    goalCalories: Int,
+    // Date Picker parameters added
+    currentWeekStartDate: LocalDate,
+    selectedDate: LocalDate,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
+    onGoToToday: () -> Unit
+) {
     val remaining = max(0, goalCalories - totalCalories)
     val progress = if (goalCalories > 0) (totalCalories.toFloat() / goalCalories.toFloat()).coerceIn(0f, 1f) else 0f
     val animatedProgress by animateFloatAsState(
@@ -57,73 +77,174 @@ fun CalorieSummaryCard(totalCalories: Int, goalCalories: Int) {
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
+        // Changed outer Row to a Column
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(24.dp)
         ) {
-            // Progress Circle
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(110.dp)
+            // This is the original Row for calorie info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    // Background circle
-                    drawArc(
-                        color = Color(0xFFF0F0F0),
-                        startAngle = -90f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        style = Stroke(width = 24f, cap = StrokeCap.Round)
-                    )
-                    // Progress circle
-                    drawArc(
-                        color = PrimaryGreen,
-                        startAngle = -90f,
-                        sweepAngle = 360 * animatedProgress,
-                        useCenter = false,
-                        style = Stroke(width = 24f, cap = StrokeCap.Round)
-                    )
+                // Progress Circle
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(110.dp)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        // Background circle
+                        drawArc(
+                            color = Color(0xFFF0F0F0),
+                            startAngle = -90f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            style = Stroke(width = 24f, cap = StrokeCap.Round)
+                        )
+                        // Progress circle
+                        drawArc(
+                            color = PrimaryGreen,
+                            startAngle = -90f,
+                            sweepAngle = 360 * animatedProgress,
+                            useCenter = false,
+                            style = Stroke(width = 24f, cap = StrokeCap.Round)
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$remaining",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TextPrimary,
+                            fontSize = 32.sp
+                        )
+                        Text(
+                            text = "left",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$remaining",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary,
-                        fontSize = 32.sp
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Stats Column
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CalorieStatRow(
+                        label = "Consumed",
+                        value = totalCalories,
+                        color = PrimaryGreen
                     )
-                    Text(
-                        text = "left",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        fontSize = 12.sp
+                    Divider(color = DividerColor)
+                    CalorieStatRow(
+                        label = "Goal",
+                        value = goalCalories,
+                        color = TextSecondary
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(24.dp))
+            // --- Date Picker UI Added Below ---
 
-            // Stats Column
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Spacer(modifier = Modifier.height(20.dp))
+            Divider(color = DividerColor.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Logic from DatePickerSection
+            val weekDays = remember(currentWeekStartDate) {
+                (0..6).map { currentWeekStartDate.plusDays(it.toLong()) }
+            }
+            val today = LocalDate.now()
+            val isTodayVisible = weekDays.any { it.isEqual(today) }
+
+            // Month/Year navigation Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                CalorieStatRow(
-                    label = "Consumed",
-                    value = totalCalories,
-                    color = PrimaryGreen
+                IconButton(
+                    onClick = onPreviousWeek,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryGreen.copy(alpha = 0.1f))
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        "Previous Week",
+                        tint = PrimaryGreen
+                    )
+                }
+                val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+                Text(
+                    text = selectedDate.format(formatter),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
                 )
-                Divider(color = DividerColor)
-                CalorieStatRow(
-                    label = "Goal",
-                    value = goalCalories,
-                    color = TextSecondary
-                )
+                IconButton(
+                    onClick = onNextWeek,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryGreen.copy(alpha = 0.1f))
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        "Next Week",
+                        tint = PrimaryGreen
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Week days Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                weekDays.forEach { date ->
+                    DayOfWeekItem(
+                        date = date,
+                        isSelected = date.isEqual(selectedDate),
+                        isToday = date.isEqual(today),
+                        onClick = { onDateSelected(date) }
+                    )
+                }
+            }
+
+            // "Go to Today" button
+            if (!isTodayVisible || !selectedDate.isEqual(today)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TextButton(
+                        onClick = onGoToToday,
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Go to Today",
+                            color = PrimaryGreen,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
             }
         }
     }
 }
+
+// --- END OF CHANGES ---
 
 @Composable
 private fun CalorieStatRow(label: String, value: Int, color: Color) {
@@ -156,6 +277,56 @@ private fun CalorieStatRow(label: String, value: Int, color: Color) {
         }
     }
 }
+
+// --- HELPER FUNCTION COPIED FROM HomeDatePicker.kt ---
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun DayOfWeekItem(
+    date: LocalDate,
+    isSelected: Boolean,
+    isToday: Boolean,
+    onClick: () -> Unit,
+) {
+    val backgroundColor = when {
+        isSelected -> PrimaryGreen
+        else -> Color.Transparent
+    }
+    val contentColor = when {
+        isSelected -> Color.White
+        else -> TextPrimary
+    }
+    val borderModifier = if (isToday && !isSelected) {
+        Modifier.border(2.dp, PrimaryGreen.copy(alpha = 0.5f), CircleShape) // Thicker border
+    } else Modifier
+
+    Column(
+        modifier = Modifier
+            .widthIn(min = 44.dp) // Use widthIn for flexibility
+            .height(44.dp)     // Set height
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .then(borderModifier)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp), // Add horizontal padding for safety
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+            fontSize = 11.sp, // Legible small size
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) contentColor else TextSecondary
+        )
+        Spacer(modifier = Modifier.height(2.dp)) // More space
+        Text(
+            text = date.dayOfMonth.toString(),
+            fontSize = 16.sp, // Legible size
+            fontWeight = FontWeight.Bold,
+            color = contentColor
+        )
+    }
+}
+
 
 @Composable
 fun MealSectionHeader(section: MealSection, modifier: Modifier = Modifier) {
