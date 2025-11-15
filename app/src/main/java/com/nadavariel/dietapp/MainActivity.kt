@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle // <-- NEW IMPORT
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -47,7 +49,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
+// import androidx.compose.material3.SnackbarResult // <-- NO LONGER NEEDED
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -163,9 +165,8 @@ class MainActivity : ComponentActivity() {
                 val dietPlanResult by questionsViewModel.dietPlanResult.collectAsStateWithLifecycle()
                 val geminiResult by foodLogViewModel.geminiResult.collectAsStateWithLifecycle()
 
-                val isAiLoading = remember(dietPlanResult, geminiResult) {
-                    dietPlanResult is DietPlanResult.Loading || geminiResult is GeminiResult.Loading
-                }
+                // --- 1. STATE LOGIC REFACTORED ---
+                // State for the *loading* message
                 val loadingMessage = remember(dietPlanResult, geminiResult) {
                     when {
                         dietPlanResult is DietPlanResult.Loading -> "Building your plan..."
@@ -174,20 +175,18 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // State for the *success* message
+                var planReadyMessage by remember { mutableStateOf<String?>(null) }
+                // --- END OF STATE LOGIC ---
+
+
+                // --- 2. DIET PLAN LAUNCHEDEFFECT MODIFIED ---
                 LaunchedEffect(dietPlanResult) {
                     when(val result = dietPlanResult) {
                         is DietPlanResult.Success -> {
-                            scope.launch {
-                                val snackResult = snackbarHostState.showSnackbar(
-                                    message = "Your personalized diet plan is ready!",
-                                    actionLabel = "View",
-                                    duration = SnackbarDuration.Long
-                                )
-                                if (snackResult == SnackbarResult.ActionPerformed) {
-                                    navController.navigate(NavRoutes.GOALS)
-                                }
-                                questionsViewModel.resetDietPlanResult()
-                            }
+                            // Instead of Snackbar, set the hover message
+                            planReadyMessage = "Your plan is ready! Click to view."
+                            // We don't reset the result yet. We reset when the user clicks the card.
                         }
                         is DietPlanResult.Error -> {
                             scope.launch {
@@ -198,9 +197,10 @@ class MainActivity : ComponentActivity() {
                                 questionsViewModel.resetDietPlanResult()
                             }
                         }
-                        else -> { /* Do nothing for Idle/Loading */ }
+                        else -> { /* Do nothing for Idle/Loading (handled by 'loadingMessage') */ }
                     }
                 }
+                // --- END OF MODIFICATION ---
 
                 LaunchedEffect(geminiResult) {
                     when(val result = geminiResult) {
@@ -217,7 +217,7 @@ class MainActivity : ComponentActivity() {
                                 foodLogViewModel.resetGeminiResult()
                             }
                         }
-                        else -> { /* Do nothing for Idle/Loading */ }
+                        else -> { /* Do nothing for Idle/Loading (handled by 'loadingMessage') */ }
                     }
                 }
 
@@ -594,9 +594,10 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // --- THIS IS THE FIX ---
+                        // --- 3. LOADING CARD ---
+                        // This card shows for *EITHER* loading state
                         AnimatedVisibility(
-                            visible = isAiLoading, // Simpler check: just show if it's loading
+                            visible = loadingMessage != null,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(innerPadding)
@@ -604,13 +605,34 @@ class MainActivity : ComponentActivity() {
                             enter = slideInVertically { it } + fadeIn(),
                             exit = slideOutVertically { it } + fadeOut()
                         ) {
-                            // Only render the card if the message is not null
-                            // This prevents the NullPointerException during the exit animation
-                            loadingMessage?.let { msg ->
-                                HoveringLoadingCard(message = msg)
-                            }
+                            HoveringNotificationCard(
+                                message = loadingMessage ?: "",
+                                showSpinner = true,
+                                onClick = null // Not clickable when loading
+                            )
                         }
-                        // --- END OF FIX ---
+
+                        // --- 4. SUCCESS CARD (for Diet Plan) ---
+                        // This card *only* shows for the "plan ready" message
+                        AnimatedVisibility(
+                            visible = planReadyMessage != null,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(innerPadding)
+                                .padding(bottom = 16.dp),
+                            enter = slideInVertically { it } + fadeIn(),
+                            exit = slideOutVertically { it } + fadeOut()
+                        ) {
+                            HoveringNotificationCard(
+                                message = planReadyMessage ?: "",
+                                showSpinner = false, // It's done, no spinner
+                                onClick = {
+                                    navController.navigate(NavRoutes.GOALS)
+                                    planReadyMessage = null // Clear message on click
+                                    questionsViewModel.resetDietPlanResult() // Reset the VM state
+                                }
+                            )
+                        }
                     }
                 }
 
@@ -636,31 +658,65 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// --- 5. RENAMED AND UPGRADED COMPOSABLE ---
 @Composable
-private fun HoveringLoadingCard(message: String) {
+private fun HoveringNotificationCard(
+    message: String,
+    showSpinner: Boolean,
+    onClick: (() -> Unit)? // Make clickable
+) {
+    val cardColor = if (showSpinner) {
+        MaterialTheme.colorScheme.surfaceVariant
+    } else {
+        MaterialTheme.colorScheme.primaryContainer // A "success" color
+    }
+
+    val textColor = if (showSpinner) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+
+    val iconColor = if (showSpinner) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        modifier = Modifier.clickable(enabled = onClick != null) { onClick?.invoke() }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 2.5.dp
-            )
+            if (showSpinner) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = iconColor,
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Success",
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Spacer(Modifier.width(16.dp))
             Text(
                 text = message,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = textColor,
                 fontWeight = FontWeight.Bold
             )
         }
     }
 }
+
 
 @Composable
 private fun GeminiConfirmationDialog(
