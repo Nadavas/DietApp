@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext // <-- 1. IMPORT ADDED
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,22 +31,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
-// import com.nadavariel.dietapp.ui.account.ImageIcon // <-- REMOVED
 import com.nadavariel.dietapp.ui.account.ReauthDialog
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.util.AvatarConstants
 
-// --- DESIGN TOKENS (matching HomeScreen) ---
 private val VibrantGreen = Color(0xFF4CAF50)
 private val DarkGreyText = Color(0xFF333333)
 private val LightGreyText = Color(0xFF757575)
 private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 
-/**
- * Enhanced profile header with better visual hierarchy and spacing
- */
 @Composable
 fun AccountHeaderInfo(
     name: String,
@@ -67,9 +63,7 @@ fun AccountHeaderInfo(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Avatar with subtle pulse effect suggestion
             Box(contentAlignment = Alignment.Center) {
-                // Background circle for depth
                 Box(
                     modifier = Modifier
                         .size(96.dp)
@@ -82,7 +76,6 @@ fun AccountHeaderInfo(
                     modifier = Modifier
                         .size(86.dp)
                         .clip(CircleShape)
-                        //.border(3.dp, VibrantGreen, CircleShape)
                         .clickable { onAvatarClick() }
                 )
             }
@@ -104,9 +97,6 @@ fun AccountHeaderInfo(
     }
 }
 
-/**
- * Redesigned menu row with modern card styling
- */
 @Composable
 private fun MenuRow(
     title: String,
@@ -129,7 +119,6 @@ private fun MenuRow(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon container with subtle background
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -178,9 +167,6 @@ private fun MenuRow(
     }
 }
 
-/**
- * Section divider with label
- */
 @Composable
 private fun SectionDivider(text: String) {
     Row(
@@ -203,9 +189,6 @@ private fun SectionDivider(text: String) {
     }
 }
 
-/**
- * Enhanced action buttons with better styling
- */
 @Composable
 fun AccountActionButtons(
     onSignOutClick: () -> Unit,
@@ -216,7 +199,6 @@ fun AccountActionButtons(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Sign Out Button - Outlined style
         OutlinedButton(
             onClick = onSignOutClick,
             modifier = Modifier
@@ -240,7 +222,6 @@ fun AccountActionButtons(
             )
         }
 
-        // Delete Account Button - Filled error style
         Button(
             onClick = onDeleteClick,
             modifier = Modifier
@@ -275,15 +256,14 @@ fun AccountScreen(
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    val context = LocalContext.current // <-- 2. GET CONTEXT
 
-    // --- State Variables ---
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
-    // --- Side Effects (Auth Result Handling) ---
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
@@ -304,7 +284,6 @@ fun AccountScreen(
         }
     }
 
-    // --- UI Layout ---
     Scaffold(
         topBar = {
             TopAppBar(
@@ -330,7 +309,6 @@ fun AccountScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile Header Card
             item {
                 AccountHeaderInfo(
                     name = userProfile.name.ifBlank { "User" },
@@ -340,7 +318,6 @@ fun AccountScreen(
                 )
             }
 
-            // Settings Section
             item {
                 SectionDivider("SETTINGS")
             }
@@ -359,7 +336,6 @@ fun AccountScreen(
                 MenuRow(
                     title = "Questions",
                     subtitle = "View your dietary preferences",
-                    // --- THIS IS THE FIX ---
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_query_filled),
@@ -367,7 +343,6 @@ fun AccountScreen(
                             modifier = Modifier.size(24.dp)
                         )
                     },
-                    // --- END OF FIX ---
                     onClick = { navController.navigate(NavRoutes.QUESTIONS) }
                 )
             }
@@ -376,7 +351,6 @@ fun AccountScreen(
                 MenuRow(
                     title = "Goals",
                     subtitle = "Set your nutrition targets",
-                    // --- THIS IS THE FIX ---
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_goals),
@@ -384,7 +358,6 @@ fun AccountScreen(
                             modifier = Modifier.size(24.dp)
                         )
                     },
-                    // --- END OF FIX ---
                     onClick = { navController.navigate(NavRoutes.GOALS) }
                 )
             }
@@ -407,7 +380,6 @@ fun AccountScreen(
                 )
             }
 
-            // Account Actions Section
             item {
                 SectionDivider("ACCOUNT ACTIONS")
             }
@@ -419,7 +391,6 @@ fun AccountScreen(
                 )
             }
 
-            // Error message
             errorMessage?.let {
                 item {
                     Card(
@@ -440,12 +411,10 @@ fun AccountScreen(
                 }
             }
 
-            // Bottom spacing
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 
-    // --- Dialogs ---
     if (showDeleteConfirmationDialog) {
         StyledAlertDialog(
             onDismissRequest = {
@@ -498,7 +467,9 @@ fun AccountScreen(
             dismissButtonText = "Cancel",
             onConfirm = {
                 showSignOutDialog = false
-                authViewModel.signOut()
+                // --- 3. PASS CONTEXT TO SIGN OUT ---
+                authViewModel.signOut(context)
+                // --- END OF FIX ---
             }
         )
     }

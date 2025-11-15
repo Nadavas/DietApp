@@ -175,7 +175,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         userProfileListener?.remove()
     }
 
-    // This is public but should only be called by QuestionsViewModel
     suspend fun saveUserProfile(profile: UserProfile) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
@@ -196,9 +195,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return auth.currentUser != null
     }
 
-    // --- 1. MODIFIED SIGNUP FUNCTION ---
-    // This function now ONLY validates the inputs and triggers navigation.
-    // It does NOT create a user.
     fun signUp(onSuccess: () -> Unit) {
         if (nameState.value.isBlank() || emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
             _authResult.value = AuthResult.Error("Name, email and passwords cannot be empty.")
@@ -209,17 +205,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             return
         }
 
-        // Validation passed. Reset result and call onSuccess to navigate.
         _authResult.value = AuthResult.Idle
         onSuccess()
     }
 
-    // --- 2. NEW FUNCTION TO CREATE USER (CALLED BY QuestionsViewModel) ---
-    /**
-     * Creates the user in Firebase Auth and saves their initial profile.
-     * This should only be called by QuestionsViewModel AFTER questions are answered.
-     * Throws an exception on failure, which QuestionsViewModel must catch.
-     */
     suspend fun createUserAndProfile() {
         if (emailState.value.isBlank() || passwordState.value.isBlank()) {
             throw Exception("Email or password was blank.")
@@ -230,10 +219,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         val newAvatarId = selectedAvatarId.value
         val emailForPrefs = emailState.value
 
-        // This will throw an exception on failure
         auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim()).await()
 
-        // User creation was successful
         _authResult.value = AuthResult.Success
 
         if (rememberMeState.value) {
@@ -250,10 +237,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             avatarId = newAvatarId,
             gender = Gender.UNKNOWN
         )
-        // This is a suspend function, so it will complete before moving on
         saveUserProfile(newProfile)
-
-        // We don't call clearInputFields() here, let the navigation stack handle it
     }
 
 
@@ -283,10 +267,21 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    fun signOut() {
+    // --- 1. MODIFIED SIGNATURE TO ACCEPT CONTEXT ---
+    fun signOut(context: Context) {
         userProfileListener?.remove()
         userProfileListener = null
-        auth.signOut()
+
+        // --- 2. SIGN OUT OF GOOGLE CLIENT ---
+        try {
+            getGoogleSignInClient(context).signOut()
+            Log.d("AuthViewModel", "Successfully signed out of Google Client")
+        } catch (e: Exception) {
+            Log.w("AuthViewModel", "Could not sign out of Google Client: ${e.message}")
+        }
+        // --- END OF FIX ---
+
+        auth.signOut() // Sign out of Firebase
         _authResult.value = AuthResult.Idle
         viewModelScope.launch {
             if (!rememberMeState.value) {

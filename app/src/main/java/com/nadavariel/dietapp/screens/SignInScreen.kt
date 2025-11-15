@@ -2,6 +2,7 @@
 
 package com.nadavariel.dietapp.screens
 
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.compose.foundation.layout.Arrangement
@@ -59,24 +60,28 @@ import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.R
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
-    onSignInSuccess: (isNewUser: Boolean) -> Unit, // <-- This signature is correct
+    onSignInSuccess: (isNewUser: Boolean) -> Unit,
     onNavigateToSignUp: () -> Unit
 ) {
     val context = LocalContext.current
-    // Get state from viewmodel
     val email by authViewModel.emailState
     val password by authViewModel.passwordState
     val authResult by authViewModel.authResult.collectAsState()
 
-    // Snackbar message
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // --- 1. REMEMBER THE SIGN IN CLIENT ---
+    val googleSignInClient = remember(context) {
+        authViewModel.getGoogleSignInClient(context)
+    }
 
     val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
@@ -91,12 +96,11 @@ fun SignInScreen(
         }
     }
 
-    // Handle authentication results
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
                 authViewModel.resetAuthResult()
-                onSignInSuccess(false) // This is correct for email/pass
+                onSignInSuccess(false)
             }
             is AuthResult.Error -> {
                 scope.launch {
@@ -107,8 +111,8 @@ fun SignInScreen(
                 }
                 authViewModel.resetAuthResult()
             }
-            AuthResult.Loading -> { /* Optionally show a loading indicator */ }
-            AuthResult.Idle -> { /* Initial state, do nothing */ }
+            AuthResult.Loading -> {}
+            AuthResult.Idle -> {}
         }
     }
 
@@ -118,7 +122,6 @@ fun SignInScreen(
             TopAppBar(
                 title = { },
                 navigationIcon = {
-                    // Back button
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -143,7 +146,6 @@ fun SignInScreen(
         ) {
             Text("Sign In", fontSize = 28.sp, modifier = Modifier.padding(bottom = 24.dp))
 
-            // Email and password
             OutlinedTextField(
                 value = email,
                 onValueChange = { authViewModel.emailState.value = it },
@@ -167,7 +169,6 @@ fun SignInScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
             )
 
-            // Remember me checkbox
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,12 +184,9 @@ fun SignInScreen(
                 Text("Remember Me", style = MaterialTheme.typography.bodyLarge)
             }
 
-            // Sign in button
             Button(
                 onClick = {
                     if (authResult != AuthResult.Loading) {
-                        // --- THIS IS THE FIX ---
-                        // We must call the VM function that has the (isNewUser) callback
                         authViewModel.signIn(email, password, onSignInSuccess)
                     }
                 },
@@ -204,7 +202,6 @@ fun SignInScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // navigate to sign up option
             val annotatedTextSignUp = buildAnnotatedString {
                 append("Don't have an account? ")
                 pushStringAnnotation(tag = "SIGNUP", annotation = "Sign up")
@@ -231,12 +228,19 @@ fun SignInScreen(
                 fontSize = 14.sp
             )
 
-            // Google sign in
             OutlinedButton(
                 onClick = {
-                    val signInClient = authViewModel.getGoogleSignInClient(context)
-                    val signInIntent = signInClient.signInIntent
-                    launcher.launch(signInIntent)
+                    // --- 2. SIGN OUT FIRST TO FORCE ACCOUNT PICKER ---
+                    scope.launch {
+                        try {
+                            googleSignInClient.signOut().await()
+                        } catch (e: Exception) {
+                            Log.w("SignInScreen", "Could not sign out of Google Client: ${e.message}")
+                        }
+                        // Now launch the sign-in intent
+                        launcher.launch(googleSignInClient.signInIntent)
+                    }
+                    // --- END OF FIX ---
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading
