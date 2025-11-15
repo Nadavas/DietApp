@@ -9,10 +9,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.nadavariel.dietapp.NavRoutes // <-- IMPORT ADDED
 import com.nadavariel.dietapp.ui.QuestionColors.DarkGreyText
 import com.nadavariel.dietapp.ui.QuestionColors.ScreenBackgroundColor
 import com.nadavariel.dietapp.ui.questions.*
-import com.nadavariel.dietapp.viewmodel.AuthViewModel // <-- Import is already here
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,23 +21,19 @@ import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 fun QuestionsScreen(
     navController: NavController,
     questionsViewModel: QuestionsViewModel = viewModel(),
-    authViewModel: AuthViewModel, // <-- 2. REMOVED "= viewModel()"
+    authViewModel: AuthViewModel,
     startQuiz: Boolean
 ) {
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
 
-    // Separate state for quiz mode - this gets cleared when retaking
     var quizAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
     var quizCurrentIndex by remember { mutableIntStateOf(0) }
 
-    // Local answers for editing mode
     var editAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
 
-    // State for managing which question is being edited in a dialog
     var questionToEditIndex by remember { mutableStateOf<Int?>(null) }
 
-    // Sync edit answers with saved answers from ViewModel when not in quiz mode
     LaunchedEffect(savedAnswers, screenState) {
         if (screenState != ScreenState.QUIZ_MODE && savedAnswers.isNotEmpty()) {
             editAnswers = questions.map { q ->
@@ -47,15 +44,14 @@ fun QuestionsScreen(
 
     LaunchedEffect(Unit) {
         if (startQuiz) {
-            // This is the same logic from the onRetakeQuiz lambda
             quizAnswers = List(questions.size) { null }
             quizCurrentIndex = 0
             screenState = ScreenState.QUIZ_MODE
         }
     }
 
-    // --- DIALOGS for API Results ---
-    HandleDietPlanResultDialogs(navController, questionsViewModel)
+    // --- 1. REMOVED HandleDietPlanResultDialogs ---
+    // HandleDietPlanResultDialogs(navController, questionsViewModel)
 
     Scaffold(
         containerColor = ScreenBackgroundColor,
@@ -79,11 +75,9 @@ fun QuestionsScreen(
                                 navController.popBackStack()
                             }
                             ScreenState.QUIZ_MODE -> {
-                                // Go back to previous question or landing
                                 if (quizCurrentIndex > 0) {
                                     quizCurrentIndex--
                                 } else {
-                                    // Back from 1st question now goes to SignUp
                                     navController.popBackStack()
                                 }
                             }
@@ -118,7 +112,6 @@ fun QuestionsScreen(
                         screenState = ScreenState.EDITING
                     },
                     onRetakeQuiz = {
-                        // Initialize quiz with empty answers
                         quizAnswers = List(questions.size) { null }
                         quizCurrentIndex = 0
                         screenState = ScreenState.QUIZ_MODE
@@ -132,11 +125,15 @@ fun QuestionsScreen(
                     onEditClick = { index -> questionToEditIndex = index },
                     onSaveAndGenerate = {
                         questionsViewModel.saveAnswersAndRegeneratePlan(
-                            authViewModel, // <-- Pass it here
+                            authViewModel,
                             questions,
                             editAnswers
                         )
-                        screenState = ScreenState.LANDING
+                        // --- 2. NAVIGATE TO ACCOUNT ---
+                        navController.navigate(NavRoutes.ACCOUNT) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                        }
+                        // --- END OF FIX ---
                     }
                 )
             }
@@ -147,9 +144,7 @@ fun QuestionsScreen(
                     question = questions[quizCurrentIndex],
                     currentAnswer = quizAnswers.getOrNull(quizCurrentIndex),
                     onAnswerChanged = { answer ->
-                        // Update the answer for current question
                         quizAnswers = quizAnswers.toMutableList().apply {
-                            // Ensure list is big enough
                             while (size <= quizCurrentIndex) add(null)
                             set(quizCurrentIndex, answer)
                         }
@@ -158,15 +153,16 @@ fun QuestionsScreen(
                         if (quizCurrentIndex < questions.lastIndex) {
                             quizCurrentIndex++
                         } else {
-                            // Submit the quiz
                             questionsViewModel.saveAnswersAndRegeneratePlan(
-                                authViewModel, // <-- And pass it here
+                                authViewModel,
                                 questions,
                                 quizAnswers
                             )
-                            quizAnswers = emptyList()
-                            quizCurrentIndex = 0
-                            screenState = ScreenState.LANDING
+                            // --- 3. NAVIGATE TO ACCOUNT ---
+                            navController.navigate(NavRoutes.ACCOUNT) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                            // --- END OF FIX ---
                         }
                     },
                     canProceed = !quizAnswers.getOrNull(quizCurrentIndex).isNullOrBlank()

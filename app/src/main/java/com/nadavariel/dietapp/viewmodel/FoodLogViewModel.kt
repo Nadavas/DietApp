@@ -45,10 +45,8 @@ class FoodLogViewModel : ViewModel() {
     private val firestore: FirebaseFirestore = Firebase.firestore
     private val functions = Firebase.functions("me-west1")
 
-    // --- 1. ADD NEW LOADING STATE ---
     private val _isLoadingLogs = MutableStateFlow(true)
     val isLoadingLogs = _isLoadingLogs.asStateFlow()
-    // --- END OF FIX ---
 
     private val _selectedDateState = MutableStateFlow(LocalDate.now())
     val selectedDateState = _selectedDateState.asStateFlow()
@@ -64,6 +62,7 @@ class FoodLogViewModel : ViewModel() {
     private var targetWeightListener: ListenerRegistration? = null
 
     private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
+    val graphPreferences = _graphPreferences.asStateFlow() // <-- Made this public
 
     private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
     val weightHistory = _weightHistory.asStateFlow()
@@ -116,31 +115,31 @@ class FoodLogViewModel : ViewModel() {
     private val _isFutureTimeSelected = MutableStateFlow(false)
     val isFutureTimeSelected = _isFutureTimeSelected.asStateFlow()
 
+    // --- 1. ADD VARIABLE TO HOLD TIMESTAMP ---
+    private var tempMealTimestamp: Timestamp? = null
+
     init {
         val today = LocalDate.now()
         _currentWeekStartDateState.value = calculateWeekStartDate(today)
         _selectedDateState.value = today
 
-        // --- 3. MODIFY AUTH LISTENER FOR LOADING STATE ---
         viewModelScope.launch {
             auth.addAuthStateListener { firebaseAuth ->
                 if (firebaseAuth.currentUser != null) {
-                    _isLoadingLogs.value = true // Start loading
+                    _isLoadingLogs.value = true
 
-                    // Start all live listeners
                     listenForMealsForDate(selectedDateState.value)
                     listenForWeightHistory()
                     listenForTargetWeight()
 
-                    // Launch a separate job for one-time fetches
                     viewModelScope.launch {
                         try {
-                            fetchMealsForLastSevenDays() // await suspend fun
-                            fetchGraphPreferences()    // await suspend fun
+                            fetchMealsForLastSevenDays()
+                            fetchGraphPreferences()
                         } catch (e: Exception) {
                             Log.e("FoodLogViewModel", "Error in initial data fetch: $e")
                         } finally {
-                            _isLoadingLogs.value = false // All initial fetches are done
+                            _isLoadingLogs.value = false
                         }
                     }
                 } else {
@@ -157,7 +156,7 @@ class FoodLogViewModel : ViewModel() {
     }
 
     private fun resetAllStates() {
-        _isLoadingLogs.value = true // Reset loading state
+        _isLoadingLogs.value = true
         _mealsForSelectedDateState.value = emptyList()
         _weeklyCalories.value = emptyMap()
         _weeklyProtein.value = emptyMap()
@@ -193,7 +192,6 @@ class FoodLogViewModel : ViewModel() {
         GraphPreference("vitamin_c", "Weekly Vitamin C Intake", 9, true, false)
     )
 
-    // --- 4. MAKE FUNCTION SUSPEND and REMOVE INTERNAL SCOPE ---
     private suspend fun fetchGraphPreferences() {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -204,14 +202,12 @@ class FoodLogViewModel : ViewModel() {
             .collection("preferences").document("graph_order")
 
         try {
-            val snapshot = preferencesDocRef.get().await() // Use the local ref
-
+            val snapshot = preferencesDocRef.get().await()
             val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
 
             val preferences = if (snapshot.exists()) {
                 @Suppress("UNCHECKED_CAST")
                 val storedList = snapshot.get("list") as? List<Map<String, Any>>
-
                 val storedPreferences = storedList?.mapNotNull { map ->
                     GraphPreference(
                         id = map["id"] as? String ?: return@mapNotNull null,
@@ -221,9 +217,7 @@ class FoodLogViewModel : ViewModel() {
                         isMacro = map["isMacro"] as? Boolean == true
                     )
                 } ?: getDefaultGraphPreferences()
-
                 val storedMap = storedPreferences.associateBy { it.id }
-
                 defaultMap.keys.mapNotNull { id ->
                     if (storedMap.containsKey(id)) {
                         storedMap[id]?.copy(title = defaultMap[id]?.title ?: storedMap[id]!!.title)
@@ -231,7 +225,6 @@ class FoodLogViewModel : ViewModel() {
                         defaultMap[id]?.copy(order = defaultMap.size + storedMap.size)
                     }
                 }.sortedBy { it.order }
-
             } else {
                 getDefaultGraphPreferences()
             }
@@ -274,7 +267,6 @@ class FoodLogViewModel : ViewModel() {
         return date.minusDays(daysToSubtract.toLong())
     }
 
-    // --- 5. LAUNCH A NEW SCOPE FOR SUSPEND FUNCTIONS ---
     fun refreshStatistics() {
         viewModelScope.launch {
             fetchMealsForLastSevenDays()
@@ -282,7 +274,6 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // --- 6. MAKE FUNCTION SUSPEND and REMOVE INTERNAL SCOPE ---
     private suspend fun fetchMealsForLastSevenDays() {
         val userId = auth.currentUser?.uid ?: return
         try {
@@ -531,26 +522,26 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 firestore.collection("users").document(userId).collection("meals").add(meal).await()
-                // --- 7. REMOVE REDUNDANT CALLS (listener handles this) ---
-                // fetchMealsForLastSevenDays() // No longer needed here
-                // listenForMealsForDate(selectedDateState.value) // No longer needed here
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error logging meal: ${e.message}", e)
             }
         }
     }
 
+    // --- 2. MODIFY THIS FUNCTION ---
     fun logMealsFromFoodInfoList(
-        foodInfoList: List<FoodNutritionalInfo>,
-        mealTime: Timestamp
+        foodInfoList: List<FoodNutritionalInfo>
     ) {
+        // Use the stored timestamp, or default to now() if it's somehow null
+        val mealTime = tempMealTimestamp ?: Timestamp.now()
+
         for (foodInfo in foodInfoList) {
             logMeal(
                 foodName = foodInfo.food_name ?: "Unknown Meal",
                 calories = foodInfo.calories?.toIntOrNull() ?: 0,
                 servingAmount = foodInfo.serving_amount,
                 servingUnit = foodInfo.serving_unit,
-                mealTime = mealTime,
+                mealTime = mealTime, // Use the stored time
                 protein = foodInfo.protein?.toDoubleOrNull(),
                 carbohydrates = foodInfo.carbohydrates?.toDoubleOrNull(),
                 fat = foodInfo.fat?.toDoubleOrNull(),
@@ -608,9 +599,6 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 mealRef.update(updatedData).await()
-                // --- 7. REMOVE REDUNDANT CALLS (listener handles this) ---
-                // fetchMealsForLastSevenDays()
-                // listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error updating meal '$mealId': ${e.message}", e)
             }
@@ -623,9 +611,6 @@ class FoodLogViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 mealRef.delete().await()
-                // --- 7. REMOVE REDUNDANT CALLS (listener handles this) ---
-                // fetchMealsForLastSevenDays()
-                // listenForMealsForDate(selectedDateState.value)
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Error deleting meal '$mealId': ${e.message}", e)
             }
@@ -698,8 +683,11 @@ class FoodLogViewModel : ViewModel() {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
 
-    fun analyzeImageWithGemini(foodName: String, imageB64: String? = null) {
+    // --- 3. MODIFY THIS FUNCTION ---
+    fun analyzeImageWithGemini(foodName: String, imageB64: String? = null, mealTime: Timestamp) {
         _geminiResult.value = GeminiResult.Loading
+        tempMealTimestamp = mealTime // Store the timestamp
+
         viewModelScope.launch {
             try {
                 val data = hashMapOf<String, Any>(
@@ -745,8 +733,10 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
+    // --- 4. MODIFY THIS FUNCTION ---
     fun resetGeminiResult() {
         _geminiResult.value = GeminiResult.Idle
+        tempMealTimestamp = null // Clear the timestamp
     }
 }
 

@@ -12,10 +12,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -40,7 +37,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
-import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.ui.meals.*
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
@@ -84,9 +80,10 @@ fun AddEditMealScreen(
     var imageB64 by remember { mutableStateOf<String?>(null) }
     var isImageProcessing by remember { mutableStateOf(false) }
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
-    var proposedMealList by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
 
-    // NEW: State for checking if the selected time is in the future
+    // --- THIS STATE IS NO LONGER USED ---
+    // var proposedMealList by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
+
     val isFutureTimeSelected by foodLogViewModel.isFutureTimeSelected.collectAsState()
 
 
@@ -147,7 +144,6 @@ fun AddEditMealScreen(
         imageUri = uri
     }
 
-    // NEW: Trigger the future-time check whenever the date/time changes
     LaunchedEffect(selectedDateTimeState.time) {
         foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
     }
@@ -182,11 +178,9 @@ fun AddEditMealScreen(
                 ironText = it.iron?.toString() ?: ""
                 vitaminCText = it.vitaminC?.toString() ?: ""
                 selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
-                // Manually trigger the initial check for edit mode
                 foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
             }
         } else {
-            // Reset fields for "Add" mode, important for navigating back and forth
             foodName = ""
             caloriesText = ""
             proteinText = ""
@@ -203,24 +197,18 @@ fun AddEditMealScreen(
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
             clearImageState()
-            // Manually trigger the initial check for add mode
             foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
         }
     }
 
+    // --- THIS LAUNCHEDEFFECT IS NO LONGER NEEDED AND HAS BEEN REMOVED ---
+    /*
     LaunchedEffect(geminiResult) {
         if (geminiResult is GeminiResult.Success) {
-            val validFoodInfoList = (geminiResult as GeminiResult.Success).foodInfoList.filter {
-                !it.food_name.isNullOrBlank() && it.calories?.toIntOrNull() != null
-            }
-
-            if (validFoodInfoList.isNotEmpty()) {
-                proposedMealList = validFoodInfoList
-            } else {
-                foodLogViewModel.resetGeminiResult()
-            }
+            ...
         }
     }
+    */
 
     val onTakePhoto: () -> Unit = {
         clearImageState()
@@ -245,14 +233,10 @@ fun AddEditMealScreen(
             TopAppBar(
                 title = { Text(if (isEditMode) "Edit Meal" else "Add New Meal", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    // --- THIS IS THE FIX ---
-                    // Only show the back button if in Edit Mode
-                    if (isEditMode) {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+                    // Back button is now always present
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                    // --- END OF FIX ---
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = screenBackgroundColor,
@@ -315,27 +299,23 @@ fun AddEditMealScreen(
                 item { MicronutrientsSection(fiberText, { fiberText = it }, sugarText, { sugarText = it }, sodiumText, { sodiumText = it }, potassiumText, { potassiumText = it }, calciumText, { calciumText = it }, ironText, { ironText = it }, vitaminCText, { vitaminCText = it }) }
             }
 
-            // The date time picker section should update selectedDateTimeState
             item { DateTimePickerSection(selectedDateTimeState) { selectedDateTimeState = it } }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Base check for button enablement (fields, loading status)
                 val baseButtonEnabled = if (isEditMode) {
                     foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
                 } else {
                     (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
                 }
 
-                // NEW: Final check includes the future time state (only relevant in edit mode)
                 val isButtonEnabled = if (isEditMode) {
                     baseButtonEnabled && !isFutureTimeSelected
                 } else {
-                    baseButtonEnabled // Future time check is less critical for a new log, but can be added if required
+                    baseButtonEnabled
                 }
 
-                // NEW: Show error message when editing and time is in the future
                 if (isEditMode && isFutureTimeSelected) {
                     Text(
                         text = "⚠️ Cannot update meal to a time in the future. Please adjust the time or date.",
@@ -350,7 +330,6 @@ fun AddEditMealScreen(
                         val calValue = caloriesText.toIntOrNull() ?: 0
                         val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
-                        // We do not need to check isFutureTimeSelected here because the button is disabled if it's true
                         if (mealToEdit != null) {
                             foodLogViewModel.updateMeal(
                                 mealToEdit.id, newFoodName = foodName, newCalories = calValue,
@@ -365,128 +344,36 @@ fun AddEditMealScreen(
                         }
                         navController.popBackStack()
                     } else {
-                        foodLogViewModel.analyzeImageWithGemini(foodName = foodName, imageB64 = imageB64)
+                        // --- THIS IS THE FIX ---
+                        // 1. Get the timestamp
+                        val mealTimestamp = Timestamp(selectedDateTimeState.time)
+                        // 2. Call analyze and pass the timestamp
+                        foodLogViewModel.analyzeImageWithGemini(
+                            foodName = foodName,
+                            imageB64 = imageB64,
+                            mealTime = mealTimestamp
+                        )
+                        // 3. Navigate away immediately
+                        navController.popBackStack()
+                        // --- END OF FIX ---
                     }
                 }
             }
         }
     }
 
+    // --- THIS DIALOG HAS BEEN REMOVED AND WILL BE MOVED TO MAINACTIVITY ---
+    /*
     if (proposedMealList != null) {
-        GeminiConfirmationDialog(
-            foodInfoList = proposedMealList!!,
-            onAccept = {
-                val mealTimestamp = Timestamp(selectedDateTimeState.time)
-                foodLogViewModel.logMealsFromFoodInfoList(proposedMealList!!, mealTimestamp)
-                proposedMealList = null
-                navController.popBackStack()
-            },
-            onDeny = {
-                foodLogViewModel.resetGeminiResult()
-                proposedMealList = null
-            },
-            onDismissRequest = {
-                foodLogViewModel.resetGeminiResult()
-                proposedMealList = null
-            }
-        )
+        GeminiConfirmationDialog(...)
     }
+    */
 }
 
+// --- THIS COMPOSABLE WILL BE MOVED TO MAINACTIVITY ---
+/*
 @Composable
 fun GeminiConfirmationDialog(
-    foodInfoList: List<FoodNutritionalInfo>,
-    onAccept: () -> Unit,
-    onDeny: () -> Unit,
-    onDismissRequest: () -> Unit
-) {
-    val totalCalories = remember(foodInfoList) {
-        foodInfoList.sumOf { it.calories?.toIntOrNull() ?: 0 }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = {
-            Text(
-                "Confirm Meal Components (${foodInfoList.size})",
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        },
-        text = {
-            Column(horizontalAlignment = Alignment.Start) {
-                Text(
-                    "Gemini recognized the following items. Each will be logged separately:",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 250.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    itemsIndexed(foodInfoList) { index, foodInfo ->
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${index + 1}. ${foodInfo.food_name.orEmpty()}",
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                                )
-                                Text(
-                                    text = "${foodInfo.calories.orEmpty()} kcal",
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Clip
-                                )
-                            }
-                            val serving = if (foodInfo.serving_unit.isNullOrBlank()) "" else "${foodInfo.serving_amount.orEmpty()} ${foodInfo.serving_unit}"
-                            if (serving.isNotBlank()) {
-                                Text(
-                                    text = serving,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(text = "Protein: ${foodInfo.protein.orEmpty()} g", style = MaterialTheme.typography.labelSmall)
-                                Text(text = "Carbs: ${foodInfo.carbohydrates.orEmpty()} g", style = MaterialTheme.typography.labelSmall)
-                                Text(text = "Fat: ${foodInfo.fat.orEmpty()} g", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                        if (index < foodInfoList.lastIndex) {
-                            Divider(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Total Calories to Log: $totalCalories kcal",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = onAccept) { Text("Accept & Log All") }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDeny) { Text("Deny & Edit") }
-        }
-    )
-}
+    ...
+) { ... }
+*/

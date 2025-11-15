@@ -219,24 +219,28 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
-    // --- 1. MODIFIED FUNCTION SIGNATURE ---
     fun saveAnswersAndRegeneratePlan(
-        authViewModel: AuthViewModel, // <-- ADDED PARAM
+        authViewModel: AuthViewModel,
         questions: List<Question>,
         answers: List<String?>
     ) {
         viewModelScope.launch {
             _dietPlanResult.value = DietPlanResult.Loading
             try {
-                // --- 2. CREATE USER AND PROFILE FIRST ---
-                Log.d("QuestionsViewModel", "Attempting to create user and profile...")
-                authViewModel.createUserAndProfile()
-                Log.d("QuestionsViewModel", "User and profile created successfully.")
+                // --- THIS IS THE FIX ---
+                // Only create a user if one doesn't already exist (i.e., this is the first sign-up flow)
+                if (auth.currentUser == null) {
+                    Log.d("QuestionsViewModel", "No user found. Attempting to create user and profile...")
+                    authViewModel.createUserAndProfile()
+                    Log.d("QuestionsViewModel", "User and profile created successfully.")
+                } else {
+                    Log.d("QuestionsViewModel", "User already exists. Skipping user creation.")
+                }
+                // --- END OF FIX ---
 
-                // --- 3. SAVE ANSWERS (now that user exists) ---
+                // Now that we're sure a user exists, save the answers
                 saveUserAnswersAndUpdateProfile(questions, answers)
 
-                // --- 4. CALL AI FUNCTION ---
                 val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
                 val data = hashMapOf("userProfile" to updatedAnswersString)
                 val result = functions.getHttpsCallable("generateDietPlan").call(data).await()
@@ -254,7 +258,6 @@ class QuestionsViewModel : ViewModel() {
                     throw Exception(responseData["error"]?.toString() ?: "Unknown error from function")
                 }
             } catch (e: Exception) {
-                // This will now catch errors from createUserAndProfile() OR the AI call
                 Log.e("QuestionsViewModel", "Error generating diet plan or creating user", e)
                 _dietPlanResult.value = DietPlanResult.Error(e.message ?: "An unexpected error occurred.")
             }
