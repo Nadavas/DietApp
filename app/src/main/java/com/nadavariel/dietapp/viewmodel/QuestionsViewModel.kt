@@ -57,8 +57,6 @@ class QuestionsViewModel : ViewModel() {
     }
 
     init {
-        // We only fetch answers if the user is already logged in
-        // For a new user, this will (correctly) return nothing.
         fetchUserAnswers()
     }
 
@@ -84,7 +82,6 @@ class QuestionsViewModel : ViewModel() {
         questions: List<Question>,
         answers: List<String?>
     ) {
-        // This will now get the NEWLY created user's ID
         val userId = auth.currentUser?.uid ?: return
 
         val userAnswersToSave = questions.mapIndexedNotNull { index, question ->
@@ -142,14 +139,12 @@ class QuestionsViewModel : ViewModel() {
         }
 
         try {
-            // 1. Save all questionnaire answers
             firestore.collection("users").document(userId)
                 .collection("user_answers").document("diet_habits")
                 .set(mapOf("answers" to userAnswersToSave)).await()
             _userAnswers.value = userAnswersToSave.map { UserAnswer(it["question"] as String, it["answer"] as String) }
             Log.d("QuestionsViewModel", "Saved ${userAnswersToSave.size} questionnaire answers.")
 
-            // 2. Update User Profile document
             if (profileUpdates.isNotEmpty()) {
                 Log.d("QuestionsViewModel", "Attempting to merge profile updates: $profileUpdates")
                 firestore.collection("users").document(userId)
@@ -159,7 +154,6 @@ class QuestionsViewModel : ViewModel() {
                 Log.d("QuestionsViewModel", "No profile updates to merge.")
             }
 
-            // 3. Update Target Weight Goal
             targetWeightAnswer?.let { weight ->
                 updateTargetWeightGoal(userId, weight)
             }
@@ -219,6 +213,7 @@ class QuestionsViewModel : ViewModel() {
         }
     }
 
+    // --- 1. MODIFIED FUNCTION TO BE "SMART" ---
     fun saveAnswersAndRegeneratePlan(
         authViewModel: AuthViewModel,
         questions: List<Question>,
@@ -227,18 +222,21 @@ class QuestionsViewModel : ViewModel() {
         viewModelScope.launch {
             _dietPlanResult.value = DietPlanResult.Loading
             try {
-                // --- THIS IS THE FIX ---
-                // Only create a user if one doesn't already exist (i.e., this is the first sign-up flow)
                 if (auth.currentUser == null) {
-                    Log.d("QuestionsViewModel", "No user found. Attempting to create user and profile...")
-                    authViewModel.createUserAndProfile()
+                    // Check if this is a Google sign-up flow
+                    if (authViewModel.isGoogleSignUp.value) {
+                        Log.d("QuestionsViewModel", "Google sign up detected. Creating Google user...")
+                        authViewModel.createGoogleUserAndProfile()
+                    } else {
+                        Log.d("QuestionsViewModel", "Email sign up detected. Creating Email user...")
+                        authViewModel.createEmailUserAndProfile()
+                    }
                     Log.d("QuestionsViewModel", "User and profile created successfully.")
                 } else {
                     Log.d("QuestionsViewModel", "User already exists. Skipping user creation.")
                 }
                 // --- END OF FIX ---
 
-                // Now that we're sure a user exists, save the answers
                 saveUserAnswersAndUpdateProfile(questions, answers)
 
                 val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }

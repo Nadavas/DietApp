@@ -59,6 +59,7 @@ import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.R
+import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -78,16 +79,22 @@ fun SignInScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // --- 1. REMEMBER THE SIGN IN CLIENT ---
     val googleSignInClient = remember(context) {
         authViewModel.getGoogleSignInClient(context)
     }
 
+    // --- 1. MODIFIED LAUNCHER LOGIC ---
     val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
-            authViewModel.handleGoogleSignInResult(account, onSignInSuccess)
+            authViewModel.handleGoogleSignIn(account) { flowResult ->
+                when (flowResult) {
+                    GoogleSignInFlowResult.GoToHome -> onSignInSuccess(false)
+                    GoogleSignInFlowResult.GoToSignUp -> onNavigateToSignUp()
+                    GoogleSignInFlowResult.Error -> { /* Error snackbar is shown by LaunchedEffect */ }
+                }
+            }
         } catch (e: ApiException) {
             scope.launch {
                 snackbarHostState.showSnackbar("Google sign-in failed: ${e.message}")
@@ -95,10 +102,12 @@ fun SignInScreen(
             authViewModel.resetAuthResult()
         }
     }
+    // --- END OF LAUNCHER MODIFICATION ---
 
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
+                // This block is now only for Email/Pass login
                 authViewModel.resetAuthResult()
                 onSignInSuccess(false)
             }
@@ -230,17 +239,14 @@ fun SignInScreen(
 
             OutlinedButton(
                 onClick = {
-                    // --- 2. SIGN OUT FIRST TO FORCE ACCOUNT PICKER ---
                     scope.launch {
                         try {
                             googleSignInClient.signOut().await()
                         } catch (e: Exception) {
                             Log.w("SignInScreen", "Could not sign out of Google Client: ${e.message}")
                         }
-                        // Now launch the sign-in intent
                         launcher.launch(googleSignInClient.signInIntent)
                     }
-                    // --- END OF FIX ---
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authResult != AuthResult.Loading

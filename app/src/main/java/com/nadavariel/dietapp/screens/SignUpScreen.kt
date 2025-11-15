@@ -3,6 +3,7 @@
 package com.nadavariel.dietapp.screens
 
 import android.app.Activity
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -46,18 +47,19 @@ import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.util.AvatarConstants
+import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
-    onSignUpSuccess: (isNewUser: Boolean) -> Unit, // <-- THIS IS CORRECT
+    onSignUpSuccess: (isNewUser: Boolean) -> Unit, // <-- This is the correct signature
     onNavigateToSignIn: () -> Unit
 ) {
     val context = LocalContext.current
-    // Get state from viewmodel
     val name by authViewModel.nameState
     val email by authViewModel.emailState
     val password by authViewModel.passwordState
@@ -65,12 +67,27 @@ fun SignUpScreen(
     val selectedAvatarId by authViewModel.selectedAvatarId
     val authResult by authViewModel.authResult.collectAsState()
 
+    // --- 1. THIS IS THE FIX ---
+    // This now correctly unwraps the State<Boolean> into a Boolean
+    val isGoogleSignUp by authViewModel.isGoogleSignUp
+    // --- END OF FIX ---
+
     var showAvatarDialog by remember { mutableStateOf(false) }
 
-    // Snackbar message
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember(context) {
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    // --- 2. THIS IS THE FIX ---
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -78,17 +95,27 @@ fun SignUpScreen(
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                // This now correctly uses the right function
-                authViewModel.handleGoogleSignInResult(account) { isNewUser ->
-                    onSignUpSuccess(isNewUser)
+                authViewModel.handleGoogleSignIn(account) { flowResult ->
+                    when (flowResult) {
+                        GoogleSignInFlowResult.GoToHome -> {
+                            // User exists, call success with isNewUser = false
+                            // This will navigate to Home
+                            onSignUpSuccess(false)
+                        }
+                        GoogleSignInFlowResult.GoToSignUp -> {
+                            // New user, stay on this screen.
+                            // The screen will recompose with disabled fields.
+                        }
+                        GoogleSignInFlowResult.Error -> { /* Error snackbar is shown by LaunchedEffect */ }
+                    }
                 }
             } catch (e: ApiException) {
                 scope.launch {
-                    snackbarHostState.showSnackbar("Google Sign-In failed: ${e.localizedMessage}")
+                    snackbarHostState.showSnackbar("Google Sign-In failed: ${e.message}")
                 }
             } catch (e: Exception) {
                 scope.launch {
-                    snackbarHostState.showSnackbar("An unexpected error occurred during Google Sign-In: ${e.message}")
+                    snackbarHostState.showSnackbar("An unexpected error occurred: ${e.message}")
                 }
             }
         } else {
@@ -97,8 +124,8 @@ fun SignUpScreen(
             }
         }
     }
+    // --- END OF FIX ---
 
-    // Handle authentication results
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
@@ -117,24 +144,12 @@ fun SignUpScreen(
         }
     }
 
-    // Additional actins for first google sign in (not authenticated already)
-    val gso = remember {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(context.getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-    }
-    val googleSignInClient = remember {
-        GoogleSignIn.getClient(context, gso)
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { },
                 navigationIcon = {
-                    // Back button
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -159,7 +174,6 @@ fun SignUpScreen(
         ) {
             Text("Create Account", fontSize = 28.sp, modifier = Modifier.padding(bottom = 24.dp))
 
-            // --- AVATAR PICKER ---
             Image(
                 painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
                 contentDescription = "User Avatar",
@@ -175,7 +189,6 @@ fun SignUpScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- NAME FIELD ---
             OutlinedTextField(
                 value = name,
                 onValueChange = { authViewModel.nameState.value = it },
@@ -186,7 +199,6 @@ fun SignUpScreen(
                 singleLine = true
             )
 
-            // Email, password and confirm password
             OutlinedTextField(
                 value = email,
                 onValueChange = { authViewModel.emailState.value = it },
@@ -194,7 +206,8 @@ fun SignUpScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
-                singleLine = true
+                singleLine = true,
+                enabled = !isGoogleSignUp // <-- FIX
             )
 
             OutlinedTextField(
@@ -205,7 +218,8 @@ fun SignUpScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
-                singleLine = true
+                singleLine = true,
+                enabled = !isGoogleSignUp // <-- FIX
             )
 
             OutlinedTextField(
@@ -216,14 +230,14 @@ fun SignUpScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
-                singleLine = true
+                singleLine = true,
+                enabled = !isGoogleSignUp // <-- FIX
             )
 
-            // Sign up button
             Button(
                 onClick = {
                     authViewModel.signUp {
-                        onSignUpSuccess(true) // This is correct (always new user)
+                        onSignUpSuccess(true) // This is a new user (Email or new Google)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -241,7 +255,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // navigate to sign in option
             val annotatedTextLogin = buildAnnotatedString {
                 append("Already have an account? ")
                 pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
@@ -261,37 +274,44 @@ fun SignUpScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            Text(
-                "OR",
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp
-            )
-
-            // Google sign in
-            OutlinedButton(
-                onClick = {
-                    launcher.launch(googleSignInClient.signInIntent)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = authResult != AuthResult.Loading
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.google_logo),
-                    contentDescription = "Google Logo",
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.Unspecified
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            if (!isGoogleSignUp) { // <-- FIX
                 Text(
-                    text = "Continue with Google",
-                    fontSize = 18.sp
+                    "OR",
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp
                 )
+
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                googleSignInClient.signOut().await()
+                            } catch (e: Exception) {
+                                Log.w("SignUpScreen", "Could not sign out of Google Client: ${e.message}")
+                            }
+                            launcher.launch(googleSignInClient.signInIntent)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = authResult != AuthResult.Loading
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.google_logo),
+                        contentDescription = "Google Logo",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.Unspecified
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Continue with Google",
+                        fontSize = 18.sp
+                    )
+                }
             }
         }
     }
 
-    // --- AVATAR DIALOG (Copied from UpdateProfileScreen) ---
     if (showAvatarDialog) {
         Dialog(onDismissRequest = { showAvatarDialog = false }) {
             Surface(
@@ -329,7 +349,7 @@ fun SignUpScreen(
                                     .size(64.dp)
                                     .clip(CircleShape)
                                     .clickable {
-                                        authViewModel.selectedAvatarId.value = avatarId // <-- Update ViewModel
+                                        authViewModel.selectedAvatarId.value = avatarId
                                         showAvatarDialog = false
                                     }
                             )

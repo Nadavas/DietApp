@@ -386,8 +386,18 @@ class MainActivity : ComponentActivity() {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
-                                    onSignUpSuccess = {
-                                        navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true")
+                                    onSignUpSuccess = { isNewUser ->
+                                        if (isNewUser) {
+                                            // New user (Email or Google) -> Go to Questions
+                                            navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true")
+                                            // We DO NOT pop the stack here, so back button works
+                                        } else {
+                                            // Existing Google user -> Go to Home
+                                            navController.navigate(NavRoutes.HOME) {
+                                                popUpTo(NavRoutes.LANDING) { inclusive = true }
+                                                launchSingleTop = true
+                                            }
+                                        }
                                     },
                                     onNavigateToSignIn = {
                                         navController.navigate(NavRoutes.SIGN_IN) {
@@ -511,8 +521,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // --- THIS IS THE FIX ---
-                            // I've added the missing composable route from your old file.
                             composable(
                                 route = NavRoutes.UPDATE_PROFILE,
                                 arguments = listOf(navArgument(NavRoutes.IS_NEW_USER_ARG) {
@@ -528,7 +536,6 @@ class MainActivity : ComponentActivity() {
                                     isNewUser = isNewUser
                                 )
                             }
-                            // --- END OF FIX ---
 
                             composable(
                                 route = NavRoutes.ADD_EDIT_MEAL,

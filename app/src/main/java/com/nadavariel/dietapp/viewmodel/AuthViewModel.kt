@@ -4,6 +4,8 @@ package com.nadavariel.dietapp.viewmodel
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.State // <-- This import is critical
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -46,6 +48,12 @@ sealed class AuthResult {
     data object Idle : AuthResult()
 }
 
+enum class GoogleSignInFlowResult {
+    GoToHome,
+    GoToSignUp,
+    Error
+}
+
 class AuthViewModel(private val preferencesRepository: UserPreferencesRepository) : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
@@ -66,6 +74,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     var currentUser: FirebaseUser? by mutableStateOf(null)
         private set
+
+    private val _googleAccount = mutableStateOf<GoogleSignInAccount?>(null)
+    // This is the correct definition that fixes your errors
+    val isGoogleSignUp: State<Boolean> = derivedStateOf { _googleAccount.value != null }
 
     val isEmailPasswordUser: Boolean
         get() = currentUser?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } == true
@@ -196,20 +208,27 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     }
 
     fun signUp(onSuccess: () -> Unit) {
-        if (nameState.value.isBlank() || emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
-            _authResult.value = AuthResult.Error("Name, email and passwords cannot be empty.")
-            return
-        }
-        if (passwordState.value != confirmPasswordState.value) {
-            _authResult.value = AuthResult.Error("Passwords do not match.")
-            return
+        if (isGoogleSignUp.value) { // Use .value
+            if (nameState.value.isBlank()) {
+                _authResult.value = AuthResult.Error("Name cannot be empty.")
+                return
+            }
+        } else {
+            if (nameState.value.isBlank() || emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
+                _authResult.value = AuthResult.Error("Name, email and passwords cannot be empty.")
+                return
+            }
+            if (passwordState.value != confirmPasswordState.value) {
+                _authResult.value = AuthResult.Error("Passwords do not match.")
+                return
+            }
         }
 
         _authResult.value = AuthResult.Idle
         onSuccess()
     }
 
-    suspend fun createUserAndProfile() {
+    suspend fun createEmailUserAndProfile() {
         if (emailState.value.isBlank() || passwordState.value.isBlank()) {
             throw Exception("Email or password was blank.")
         }
@@ -235,6 +254,32 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             height = 0f,
             dateOfBirth = null,
             avatarId = newAvatarId,
+            gender = Gender.UNKNOWN
+        )
+        saveUserProfile(newProfile)
+    }
+
+    suspend fun createGoogleUserAndProfile() {
+        val account = _googleAccount.value ?: throw Exception("Google account not found.")
+        _authResult.value = AuthResult.Loading
+
+        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+        auth.signInWithCredential(credential).await()
+
+        _authResult.value = AuthResult.Success
+
+        if (rememberMeState.value) {
+            preferencesRepository.saveUserPreferences(account.email ?: "", rememberMeState.value)
+        } else {
+            preferencesRepository.clearUserPreferences()
+        }
+
+        val newProfile = UserProfile(
+            name = nameState.value.ifBlank { account.displayName }.toString(),
+            startingWeight = 0f,
+            height = 0f,
+            dateOfBirth = null,
+            avatarId = selectedAvatarId.value,
             gender = Gender.UNKNOWN
         )
         saveUserProfile(newProfile)
@@ -267,21 +312,18 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             }
     }
 
-    // --- 1. MODIFIED SIGNATURE TO ACCEPT CONTEXT ---
     fun signOut(context: Context) {
         userProfileListener?.remove()
         userProfileListener = null
 
-        // --- 2. SIGN OUT OF GOOGLE CLIENT ---
         try {
             getGoogleSignInClient(context).signOut()
             Log.d("AuthViewModel", "Successfully signed out of Google Client")
         } catch (e: Exception) {
             Log.w("AuthViewModel", "Could not sign out of Google Client: ${e.message}")
         }
-        // --- END OF FIX ---
 
-        auth.signOut() // Sign out of Firebase
+        auth.signOut()
         _authResult.value = AuthResult.Idle
         viewModelScope.launch {
             if (!rememberMeState.value) {
@@ -299,6 +341,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         selectedAvatarId.value = null
         passwordState.value = ""
         confirmPasswordState.value = ""
+        _googleAccount.value = null
     }
 
     fun resetAuthResult() {
@@ -313,38 +356,50 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return GoogleSignIn.getClient(context, gso)
     }
 
-    fun handleGoogleSignInResult(account: GoogleSignInAccount, onSuccess: (isNewUser: Boolean) -> Unit) {
+    fun handleGoogleSignIn(
+        account: GoogleSignInAccount,
+        onFlowResult: (GoogleSignInFlowResult) -> Unit
+    ) {
         _authResult.value = AuthResult.Loading
-        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    _authResult.value = AuthResult.Success
-                    viewModelScope.launch {
-                        if (rememberMeState.value) {
-                            preferencesRepository.saveUserPreferences(account.email ?: "", rememberMeState.value)
-                        } else {
-                            preferencesRepository.clearUserPreferences()
-                        }
-                        val userId = auth.currentUser?.uid
-                        var isNewUser = false
-                        if (userId != null) {
-                            val userDoc = firestore.collection("users").document(userId).get().await()
-                            if (!userDoc.exists()) {
-                                isNewUser = true
-                                val newProfile = UserProfile(
-                                    name = account.displayName ?: ""
-                                )
-                                saveUserProfile(newProfile)
-                            }
-                        }
-                        onSuccess(isNewUser)
-                    }
-                } else {
-                    val errorMessage = task.exception?.message ?: "Google sign-in failed."
-                    _authResult.value = AuthResult.Error(errorMessage)
+        viewModelScope.launch {
+            try {
+                // Step 1: Always sign in to Auth. This will log in *or* create an Auth entry.
+                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+                val authResultTask = auth.signInWithCredential(credential).await()
+
+                val userId = authResultTask.user?.uid
+                if (userId == null) {
+                    throw Exception("Failed to get user ID after sign in.")
                 }
+
+                // Step 2: Check Firestore for an *existing profile*
+                val userDoc = firestore.collection("users").document(userId).get().await()
+
+                if (userDoc.exists()) {
+                    // Step 3 (Logic A): User exists. Log them in and go to Home.
+                    Log.d("AuthViewModel", "Google user profile exists in Firestore. Logging in.")
+                    _authResult.value = AuthResult.Success
+                    if (rememberMeState.value) {
+                        preferencesRepository.saveUserPreferences(account.email ?: "", rememberMeState.value)
+                    }
+                    onFlowResult(GoogleSignInFlowResult.GoToHome)
+                } else {
+                    // Step 3 (Logic B): New user. Store details and go to SignUp.
+                    Log.d("AuthViewModel", "New Google user (no profile in Firestore). Storing details for sign-up.")
+                    _googleAccount.value = account
+                    nameState.value = account.displayName ?: ""
+                    emailState.value = account.email ?: ""
+
+                    _authResult.value = AuthResult.Idle
+                    onFlowResult(GoogleSignInFlowResult.GoToSignUp)
+                }
+            } catch (e: Exception) {
+                // This will catch sign-in failures or Firestore errors
+                Log.e("AuthViewModel", "handleGoogleSignIn failed: ${e.message}", e)
+                _authResult.value = AuthResult.Error(e.message ?: "Google Sign-In failed.")
+                onFlowResult(GoogleSignInFlowResult.Error)
             }
+        }
     }
 
 
