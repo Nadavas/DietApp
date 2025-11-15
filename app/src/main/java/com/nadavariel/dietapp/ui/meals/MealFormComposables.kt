@@ -4,7 +4,6 @@ import android.R.style as AndroidRStyle
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.widget.DatePicker
-import android.widget.TimePicker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -59,6 +58,28 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         )
     }
 }
+
+// --- NEW SUB-SECTION HEADER ---
+@Composable
+fun SubSectionHeader(title: String, modifier: Modifier = Modifier) {
+    Row(
+        // Centered horizontally, with 4.dp top/bottom padding
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center // <-- This centers the content
+    ) {
+        Text(
+            text = title.uppercase(Locale.ROOT),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = LightGreyText,
+            letterSpacing = 1.2.sp
+        )
+    }
+}
+// --- END OF NEW COMPOSABLE ---
 
 // --- An elegant white card container, matching the home screen cards ---
 @Composable
@@ -120,7 +141,7 @@ fun ServingAndCaloriesSection(
                 ThemedOutlinedTextField(value = servingUnitText, onValueChange = onServingUnitChange, label = "Unit (e.g., g)", modifier = Modifier.weight(1.5f), singleLine = true)
             }
             Spacer(Modifier.height(8.dp))
-            ThemedOutlinedTextField(value = caloriesText, onValueChange = { if (it.all(Char::isDigit)) onCaloriesChange(it) }, label = "Total Calories (kcal)", leadingIcon = Icons.Outlined.LocalFireDepartment, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+            ThemedOutlinedTextField(value = caloriesText, onValueChange = { if (it.all(Char::isDigit)) onCaloriesChange(it) }, label = "Total Calories (kcal)*", leadingIcon = Icons.Outlined.LocalFireDepartment, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
         }
     }
 }

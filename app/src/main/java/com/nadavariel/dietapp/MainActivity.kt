@@ -413,6 +413,7 @@ class MainActivity : ComponentActivity() {
                                 HomeScreen(
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
+                                    goalViewModel = goalsViewModel, // <-- PASSING GOALS VIEWMODEL
                                     navController = navController,
                                     openWeightLog = openWeightLog
                                 )
@@ -539,6 +540,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            // --- NEW ROUTE ADDED ---
+                            composable(NavRoutes.ADD_MANUAL_MEAL) {
+                                AddManualMealScreen(
+                                    foodLogViewModel = foodLogViewModel,
+                                    navController = navController
+                                )
+                            }
+                            // --- END OF NEW ROUTE ---
+
                             composable(NavRoutes.THREADS) {
                                 ThreadsScreen(
                                     navController = navController,
@@ -627,25 +637,20 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showGeminiDialog != null) {
-                    // --- 1. UPDATE THE DIALOG CALL ---
                     GeminiConfirmationDialog(
                         foodInfoList = showGeminiDialog!!,
-                        // "Accept" logs the *modified* list
                         onAccept = { modifiedList ->
                             foodLogViewModel.logMealsFromFoodInfoList(modifiedList)
                             showGeminiDialog = null
                         },
-                        // "Edit" is handled internally, so this does nothing
                         onEdit = {
                             Log.d("MainActivity", "Edit button clicked")
                         },
-                        // "Cancel" resets the VM state and closes
                         onCancel = {
                             foodLogViewModel.resetGeminiResult()
                             showGeminiDialog = null
                         }
                     )
-                    // --- END OF FIX ---
                 }
             }
         }

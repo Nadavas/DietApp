@@ -37,7 +37,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
+import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
+import com.nadavariel.dietapp.ui.HomeColors
 import com.nadavariel.dietapp.ui.meals.*
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
@@ -81,9 +83,6 @@ fun AddEditMealScreen(
     var isImageProcessing by remember { mutableStateOf(false) }
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
 
-    // --- THIS STATE IS NO LONGER USED ---
-    // var proposedMealList by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
-
     val isFutureTimeSelected by foodLogViewModel.isFutureTimeSelected.collectAsState()
 
 
@@ -92,7 +91,18 @@ fun AddEditMealScreen(
         imageB64 = null
         imageFile?.delete()
         imageFile = null
-        foodName = ""
+        // Do not clear foodName here, as the user might want to switch
+        // from photo to text
+    }
+
+    // --- MODIFIED clearImageAndText ---
+    // This is called by the photo pickers
+    fun clearImageAndText() {
+        imageUri = null
+        imageB64 = null
+        imageFile?.delete()
+        imageFile = null
+        foodName = "" // Clear food name when picking a photo
     }
 
     fun uriToBase64(uri: Uri): String? {
@@ -122,7 +132,7 @@ fun AddEditMealScreen(
             imageUri =
                 imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
         } else {
-            clearImageState()
+            clearImageAndText()
         }
     }
 
@@ -141,7 +151,7 @@ fun AddEditMealScreen(
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        clearImageState()
+        clearImageAndText()
         imageUri = uri
     }
 
@@ -198,22 +208,13 @@ fun AddEditMealScreen(
             servingAmountText = ""
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
-            clearImageState()
+            clearImageAndText() // Use the full clear
             foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
         }
     }
 
-    // --- THIS LAUNCHEDEFFECT IS NO LONGER NEEDED AND HAS BEEN REMOVED ---
-    /*
-    LaunchedEffect(geminiResult) {
-        if (geminiResult is GeminiResult.Success) {
-            ...
-        }
-    }
-    */
-
     val onTakePhoto: () -> Unit = {
-        clearImageState()
+        clearImageAndText()
         if (ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.CAMERA
@@ -228,7 +229,7 @@ fun AddEditMealScreen(
     }
 
     val onUploadPhoto: () -> Unit = {
-        clearImageState()
+        clearImageAndText()
         pickImageLauncher.launch("image/*")
     }
 
@@ -239,12 +240,11 @@ fun AddEditMealScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (isEditMode) "Edit Meal" else "Add New Meal",
+                        if (isEditMode) "Edit Meal" else "Add Meal",
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
-                    // Back button is now always present
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
@@ -263,71 +263,24 @@ fun AddEditMealScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (!isEditMode) {
-                item { SectionHeader(title = "Add with Photo") }
-                item {
-                    ImageInputSection(
-                        onTakePhotoClick = onTakePhoto,
-                        onUploadPhotoClick = onUploadPhoto
-                    )
-                }
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f))
-                        Text(
-                            "OR",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                        HorizontalDivider(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
 
-            item {
-                Column {
-                    SectionHeader(title = if (isEditMode) "Meal Details" else "Enter Manually")
-                    FormCard {
-                        ThemedOutlinedTextField(
-                            value = foodName,
-                            onValueChange = { foodName = it },
-                            label = if (!isEditMode) "Describe your meal..." else "Meal Name",
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = if (isEditMode) Icons.Default.EditNote else Icons.Default.AutoAwesome,
-                            minLines = if (!isEditMode) 3 else 1
-                        )
-                        if (!isEditMode && imageUri != null) {
-                            Spacer(Modifier.height(16.dp))
-                            Box(
-                                modifier = Modifier.fillMaxWidth().height(200.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                            ) {
-                                AsyncImage(
-                                    model = imageUri,
-                                    contentDescription = "Selected Meal Photo",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                                IconButton(
-                                    onClick = { clearImageState() },
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.5f))
-                                ) {
-                                    Icon(Icons.Default.Close, "Remove Photo", tint = Color.White)
-                                }
-                            }
+            if (isEditMode) {
+                // --- EDIT MODE (same as before) ---
+                item {
+                    Column {
+                        SectionHeader(title = "Meal Details")
+                        FormCard {
+                            ThemedOutlinedTextField(
+                                value = foodName,
+                                onValueChange = { foodName = it },
+                                label = "Meal Name",
+                                modifier = Modifier.fillMaxWidth(),
+                                leadingIcon = Icons.Default.EditNote,
+                                minLines = 1
+                            )
                         }
                     }
                 }
-            }
-
-            if (isEditMode) {
                 item {
                     ServingAndCaloriesSection(
                         servingAmountText,
@@ -363,73 +316,184 @@ fun AddEditMealScreen(
                         vitaminCText,
                         { vitaminCText = it })
                 }
-            }
+            } else {
+                // --- ADD MODE (new hub structure) ---
 
-            item { DateTimePickerSection(selectedDateTimeState) { selectedDateTimeState = it } }
+                item { SectionHeader(title = "Enter with AI") }
 
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                val baseButtonEnabled = if (isEditMode) {
-                    foodName.isNotBlank() && (caloriesText.toIntOrNull() ?: 0) > 0
-                } else {
-                    (foodName.isNotBlank() || imageB64 != null) && geminiResult !is GeminiResult.Loading && !isImageProcessing
-                }
-
-                val isButtonEnabled = if (isEditMode) {
-                    baseButtonEnabled && !isFutureTimeSelected
-                } else {
-                    baseButtonEnabled
-                }
-
-                if (isEditMode && isFutureTimeSelected) {
-                    Text(
-                        text = "⚠️ Cannot update meal to a time in the future. Please adjust the time or date.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                item { SubSectionHeader(title = "Add with Photo") }
+                item {
+                    ImageInputSection(
+                        onTakePhotoClick = onTakePhoto,
+                        onUploadPhotoClick = onUploadPhoto
                     )
                 }
 
-                SubmitMealButton(isEditMode, geminiResult, isButtonEnabled) {
-                    if (isEditMode) {
-                        val calValue = caloriesText.toIntOrNull() ?: 0
-                        val mealTimestamp = Timestamp(selectedDateTimeState.time)
+                // --- 1. MOVED IMAGE PREVIEW HERE ---
+                // Show the image preview *only if* an image is selected
+                if (imageUri != null) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = imageUri,
+                                contentDescription = "Selected Meal Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            IconButton(
+                                // Use clearImageState to hide image AND show text fields
+                                onClick = { clearImageState() },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.5f))
+                            ) {
+                                Icon(Icons.Default.Close, "Remove Photo", tint = Color.White)
+                            }
+                        }
+                    }
+                }
 
-                        if (mealToEdit != null) {
-                            foodLogViewModel.updateMeal(
-                                mealToEdit.id,
-                                newFoodName = foodName,
-                                newCalories = calValue,
-                                newServingAmount = servingAmountText,
-                                newServingUnit = servingUnitText,
-                                newTimestamp = mealTimestamp,
-                                newProtein = proteinText.toDoubleOrNull(),
-                                newCarbohydrates = carbsText.toDoubleOrNull(),
-                                newFat = fatText.toDoubleOrNull(),
-                                newFiber = fiberText.toDoubleOrNull(),
-                                newSugar = sugarText.toDoubleOrNull(),
-                                newSodium = sodiumText.toDoubleOrNull(),
-                                newPotassium = potassiumText.toDoubleOrNull(),
-                                newCalcium = calciumText.toDoubleOrNull(),
-                                newIron = ironText.toDoubleOrNull(),
-                                newVitaminC = vitaminCText.toDoubleOrNull()
+                // --- 2. WRAP TEXT ENTRY IN A VISIBILITY CHECK ---
+                // Only show the "OR" and "Add with Text" if NO image is selected
+                if (imageUri == null) {
+                    item { SubSectionHeader(title = "OR") }
+
+                    item { SubSectionHeader(title = "Add with Text") }
+                    item {
+                        FormCard {
+                            ThemedOutlinedTextField(
+                                value = foodName,
+                                onValueChange = { foodName = it },
+                                label = "Describe your meal...",
+                                modifier = Modifier.fillMaxWidth(),
+                                leadingIcon = Icons.Default.AutoAwesome,
+                                minLines = 3
                             )
                         }
-                        navController.popBackStack()
-                    } else {
-                        // --- THIS IS THE FIX ---
-                        // 1. Get the timestamp
+                    }
+                }
+                // --- END OF FIX ---
+
+                item {
+                    val aiButtonEnabled = (foodName.isNotBlank() || imageB64 != null) &&
+                            geminiResult !is GeminiResult.Loading &&
+                            !isImageProcessing
+
+                    SubmitMealButton(
+                        isEditMode = false,
+                        geminiResult = geminiResult,
+                        isButtonEnabled = aiButtonEnabled
+                    ) {
                         val mealTimestamp = Timestamp(selectedDateTimeState.time)
-                        // 2. Call analyze and pass the timestamp
                         foodLogViewModel.analyzeImageWithGemini(
                             foodName = foodName,
                             imageB64 = imageB64,
                             mealTime = mealTimestamp
                         )
-                        // 3. Navigate away immediately
                         navController.popBackStack()
-                        // --- END OF FIX ---
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(
+                            "OR",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
+                }
+                item { SectionHeader(title = "Enter Manually") }
+                item {
+                    FormCard {
+                        Text(
+                            text = "Log a meal by entering all nutritional information yourself.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = HomeColors.TextSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = { navController.navigate(NavRoutes.ADD_MANUAL_MEAL) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = HomeColors.PrimaryGreen
+                            )
+                        ) {
+                            Icon(Icons.Default.EditNote, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Log Meal Manually", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Date time picker is shared for all flows
+            item { DateTimePickerSection(selectedDateTimeState) { selectedDateTimeState = it } }
+
+            // This button is now only for EDIT mode
+            if (isEditMode) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val isButtonEnabled = foodName.isNotBlank() &&
+                            (caloriesText.toIntOrNull() ?: 0) > 0 &&
+                            !isFutureTimeSelected
+
+                    if (isFutureTimeSelected) {
+                        Text(
+                            text = "⚠️ Cannot update meal to a time in the future. Please adjust the time or date.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+                    }
+
+                    SubmitMealButton(
+                        isEditMode = true,
+                        geminiResult = geminiResult,
+                        isButtonEnabled = isButtonEnabled
+                    ) {
+                        val calValue = caloriesText.toIntOrNull() ?: 0
+                        val mealTimestamp = Timestamp(selectedDateTimeState.time)
+
+                        // We can safely use 'mealToEdit!!' because 'isEditMode' is true
+                        foodLogViewModel.updateMeal(
+                            mealToEdit.id,
+                            newFoodName = foodName,
+                            newCalories = calValue,
+                            newServingAmount = servingAmountText,
+                            newServingUnit = servingUnitText,
+                            newTimestamp = mealTimestamp,
+                            newProtein = proteinText.toDoubleOrNull(),
+                            newCarbohydrates = carbsText.toDoubleOrNull(),
+                            newFat = fatText.toDoubleOrNull(),
+                            newFiber = fiberText.toDoubleOrNull(),
+                            newSugar = sugarText.toDoubleOrNull(),
+                            newSodium = sodiumText.toDoubleOrNull(),
+                            newPotassium = potassiumText.toDoubleOrNull(),
+                            newCalcium = calciumText.toDoubleOrNull(),
+                            newIron = ironText.toDoubleOrNull(),
+                            newVitaminC = vitaminCText.toDoubleOrNull()
+                        )
+
+                        navController.popBackStack()
                     }
                 }
             }
