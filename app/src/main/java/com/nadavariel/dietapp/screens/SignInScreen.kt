@@ -53,7 +53,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+// import androidx.lifecycle.viewmodel.compose.viewModel // <-- REMOVED
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.viewmodel.AuthResult
@@ -66,7 +66,7 @@ import kotlinx.coroutines.tasks.await
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(
-    authViewModel: AuthViewModel = viewModel(),
+    authViewModel: AuthViewModel, // <-- 1. REMOVED DEFAULT INITIALIZER
     onBack: () -> Unit,
     onSignInSuccess: (isNewUser: Boolean) -> Unit,
     onNavigateToSignUp: () -> Unit
@@ -83,7 +83,6 @@ fun SignInScreen(
         authViewModel.getGoogleSignInClient(context)
     }
 
-    // --- 1. MODIFIED LAUNCHER LOGIC ---
     val launcher = rememberLauncherForActivityResult(StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
@@ -92,7 +91,7 @@ fun SignInScreen(
                 when (flowResult) {
                     GoogleSignInFlowResult.GoToHome -> onSignInSuccess(false)
                     GoogleSignInFlowResult.GoToSignUp -> onNavigateToSignUp()
-                    GoogleSignInFlowResult.Error -> { /* Error snackbar is shown by LaunchedEffect */ }
+                    GoogleSignInFlowResult.Error -> { /* Error handled by LaunchedEffect */ }
                 }
             }
         } catch (e: ApiException) {
@@ -102,12 +101,10 @@ fun SignInScreen(
             authViewModel.resetAuthResult()
         }
     }
-    // --- END OF LAUNCHER MODIFICATION ---
 
     LaunchedEffect(authResult) {
         when (val result = authResult) {
             is AuthResult.Success -> {
-                // This block is now only for Email/Pass login
                 authViewModel.resetAuthResult()
                 onSignInSuccess(false)
             }

@@ -222,18 +222,18 @@ class QuestionsViewModel : ViewModel() {
         viewModelScope.launch {
             _dietPlanResult.value = DietPlanResult.Loading
             try {
+                // --- START OF FIX: Corrected user creation logic ---
                 if (auth.currentUser == null) {
-                    // Check if this is a Google sign-up flow
-                    if (authViewModel.isGoogleSignUp.value) {
-                        Log.d("QuestionsViewModel", "Google sign up detected. Creating Google user...")
-                        authViewModel.createGoogleUserAndProfile()
-                    } else {
-                        Log.d("QuestionsViewModel", "Email sign up detected. Creating Email user...")
-                        authViewModel.createEmailUserAndProfile()
-                    }
-                    Log.d("QuestionsViewModel", "User and profile created successfully.")
+                    // This is a NEW EMAIL user. isGoogleSignUp.value is false.
+                    Log.d("QuestionsViewModel", "New Email user detected. Creating Email user...")
+                    authViewModel.createEmailUserAndProfile()
+                } else if (authViewModel.isGoogleSignUp.value) {
+                    // This is a NEW GOOGLE user. currentUser is not null, but isGoogleSignUp is true.
+                    Log.d("QuestionsViewModel", "New Google user detected. Creating Google user...")
+                    authViewModel.createGoogleUserAndProfile()
                 } else {
-                    Log.d("QuestionsViewModel", "User already exists. Skipping user creation.")
+                    // This is an EXISTING user (Email or Google).
+                    Log.d("QuestionsViewModel", "Existing user. Skipping user creation.")
                 }
                 // --- END OF FIX ---
 

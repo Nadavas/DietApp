@@ -360,7 +360,7 @@ class MainActivity : ComponentActivity() {
                             }
                             composable(NavRoutes.SIGN_IN) {
                                 SignInScreen(
-                                    authViewModel = authViewModel,
+                                    authViewModel = authViewModel, // <-- 1. PASS VM
                                     onBack = {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
@@ -381,16 +381,16 @@ class MainActivity : ComponentActivity() {
                             }
                             composable(NavRoutes.SIGN_UP) {
                                 SignUpScreen(
-                                    authViewModel = authViewModel,
+                                    authViewModel = authViewModel, // <-- 2. PASS VM
                                     onBack = {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
                                     onSignUpSuccess = { isNewUser ->
+                                        // 3. THIS LOGIC IS NOW CORRECT
                                         if (isNewUser) {
                                             // New user (Email or Google) -> Go to Questions
                                             navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true")
-                                            // We DO NOT pop the stack here, so back button works
                                         } else {
                                             // Existing Google user -> Go to Home
                                             navController.navigate(NavRoutes.HOME) {

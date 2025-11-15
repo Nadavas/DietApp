@@ -257,14 +257,18 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             gender = Gender.UNKNOWN
         )
         saveUserProfile(newProfile)
+
+        // Clear the temporary sign-up state
+        clearInputFields()
     }
 
     suspend fun createGoogleUserAndProfile() {
+        // Get the account details we stored in handleGoogleSignIn
         val account = _googleAccount.value ?: throw Exception("Google account not found.")
         _authResult.value = AuthResult.Loading
 
-        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-        auth.signInWithCredential(credential).await()
+        // The user was already signed in to Firebase Auth in handleGoogleSignIn.
+        // We just need to create their Firestore profile document.
 
         _authResult.value = AuthResult.Success
 
@@ -274,6 +278,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             preferencesRepository.clearUserPreferences()
         }
 
+        Log.d("AuthViewModel", "createGoogleUserAndProfile: Reading nameState='${nameState.value}', selectedAvatarId='${selectedAvatarId.value}'")
+
+        // Create the profile using the name and avatar from the ViewModel state
         val newProfile = UserProfile(
             name = nameState.value.ifBlank { account.displayName }.toString(),
             startingWeight = 0f,
@@ -282,7 +289,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             avatarId = selectedAvatarId.value,
             gender = Gender.UNKNOWN
         )
+
+        Log.d("AuthViewModel", "Saving Google Profile: Name='${newProfile.name}', Avatar='${newProfile.avatarId}'")
         saveUserProfile(newProfile)
+
+        // Clear the temporary sign-up state (this sets _googleAccount.value to null)
+        clearInputFields()
     }
 
 
@@ -334,6 +346,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     }
 
     fun clearInputFields() {
+        Log.d("AuthViewModel", "clearInputFields: Clearing all input fields.")
         if (!rememberMeState.value) {
             emailState.value = ""
         }
@@ -385,7 +398,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     onFlowResult(GoogleSignInFlowResult.GoToHome)
                 } else {
                     // Step 3 (Logic B): New user. Store details and go to SignUp.
-                    Log.d("AuthViewModel", "New Google user (no profile in Firestore). Storing details for sign-up.")
+                    Log.d("AuthViewModel", "New Google user. Prefilling. Name: ${account.displayName}, Email: ${account.email}")
                     _googleAccount.value = account
                     nameState.value = account.displayName ?: ""
                     emailState.value = account.email ?: ""

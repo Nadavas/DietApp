@@ -39,7 +39,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
+// import androidx.lifecycle.viewmodel.compose.viewModel // <-- REMOVED
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -54,7 +54,7 @@ import kotlinx.coroutines.tasks.await
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
-    authViewModel: AuthViewModel = viewModel(),
+    authViewModel: AuthViewModel, // <-- 1. REMOVED DEFAULT INITIALIZER
     onBack: () -> Unit,
     onSignUpSuccess: (isNewUser: Boolean) -> Unit, // <-- This is the correct signature
     onNavigateToSignIn: () -> Unit
@@ -67,10 +67,7 @@ fun SignUpScreen(
     val selectedAvatarId by authViewModel.selectedAvatarId
     val authResult by authViewModel.authResult.collectAsState()
 
-    // --- 1. THIS IS THE FIX ---
-    // This now correctly unwraps the State<Boolean> into a Boolean
-    val isGoogleSignUp by authViewModel.isGoogleSignUp
-    // --- END OF FIX ---
+    val isGoogleSignUp by authViewModel.isGoogleSignUp // This now works
 
     var showAvatarDialog by remember { mutableStateOf(false) }
 
@@ -87,7 +84,6 @@ fun SignUpScreen(
         GoogleSignIn.getClient(context, gso)
     }
 
-    // --- 2. THIS IS THE FIX ---
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -97,16 +93,16 @@ fun SignUpScreen(
                 val account = task.getResult(ApiException::class.java)
                 authViewModel.handleGoogleSignIn(account) { flowResult ->
                     when (flowResult) {
+                        // --- 2. THIS IS THE FIX ---
                         GoogleSignInFlowResult.GoToHome -> {
                             // User exists, call success with isNewUser = false
-                            // This will navigate to Home
                             onSignUpSuccess(false)
                         }
+                        // --- END OF FIX ---
                         GoogleSignInFlowResult.GoToSignUp -> {
                             // New user, stay on this screen.
-                            // The screen will recompose with disabled fields.
                         }
-                        GoogleSignInFlowResult.Error -> { /* Error snackbar is shown by LaunchedEffect */ }
+                        GoogleSignInFlowResult.Error -> { /* Error handled in LaunchedEffect */ }
                     }
                 }
             } catch (e: ApiException) {
@@ -124,7 +120,6 @@ fun SignUpScreen(
             }
         }
     }
-    // --- END OF FIX ---
 
     LaunchedEffect(authResult) {
         when (val result = authResult) {
@@ -207,7 +202,7 @@ fun SignUpScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
                 singleLine = true,
-                enabled = !isGoogleSignUp // <-- FIX
+                enabled = !isGoogleSignUp // This now works
             )
 
             OutlinedTextField(
@@ -219,7 +214,7 @@ fun SignUpScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
                 singleLine = true,
-                enabled = !isGoogleSignUp // <-- FIX
+                enabled = !isGoogleSignUp // This now works
             )
 
             OutlinedTextField(
@@ -231,11 +226,13 @@ fun SignUpScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 singleLine = true,
-                enabled = !isGoogleSignUp // <-- FIX
+                enabled = !isGoogleSignUp // This now works
             )
 
             Button(
                 onClick = {
+                    // New log
+                    Log.d("SignUpScreen", "Next clicked. nameState='${authViewModel.nameState.value}', avatarId='${authViewModel.selectedAvatarId.value}'")
                     authViewModel.signUp {
                         onSignUpSuccess(true) // This is a new user (Email or new Google)
                     }
@@ -274,7 +271,7 @@ fun SignUpScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            if (!isGoogleSignUp) { // <-- FIX
+            if (!isGoogleSignUp) { // This now works
                 Text(
                     "OR",
                     modifier = Modifier.padding(vertical = 8.dp),
