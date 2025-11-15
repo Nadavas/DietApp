@@ -413,7 +413,7 @@ class MainActivity : ComponentActivity() {
                                 HomeScreen(
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
-                                    goalViewModel = goalsViewModel, // <-- PASSING GOALS VIEWMODEL
+                                    goalViewModel = goalsViewModel,
                                     navController = navController,
                                     openWeightLog = openWeightLog
                                 )
@@ -511,6 +511,25 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            // --- THIS IS THE FIX ---
+                            // I've added the missing composable route from your old file.
+                            composable(
+                                route = NavRoutes.UPDATE_PROFILE,
+                                arguments = listOf(navArgument(NavRoutes.IS_NEW_USER_ARG) {
+                                    type = NavType.StringType; defaultValue = "false"; nullable = true
+                                })
+                            ) { backStackEntry ->
+                                val isNewUserString = backStackEntry.arguments?.getString(NavRoutes.IS_NEW_USER_ARG)
+                                val isNewUser = isNewUserString?.toBooleanStrictOrNull() == true
+                                UpdateProfileScreen(
+                                    authViewModel = authViewModel,
+                                    navController = navController,
+                                    onBack = { navController.popBackStack() },
+                                    isNewUser = isNewUser
+                                )
+                            }
+                            // --- END OF FIX ---
+
                             composable(
                                 route = NavRoutes.ADD_EDIT_MEAL,
                                 deepLinks = listOf(
@@ -540,14 +559,12 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // --- NEW ROUTE ADDED ---
                             composable(NavRoutes.ADD_MANUAL_MEAL) {
                                 AddManualMealScreen(
                                     foodLogViewModel = foodLogViewModel,
                                     navController = navController
                                 )
                             }
-                            // --- END OF NEW ROUTE ---
 
                             composable(NavRoutes.THREADS) {
                                 ThreadsScreen(
