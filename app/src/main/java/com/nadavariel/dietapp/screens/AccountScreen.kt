@@ -256,6 +256,7 @@ fun AccountScreen(
     val currentUser = authViewModel.currentUser
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
     val context = LocalContext.current // <-- 2. GET CONTEXT
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
@@ -301,118 +302,131 @@ fun AccountScreen(
         },
         containerColor = ScreenBackgroundColor
     ) { paddingValues ->
-        LazyColumn(
+        // --- START OF FIX: Add loading wrapper ---
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(paddingValues)
         ) {
-            item {
-                AccountHeaderInfo(
-                    name = userProfile.name.ifBlank { "User" },
-                    email = currentUser?.email ?: "No email",
-                    avatarId = userProfile.avatarId,
-                    onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
-                )
-            }
+            // This combined check prevents the flash of default content
+            val showLoading = isLoadingProfile || (authViewModel.currentUser != null && userProfile.name.isBlank())
 
-            item {
-                SectionDivider("SETTINGS")
-            }
-
-            item {
-                MenuRow(
-                    title = "Profile",
-                    subtitle = "Manage your information",
-                    leadingIcon = { Icon(Icons.Filled.Person, "My Profile", modifier = Modifier.size(24.dp)) },
-                    hasNotification = false,
-                    onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
-                )
-            }
-
-            item {
-                MenuRow(
-                    title = "Questions",
-                    subtitle = "View your dietary preferences",
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_query_filled),
-                            contentDescription = "Questions",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    onClick = { navController.navigate(NavRoutes.QUESTIONS) }
-                )
-            }
-
-            item {
-                MenuRow(
-                    title = "Goals",
-                    subtitle = "Set your nutrition targets",
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_goals),
-                            contentDescription = "Goals",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    onClick = { navController.navigate(NavRoutes.GOALS) }
-                )
-            }
-
-            item {
-                MenuRow(
-                    title = "Notifications",
-                    subtitle = "Meal reminder notifications",
-                    leadingIcon = { Icon(Icons.Filled.Notifications, "Notifications", modifier = Modifier.size(24.dp)) },
-                    onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
-                )
-            }
-
-            item {
-                MenuRow(
-                    title = "Settings",
-                    subtitle = "App preferences",
-                    leadingIcon = { Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.size(24.dp)) },
-                    onClick = { navController.navigate(NavRoutes.SETTINGS) }
-                )
-            }
-
-            item {
-                SectionDivider("ACCOUNT ACTIONS")
-            }
-
-            item {
-                AccountActionButtons(
-                    onSignOutClick = { showSignOutDialog = true },
-                    onDeleteClick = { showDeleteConfirmationDialog = true }
-                )
-            }
-
-            errorMessage?.let {
-                item {
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp)
+            if (showLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    item {
+                        AccountHeaderInfo(
+                            name = userProfile.name.ifBlank { "User" },
+                            email = currentUser?.email ?: "No email",
+                            avatarId = userProfile.avatarId,
+                            onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                         )
                     }
+
+                    item {
+                        SectionDivider("SETTINGS")
+                    }
+
+                    item {
+                        MenuRow(
+                            title = "Profile",
+                            subtitle = "Manage your information",
+                            leadingIcon = { Icon(Icons.Filled.Person, "My Profile", modifier = Modifier.size(24.dp)) },
+                            hasNotification = false,
+                            onClick = { navController.navigate(NavRoutes.MY_PROFILE) }
+                        )
+                    }
+
+                    item {
+                        MenuRow(
+                            title = "Questions",
+                            subtitle = "View your dietary preferences",
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_query_filled),
+                                    contentDescription = "Questions",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            onClick = { navController.navigate(NavRoutes.QUESTIONS) }
+                        )
+                    }
+
+                    item {
+                        MenuRow(
+                            title = "Goals",
+                            subtitle = "Set your nutrition targets",
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_goals),
+                                    contentDescription = "Goals",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            onClick = { navController.navigate(NavRoutes.GOALS) }
+                        )
+                    }
+
+                    item {
+                        MenuRow(
+                            title = "Notifications",
+                            subtitle = "Meal reminder notifications",
+                            leadingIcon = { Icon(Icons.Filled.Notifications, "Notifications", modifier = Modifier.size(24.dp)) },
+                            onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
+                        )
+                    }
+
+                    item {
+                        MenuRow(
+                            title = "Settings",
+                            subtitle = "App preferences",
+                            leadingIcon = { Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.size(24.dp)) },
+                            onClick = { navController.navigate(NavRoutes.SETTINGS) }
+                        )
+                    }
+
+                    item {
+                        SectionDivider("ACCOUNT ACTIONS")
+                    }
+
+                    item {
+                        AccountActionButtons(
+                            onSignOutClick = { showSignOutDialog = true },
+                            onDeleteClick = { showDeleteConfirmationDialog = true }
+                        )
+                    }
+
+                    errorMessage?.let {
+                        item {
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = it,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
+        // --- END OF FIX ---
     }
 
     if (showDeleteConfirmationDialog) {
