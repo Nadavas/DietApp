@@ -119,7 +119,8 @@ fun AddEditMealScreen(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            imageUri = imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
+            imageUri =
+                imageFile?.let { FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, it) }
         } else {
             clearImageState()
         }
@@ -177,7 +178,8 @@ fun AddEditMealScreen(
                 calciumText = it.calcium?.toString() ?: ""
                 ironText = it.iron?.toString() ?: ""
                 vitaminCText = it.vitaminC?.toString() ?: ""
-                selectedDateTimeState = Calendar.getInstance().apply { time = it.timestamp.toDate() }
+                selectedDateTimeState =
+                    Calendar.getInstance().apply { time = it.timestamp.toDate() }
                 foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
             }
         } else {
@@ -212,7 +214,11 @@ fun AddEditMealScreen(
 
     val onTakePhoto: () -> Unit = {
         clearImageState()
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             val file = createImageFile(context)
             val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
             takePictureLauncher.launch(uri)
@@ -231,7 +237,12 @@ fun AddEditMealScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isEditMode) "Edit Meal" else "Add New Meal", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        if (isEditMode) "Edit Meal" else "Add New Meal",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     // Back button is now always present
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -254,7 +265,12 @@ fun AddEditMealScreen(
         ) {
             if (!isEditMode) {
                 item { SectionHeader(title = "Add with Photo") }
-                item { ImageInputSection(onTakePhotoClick = onTakePhoto, onUploadPhotoClick = onUploadPhoto) }
+                item {
+                    ImageInputSection(
+                        onTakePhotoClick = onTakePhoto,
+                        onUploadPhotoClick = onUploadPhoto
+                    )
+                }
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -262,7 +278,12 @@ fun AddEditMealScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
-                        Text("OR", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.outline)
+                        Text(
+                            "OR",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.outline
+                        )
                         HorizontalDivider(modifier = Modifier.weight(1f))
                     }
                 }
@@ -282,9 +303,22 @@ fun AddEditMealScreen(
                         )
                         if (!isEditMode && imageUri != null) {
                             Spacer(Modifier.height(16.dp))
-                            Box(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp))) {
-                                AsyncImage(model = imageUri, contentDescription = "Selected Meal Photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                                IconButton(onClick = { clearImageState() }, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.5f))) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(200.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            ) {
+                                AsyncImage(
+                                    model = imageUri,
+                                    contentDescription = "Selected Meal Photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                IconButton(
+                                    onClick = { clearImageState() },
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.5f))
+                                ) {
                                     Icon(Icons.Default.Close, "Remove Photo", tint = Color.White)
                                 }
                             }
@@ -294,9 +328,41 @@ fun AddEditMealScreen(
             }
 
             if (isEditMode) {
-                item { ServingAndCaloriesSection(servingAmountText, { servingAmountText = it }, servingUnitText, { servingUnitText = it }, caloriesText, { caloriesText = it }) }
-                item { MacronutrientsSection(proteinText, { proteinText = it }, carbsText, { carbsText = it }, fatText, { fatText = it }) }
-                item { MicronutrientsSection(fiberText, { fiberText = it }, sugarText, { sugarText = it }, sodiumText, { sodiumText = it }, potassiumText, { potassiumText = it }, calciumText, { calciumText = it }, ironText, { ironText = it }, vitaminCText, { vitaminCText = it }) }
+                item {
+                    ServingAndCaloriesSection(
+                        servingAmountText,
+                        { servingAmountText = it },
+                        servingUnitText,
+                        { servingUnitText = it },
+                        caloriesText,
+                        { caloriesText = it })
+                }
+                item {
+                    MacronutrientsSection(
+                        proteinText,
+                        { proteinText = it },
+                        carbsText,
+                        { carbsText = it },
+                        fatText,
+                        { fatText = it })
+                }
+                item {
+                    MicronutrientsSection(
+                        fiberText,
+                        { fiberText = it },
+                        sugarText,
+                        { sugarText = it },
+                        sodiumText,
+                        { sodiumText = it },
+                        potassiumText,
+                        { potassiumText = it },
+                        calciumText,
+                        { calciumText = it },
+                        ironText,
+                        { ironText = it },
+                        vitaminCText,
+                        { vitaminCText = it })
+                }
             }
 
             item { DateTimePickerSection(selectedDateTimeState) { selectedDateTimeState = it } }
@@ -332,13 +398,21 @@ fun AddEditMealScreen(
 
                         if (mealToEdit != null) {
                             foodLogViewModel.updateMeal(
-                                mealToEdit.id, newFoodName = foodName, newCalories = calValue,
-                                newServingAmount = servingAmountText, newServingUnit = servingUnitText,
-                                newTimestamp = mealTimestamp, newProtein = proteinText.toDoubleOrNull(),
-                                newCarbohydrates = carbsText.toDoubleOrNull(), newFat = fatText.toDoubleOrNull(),
-                                newFiber = fiberText.toDoubleOrNull(), newSugar = sugarText.toDoubleOrNull(),
-                                newSodium = sodiumText.toDoubleOrNull(), newPotassium = potassiumText.toDoubleOrNull(),
-                                newCalcium = calciumText.toDoubleOrNull(), newIron = ironText.toDoubleOrNull(),
+                                mealToEdit.id,
+                                newFoodName = foodName,
+                                newCalories = calValue,
+                                newServingAmount = servingAmountText,
+                                newServingUnit = servingUnitText,
+                                newTimestamp = mealTimestamp,
+                                newProtein = proteinText.toDoubleOrNull(),
+                                newCarbohydrates = carbsText.toDoubleOrNull(),
+                                newFat = fatText.toDoubleOrNull(),
+                                newFiber = fiberText.toDoubleOrNull(),
+                                newSugar = sugarText.toDoubleOrNull(),
+                                newSodium = sodiumText.toDoubleOrNull(),
+                                newPotassium = potassiumText.toDoubleOrNull(),
+                                newCalcium = calciumText.toDoubleOrNull(),
+                                newIron = ironText.toDoubleOrNull(),
                                 newVitaminC = vitaminCText.toDoubleOrNull()
                             )
                         }
@@ -361,19 +435,4 @@ fun AddEditMealScreen(
             }
         }
     }
-
-    // --- THIS DIALOG HAS BEEN REMOVED AND WILL BE MOVED TO MAINACTIVITY ---
-    /*
-    if (proposedMealList != null) {
-        GeminiConfirmationDialog(...)
-    }
-    */
 }
-
-// --- THIS COMPOSABLE WILL BE MOVED TO MAINACTIVITY ---
-/*
-@Composable
-fun GeminiConfirmationDialog(
-    ...
-) { ... }
-*/
