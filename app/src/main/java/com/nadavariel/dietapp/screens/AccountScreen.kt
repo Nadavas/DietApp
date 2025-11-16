@@ -63,7 +63,7 @@ fun AccountHeaderInfo(
                 Box(
                     modifier = Modifier
                         .size(96.dp)
-                        .background(AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f), CircleShape)
+                        .background(AppTheme.colors.VibrantGreen.copy(alpha = 0.1f), CircleShape)
                 )
                 Image(
                     painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
@@ -82,12 +82,12 @@ fun AccountHeaderInfo(
                 text = name,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.TextPrimary
+                color = AppTheme.colors.DarkGreyText
             )
             Text(
                 text = email,
                 style = MaterialTheme.typography.bodyLarge,
-                color = AppTheme.colors.TextSecondary
+                color = AppTheme.colors.LightGreyText
             )
         }
     }
@@ -118,10 +118,10 @@ private fun MenuRow(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f), CircleShape),
+                    .background(AppTheme.colors.VibrantGreen.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.PrimaryGreen) {
+                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.VibrantGreen) {
                     leadingIcon()
                 }
             }
@@ -133,13 +133,13 @@ private fun MenuRow(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = AppTheme.colors.TextPrimary
+                    color = AppTheme.colors.DarkGreyText
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AppTheme.colors.TextSecondary
+                        color = AppTheme.colors.LightGreyText
                     )
                 }
             }
@@ -156,7 +156,7 @@ private fun MenuRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = null,
-                tint = AppTheme.colors.TextSecondary,
+                tint = AppTheme.colors.LightGreyText,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -175,12 +175,12 @@ private fun SectionDivider(text: String) {
             text = text,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.TextSecondary,
+            color = AppTheme.colors.LightGreyText,
             modifier = Modifier.padding(end = 12.dp)
         )
         Divider(
             modifier = Modifier.weight(1f),
-            color = AppTheme.colors.TextSecondary.copy(alpha = 0.3f)
+            color = AppTheme.colors.LightGreyText.copy(alpha = 0.3f)
         )
     }
 }
@@ -202,9 +202,9 @@ fun AccountActionButtons(
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = AppTheme.colors.TextSecondary
+                contentColor = AppTheme.colors.LightGreyText
             ),
-            border = BorderStroke(1.5.dp, AppTheme.colors.TextSecondary.copy(alpha = 0.5f))
+            border = BorderStroke(1.5.dp, AppTheme.colors.LightGreyText.copy(alpha = 0.5f))
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Logout,
@@ -275,11 +275,6 @@ fun AccountScreen(
                 } else {
                     result.message
                 }
-                // --- START OF FIX ---
-                // DO NOT reset the state here. Let the dialog's
-                // "onDismiss" handle it.
-                // authViewModel.resetAuthResult()
-                // --- END OF FIX ---
             }
 
             else -> errorMessage = null
@@ -293,7 +288,7 @@ fun AccountScreen(
                     Text(
                         "My Account",
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.TextPrimary
+                        color = AppTheme.colors.DarkGreyText
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -366,7 +361,7 @@ fun AccountScreen(
                             leadingIcon = {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_diet_plan),
-                                    contentDescription = "Diet Plan",
+                                    contentDescription = "Goals",
                                     modifier = Modifier.size(24.dp)
                                 )
                             },
@@ -396,27 +391,12 @@ fun AccountScreen(
                         SectionDivider("ACCOUNT ACTIONS")
                     }
 
-                    // --- START OF FIX ---
-                    // This is the loading circle you are seeing.
-                    // It will now show *instead* of the buttons.
                     item {
-                        if (authResult == AuthResult.Loading) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        } else {
-                            AccountActionButtons(
-                                onSignOutClick = { showSignOutDialog = true },
-                                onDeleteClick = { showDeleteConfirmationDialog = true }
-                            )
-                        }
+                        AccountActionButtons(
+                            onSignOutClick = { showSignOutDialog = true },
+                            onDeleteClick = { showDeleteConfirmationDialog = true }
+                        )
                     }
-                    // --- END OF FIX ---
 
                     errorMessage?.let {
                         item {
@@ -449,7 +429,7 @@ fun AccountScreen(
         StyledAlertDialog(
             onDismissRequest = {
                 showDeleteConfirmationDialog = false
-                authViewModel.resetAuthResult() // <-- FIX: Reset state on dismiss
+                authViewModel.resetAuthResult()
             },
             title = "Confirm Deletion",
             text = "Are you sure you want to permanently delete your account? This action cannot be undone.",
@@ -483,7 +463,7 @@ fun AccountScreen(
             onDismiss = {
                 showReauthDialog = false
                 reauthPassword = ""
-                authViewModel.resetAuthResult() // <-- FIX: Reset state on dismiss
+                authViewModel.resetAuthResult()
             }
         )
     }
