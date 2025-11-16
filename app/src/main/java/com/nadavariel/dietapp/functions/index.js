@@ -106,7 +106,7 @@ exports.analyzeFoodWithGemini = onCall(
         const nutritionalAnalysisPrompt = `
           You are a nutritional assistant.
           Analyze the nutritional content of the food item(s) and quantity specified in "${foodName}".
-          For each distinct, main food item in the request, provide the calories, protein, carbs, fat, fiber, sugar, sodium, potassium, calcium, iron, and vitamin C for that exact quantity.
+          For each distinct, main food item in the request, provide the calories, protein, carbs, fat, fiber, sugar, sodium, potassium, calcium, iron, vitamin C, vitamin A, and vitamin B12 for that exact quantity.
 
           RULES AND CONSTRAINTS:
           1. DECOMPOSITION: Minor components (e.g., sauces, small garnishes) that are part of a main dish should not be separated. For example, "pasta with tomato sauce" is one item.
@@ -119,7 +119,7 @@ exports.analyzeFoodWithGemini = onCall(
           Example for "5 bananas":
           [
             {
-              "food_name": "Banana", "serving_unit": "pieces", "serving_amount": "5", "calories": 525, "protein": 6.5, "carbohydrates": 135, "fat": 2, "fiber": 17.5, "sugar": 72.5, "sodium": 5, "potassium": 2100, "calcium": 30, "iron": 1.5, "vitamin_c": 51
+              "food_name": "Banana", "serving_unit": "pieces", "serving_amount": "5", "calories": 525, "protein": 6.5, "carbohydrates": 135, "fat": 2, "fiber": 17.5, "sugar": 72.5, "sodium": 5, "potassium": 2100, "calcium": 30, "iron": 1.5, "vitamin_c": 51, "vitamin_a": 135, "vitamin_b12": 0
             }
           ]
         `;

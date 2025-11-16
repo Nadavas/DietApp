@@ -74,6 +74,10 @@ fun AddEditMealScreen(
     var calciumText by remember { mutableStateOf("") }
     var ironText by remember { mutableStateOf("") }
     var vitaminCText by remember { mutableStateOf("") }
+    // START: Added for Vitamin A and B12
+    var vitaminAText by remember { mutableStateOf("") }
+    var vitaminB12Text by remember { mutableStateOf("") }
+    // END: Added for Vitamin A and B12
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
@@ -188,6 +192,10 @@ fun AddEditMealScreen(
                 calciumText = it.calcium?.toString() ?: ""
                 ironText = it.iron?.toString() ?: ""
                 vitaminCText = it.vitaminC?.toString() ?: ""
+                // START: Added for Vitamin A and B12
+                vitaminAText = it.vitaminA?.toString() ?: ""
+                vitaminB12Text = it.vitaminB12?.toString() ?: ""
+                // END: Added for Vitamin A and B12
                 selectedDateTimeState =
                     Calendar.getInstance().apply { time = it.timestamp.toDate() }
                 foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
@@ -205,6 +213,10 @@ fun AddEditMealScreen(
             calciumText = ""
             ironText = ""
             vitaminCText = ""
+            // START: Added for Vitamin A and B12
+            vitaminAText = ""
+            vitaminB12Text = ""
+            // END: Added for Vitamin A and B12
             servingAmountText = ""
             servingUnitText = ""
             selectedDateTimeState = Calendar.getInstance()
@@ -314,7 +326,14 @@ fun AddEditMealScreen(
                         ironText,
                         { ironText = it },
                         vitaminCText,
-                        { vitaminCText = it })
+                        { vitaminCText = it },
+                        // START: Added for Vitamin A and B12
+                        vitaminAText,
+                        { vitaminAText = it },
+                        vitaminB12Text,
+                        { vitaminB12Text = it }
+                        // END: Added for Vitamin A and B12
+                    )
                 }
             } else {
                 // --- ADD MODE (new hub structure) ---
@@ -475,7 +494,7 @@ fun AddEditMealScreen(
 
                         // We can safely use 'mealToEdit!!' because 'isEditMode' is true
                         foodLogViewModel.updateMeal(
-                            mealToEdit.id,
+                            mealToEdit!!.id,
                             newFoodName = foodName,
                             newCalories = calValue,
                             newServingAmount = servingAmountText,
@@ -490,7 +509,11 @@ fun AddEditMealScreen(
                             newPotassium = potassiumText.toDoubleOrNull(),
                             newCalcium = calciumText.toDoubleOrNull(),
                             newIron = ironText.toDoubleOrNull(),
-                            newVitaminC = vitaminCText.toDoubleOrNull()
+                            newVitaminC = vitaminCText.toDoubleOrNull(),
+                            // START: Added for Vitamin A and B12
+                            newVitaminA = vitaminAText.toDoubleOrNull(),
+                            newVitaminB12 = vitaminB12Text.toDoubleOrNull()
+                            // END: Added for Vitamin A and B12
                         )
 
                         navController.popBackStack()

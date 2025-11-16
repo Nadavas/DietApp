@@ -172,6 +172,10 @@ fun MicronutrientsSection(
     sodiumText: String, onSodiumChange: (String) -> Unit, potassiumText: String, onPotassiumChange: (String) -> Unit,
     calciumText: String, onCalciumChange: (String) -> Unit, ironText: String, onIronChange: (String) -> Unit,
     vitaminCText: String, onVitaminCChange: (String) -> Unit,
+    // START: Added for Vitamin A and B12
+    vitaminAText: String, onVitaminAChange: (String) -> Unit,
+    vitaminB12Text: String, onVitaminB12Change: (String) -> Unit
+    // END: Added for Vitamin A and B12
 ) {
     Column {
         SectionHeader(title = "Micronutrients & Fiber")
@@ -188,6 +192,10 @@ fun MicronutrientsSection(
                 NutrientTextField(label = "Calcium (mg)", value = calciumText, onValueChange = onCalciumChange)
                 NutrientTextField(label = "Iron (mg)", value = ironText, onValueChange = onIronChange)
                 NutrientTextField(label = "Vit C (mg)", value = vitaminCText, onValueChange = onVitaminCChange)
+                // START: Added for Vitamin A and B12
+                NutrientTextField(label = "Vit A (μg)", value = vitaminAText, onValueChange = onVitaminAChange)
+                NutrientTextField(label = "Vit B12 (μg)", value = vitaminB12Text, onValueChange = onVitaminB12Change)
+                // END: Added for Vitamin A and B12
             }
         }
     }

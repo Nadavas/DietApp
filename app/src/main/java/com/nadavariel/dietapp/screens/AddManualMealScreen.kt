@@ -47,6 +47,10 @@ fun AddManualMealScreen(
     var calciumText by remember { mutableStateOf("") }
     var ironText by remember { mutableStateOf("") }
     var vitaminCText by remember { mutableStateOf("") }
+    // START: Added for Vitamin A and B12
+    var vitaminAText by remember { mutableStateOf("") }
+    var vitaminB12Text by remember { mutableStateOf("") }
+    // END: Added for Vitamin A and B12
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
@@ -117,7 +121,11 @@ fun AddManualMealScreen(
                     potassiumText, { potassiumText = it },
                     calciumText, { calciumText = it },
                     ironText, { ironText = it },
-                    vitaminCText, { vitaminCText = it }
+                    vitaminCText, { vitaminCText = it },
+                    // START: Added for Vitamin A and B12
+                    vitaminAText, { vitaminAText = it },
+                    vitaminB12Text, { vitaminB12Text = it }
+                    // END: Added for Vitamin A and B12
                 )
             }
 
@@ -144,7 +152,11 @@ fun AddManualMealScreen(
                             potassium = potassiumText.toDoubleOrNull(),
                             calcium = calciumText.toDoubleOrNull(),
                             iron = ironText.toDoubleOrNull(),
-                            vitaminC = vitaminCText.toDoubleOrNull()
+                            vitaminC = vitaminCText.toDoubleOrNull(),
+                            // START: Added for Vitamin A and B12
+                            vitaminA = vitaminAText.toDoubleOrNull(),
+                            vitaminB12 = vitaminB12Text.toDoubleOrNull()
+                            // END: Added for Vitamin A and B12
                         )
                         // --- THIS IS THE FIX ---
                         // Navigate to Home and clear the "Add Meal" screens from the stack

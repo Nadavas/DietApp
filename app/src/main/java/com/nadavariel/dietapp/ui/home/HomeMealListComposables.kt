@@ -572,6 +572,10 @@ fun NutritionDetailsTable(meal: Meal) {
                     NutritionDetailItem("Calcium", meal.calcium, "mg")
                     NutritionDetailItem("Iron", meal.iron, "mg")
                     NutritionDetailItem("Vit C", meal.vitaminC, "mg")
+                    // START: Added for Vitamin A and B12
+                    NutritionDetailItem("Vit A", meal.vitaminA, "μg")
+                    NutritionDetailItem("Vit B12", meal.vitaminB12, "μg")
+                    // END: Added for Vitamin A and B12
                 }
             }
         }

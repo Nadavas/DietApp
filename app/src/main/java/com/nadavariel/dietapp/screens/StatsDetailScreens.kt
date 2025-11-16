@@ -316,6 +316,10 @@ fun VitaminsDetailScreen(
     navController: NavController
 ) {
     val weeklyVitaminC by foodLogViewModel.weeklyVitaminC.collectAsState()
+    // START: Added for Vitamin A and B12
+    val weeklyVitaminA by foodLogViewModel.weeklyVitaminA.collectAsState()
+    val weeklyVitaminB12 by foodLogViewModel.weeklyVitaminB12.collectAsState()
+    // END: Added for Vitamin A and B12
     val goals by goalViewModel.goals.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -338,11 +342,34 @@ fun VitaminsDetailScreen(
             )
         }
 
+        // START: Added for Vitamin A and B12
+        item {
+            DetailStatCard(
+                title = "Vitamin A",
+                weeklyData = weeklyVitaminA,
+                target = goals.getOrNull(9)?.value?.toIntOrNull(), // Next goal index
+                label = "μg", // Common unit for Vit A
+                color = WarmOrange
+            )
+        }
+
+        item {
+            DetailStatCard(
+                title = "Vitamin B12",
+                weeklyData = weeklyVitaminB12,
+                target = goals.getOrNull(10)?.value?.toIntOrNull(), // Next goal index
+                label = "μg", // Common unit for Vit B12
+                color = SoftBlue
+            )
+        }
+        // END: Added for Vitamin A and B12
+
         item {
             InsightCard(
                 insights = listOf(
                     "Vitamin C supports immune function and collagen production",
-                    "Citrus fruits, berries, and peppers are excellent sources"
+                    "Vitamin A is crucial for vision, immune function, and skin health",
+                    "Vitamin B12 is essential for nerve function and forming red blood cells"
                 )
             )
         }

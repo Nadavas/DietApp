@@ -25,6 +25,10 @@ data class Meal(
     val calcium: Double? = null,
     val iron: Double? = null,
     val vitaminC: Double? = null,
+    // START: Added for Vitamin A and B12
+    val vitaminA: Double? = null,
+    val vitaminB12: Double? = null,
+    // END: Added for Vitamin A and B12
     val servingAmount: String? = null,
     val servingUnit: String? = null,
     val timestamp: Timestamp = Timestamp(Date())
@@ -117,5 +121,9 @@ data class FoodNutritionalInfo(
     @SerializedName("potassium") val potassium: String?,
     @SerializedName("calcium") val calcium: String?,
     @SerializedName("iron") val iron: String?,
-    @SerializedName("vitamin_c") val vitaminC: String?
+    @SerializedName("vitamin_c") val vitaminC: String?,
+    // START: Added for Vitamin A and B12
+    @SerializedName("vitamin_a") val vitamin_a: String?,
+    @SerializedName("vitamin_b12") val vitamin_b12: String?
+    // END: Added for Vitamin A and B12
 )

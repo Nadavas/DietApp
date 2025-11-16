@@ -98,6 +98,14 @@ class FoodLogViewModel : ViewModel() {
     private val _weeklyVitaminC = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyVitaminC = _weeklyVitaminC.asStateFlow()
 
+    // START: Added for Vitamin A and B12
+    private val _weeklyVitaminA = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyVitaminA = _weeklyVitaminA.asStateFlow()
+
+    private val _weeklyVitaminB12 = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
+    val weeklyVitaminB12 = _weeklyVitaminB12.asStateFlow()
+    // END: Added for Vitamin A and B12
+
     private val _weeklyMacroPercentages = MutableStateFlow(
         mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
     )
@@ -168,6 +176,10 @@ class FoodLogViewModel : ViewModel() {
         _weeklyCalcium.value = emptyMap()
         _weeklyIron.value = emptyMap()
         _weeklyVitaminC.value = emptyMap()
+        // START: Added for Vitamin A and B12
+        _weeklyVitaminA.value = emptyMap()
+        _weeklyVitaminB12.value = emptyMap()
+        // END: Added for Vitamin A and B12
         _graphPreferences.value = emptyList()
         _caloriesByTimeOfDay.value = mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
         _isFutureTimeSelected.value = false
@@ -189,7 +201,11 @@ class FoodLogViewModel : ViewModel() {
         GraphPreference("potassium", "Weekly Potassium Intake", 6, true, false),
         GraphPreference("calcium", "Weekly Calcium Intake", 7, true, false),
         GraphPreference("iron", "Weekly Iron Intake", 8, true, false),
-        GraphPreference("vitamin_c", "Weekly Vitamin C Intake", 9, true, false)
+        GraphPreference("vitamin_c", "Weekly Vitamin C Intake", 9, true, false),
+        // START: Added for Vitamin A and B12
+        GraphPreference("vitamin_a", "Weekly Vitamin A Intake", 10, true, false),
+        GraphPreference("vitamin_b12", "Weekly Vitamin B12 Intake", 11, true, false)
+        // END: Added for Vitamin A and B12
     )
 
     private suspend fun fetchGraphPreferences() {
@@ -206,7 +222,7 @@ class FoodLogViewModel : ViewModel() {
             val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
 
             val preferences = if (snapshot.exists()) {
-                @Suppress("UNCHECKED_CAST")
+                @Suppress("UNCHECKCHECKED_CAST")
                 val storedList = snapshot.get("list") as? List<Map<String, Any>>
                 val storedPreferences = storedList?.mapNotNull { map ->
                     GraphPreference(
@@ -294,6 +310,10 @@ class FoodLogViewModel : ViewModel() {
             processWeeklyNutrient(meals, Meal::calcium, _weeklyCalcium)
             processWeeklyNutrient(meals, Meal::iron, _weeklyIron)
             processWeeklyNutrient(meals, Meal::vitaminC, _weeklyVitaminC)
+            // START: Added for Vitamin A and B12
+            processWeeklyNutrient(meals, Meal::vitaminA, _weeklyVitaminA)
+            processWeeklyNutrient(meals, Meal::vitaminB12, _weeklyVitaminB12)
+            // END: Added for Vitamin A and B12
 
             processCaloriesByTimeOfDay(meals)
             processWeeklyMacroPercentages(meals)
@@ -499,7 +519,11 @@ class FoodLogViewModel : ViewModel() {
         potassium: Double?,
         calcium: Double?,
         iron: Double?,
-        vitaminC: Double?
+        vitaminC: Double?,
+        // START: Added for Vitamin A and B12
+        vitaminA: Double?,
+        vitaminB12: Double?
+        // END: Added for Vitamin A and B12
     ) {
         val userId = auth.currentUser?.uid ?: return
         val meal = Meal(
@@ -517,7 +541,11 @@ class FoodLogViewModel : ViewModel() {
             potassium = potassium,
             calcium = calcium,
             iron = iron,
-            vitaminC = vitaminC
+            vitaminC = vitaminC,
+            // START: Added for Vitamin A and B12
+            vitaminA = vitaminA,
+            vitaminB12 = vitaminB12
+            // END: Added for Vitamin A and B12
         )
         viewModelScope.launch {
             try {
@@ -551,7 +579,11 @@ class FoodLogViewModel : ViewModel() {
                 potassium = foodInfo.potassium?.toDoubleOrNull(),
                 calcium = foodInfo.calcium?.toDoubleOrNull(),
                 iron = foodInfo.iron?.toDoubleOrNull(),
-                vitaminC = foodInfo.vitaminC?.toDoubleOrNull()
+                vitaminC = foodInfo.vitaminC?.toDoubleOrNull(),
+                // START: Added for Vitamin A and B12
+                vitaminA = foodInfo.vitamin_a?.toDoubleOrNull(),
+                vitaminB12 = foodInfo.vitamin_b12?.toDoubleOrNull()
+                // END: Added for Vitamin A and B12
             )
         }
         resetGeminiResult()
@@ -574,7 +606,11 @@ class FoodLogViewModel : ViewModel() {
         newPotassium: Double?,
         newCalcium: Double?,
         newIron: Double?,
-        newVitaminC: Double?
+        newVitaminC: Double?,
+        // START: Added for Vitamin A and B12
+        newVitaminA: Double?,
+        newVitaminB12: Double?
+        // END: Added for Vitamin A and B12
     ) {
         val userId = auth.currentUser?.uid ?: return
 
@@ -594,7 +630,11 @@ class FoodLogViewModel : ViewModel() {
             "potassium" to newPotassium,
             "calcium" to newCalcium,
             "iron" to newIron,
-            "vitaminC" to newVitaminC
+            "vitaminC" to newVitaminC,
+            // START: Added for Vitamin A and B12
+            "vitaminA" to newVitaminA,
+            "vitaminB12" to newVitaminB12
+            // END: Added for Vitamin A and B12
         )
         viewModelScope.launch {
             try {
