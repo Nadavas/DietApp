@@ -36,6 +36,7 @@ data class AppColors(
     val VibrantGreen: Color,
     val LightGreyText: Color,
     val HealthyGreen: Color,
+    val StatsBackground: Color,
 )
 
 // --- 2. CREATE THE SINGLE (LIGHT) PALETTE ---
@@ -59,6 +60,7 @@ private val LightAppColors = AppColors(
     VibrantGreen = Color(0xFF4CAF50),
     LightGreyText = Color(0xFF757575),
     HealthyGreen = Color(0xFF4CAF50),
+    StatsBackground = Color(0xFFE0E0E0),
 )
 
 // --- 3. CREATE THE COMPOSITION LOCAL ---

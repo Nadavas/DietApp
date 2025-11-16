@@ -245,8 +245,6 @@ fun AddEditMealScreen(
         pickImageLauncher.launch("image/*")
     }
 
-    val screenBackgroundColor = Color(0xFFF7F9FC)
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -257,18 +255,20 @@ fun AddEditMealScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (isEditMode) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = screenBackgroundColor,
+                    containerColor = AppTheme.colors.ScreenBackground,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = screenBackgroundColor
+        containerColor = AppTheme.colors.ScreenBackground
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues),

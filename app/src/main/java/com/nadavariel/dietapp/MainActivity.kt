@@ -55,6 +55,7 @@ import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
 import com.nadavariel.dietapp.ui.components.GeminiConfirmationDialog
 import com.nadavariel.dietapp.ui.components.HoveringNotificationCard
@@ -231,8 +232,8 @@ class MainActivity : ComponentActivity() {
                                             selectedRoute == NavRoutes.ACCOUNT
                                     )) {
                             NavigationBar(
-                                containerColor = Color(0xFF4CAF50),
-                                contentColor = Color.White.copy(alpha = 0.9f)
+                                containerColor = AppTheme.colors.VibrantGreen,
+                                contentColor = AppTheme.colors.CardBackground.copy(alpha = 0.9f)
                             ) {
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.HOME,

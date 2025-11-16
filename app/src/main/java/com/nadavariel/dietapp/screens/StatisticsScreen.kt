@@ -179,7 +179,7 @@ private fun HeroStatsRow(
                 modifier = Modifier
                     .width(1.dp)
                     .height(60.dp)
-                    .background(Color(0xFFE0E0E0))
+                    .background(AppTheme.colors.StatsBackground)
             )
 
             HeroStatItem(
@@ -193,7 +193,7 @@ private fun HeroStatsRow(
                 modifier = Modifier
                     .width(1.dp)
                     .height(60.dp)
-                    .background(Color(0xFFE0E0E0))
+                    .background(AppTheme.colors.StatsBackground)
             )
 
             HeroStatItem(
