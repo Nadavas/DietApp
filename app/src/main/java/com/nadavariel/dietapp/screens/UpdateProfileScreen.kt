@@ -67,12 +67,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MenuAnchorType
-// Imports needed for the new section
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -337,22 +335,22 @@ fun UpdateProfileScreen(
 
             // --- 4. ADDED CUSTOM ADJUSTMENTS SECTION ---
             if (goals.isNotEmpty()) {
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.padding(vertical = 16.dp),
-                    color = AppTheme.colors.TextSecondary.copy(alpha = 0.2f)
+                    color = AppTheme.colors.textSecondary.copy(alpha = 0.2f)
                 )
 
                 Text(
                     "Custom Adjustments",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.TextPrimary
+                    color = AppTheme.colors.textPrimary
                 )
 
                 Text(
                     "Fine-tune your targets manually",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = AppTheme.colors.TextSecondary,
+                    color = AppTheme.colors.textSecondary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
@@ -467,7 +465,7 @@ fun EditableGoalCard(
                 text = goal.text,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = AppTheme.colors.TextPrimary
+                color = AppTheme.colors.textPrimary
             )
 
             OutlinedTextField(
@@ -488,15 +486,15 @@ fun EditableGoalCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppTheme.colors.PrimaryGreen,
-                    focusedLabelColor = AppTheme.colors.PrimaryGreen
+                    focusedBorderColor = AppTheme.colors.primaryGreen,
+                    focusedLabelColor = AppTheme.colors.primaryGreen
                 ),
                 trailingIcon = {
                     if (textValue.isNotBlank()) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = null,
-                            tint = AppTheme.colors.PrimaryGreen
+                            tint = AppTheme.colors.primaryGreen
                         )
                     }
                 }

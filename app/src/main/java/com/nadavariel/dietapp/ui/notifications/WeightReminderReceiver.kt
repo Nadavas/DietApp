@@ -16,7 +16,7 @@ import androidx.core.net.toUri
 
 class WeightReminderReceiver : BroadcastReceiver() {
 
-    private val TAG = "ALARM_DEBUG_WEIGHT"
+    private val tag = "ALARM_DEBUG_WEIGHT"
 
     companion object {
         // Use a different channel ID for weight reminders
@@ -29,7 +29,7 @@ class WeightReminderReceiver : BroadcastReceiver() {
         val notificationId = intent?.getIntExtra(WEIGHT_NOTIF_ID_EXTRA, 2) ?: 2 // Use a different base ID (e.g., 2)
         val message = intent?.getStringExtra(WEIGHT_MESSAGE_EXTRA) ?: "Time to log your weight!"
 
-        Log.i(TAG, "WeightReminderReceiver: onReceive triggered.")
+        Log.i(tag, "WeightReminderReceiver: onReceive triggered.")
 
         createNotificationChannel(context)
 
@@ -60,7 +60,7 @@ class WeightReminderReceiver : BroadcastReceiver() {
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, notification)
-        Log.i(TAG, "Weight notification posted with ID: $notificationId")
+        Log.i(tag, "Weight notification posted with ID: $notificationId")
     }
 
     private fun createNotificationChannel(context: Context) {

@@ -12,7 +12,6 @@ object NavRoutes {
     const val QUESTIONS = "questions"
     const val THREADS = "threads"
     const val CREATE_THREAD = "create_thread"
-    const val THREAD_DETAIL = "thread_detail"
     const val THREAD_DETAIL_WITH_ARG = "thread_detail/{threadId}"
     const val DIET_PLAN = "diet_plan"
     const val UPDATE_PROFILE_BASE = "update_profile"

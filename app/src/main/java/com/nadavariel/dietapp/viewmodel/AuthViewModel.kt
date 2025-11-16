@@ -82,9 +82,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     val isEmailPasswordUser: Boolean
         get() = currentUser?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } == true
 
-    private val _isDarkModeEnabled = MutableStateFlow(false)
-    val isDarkModeEnabled: StateFlow<Boolean> = _isDarkModeEnabled.asStateFlow()
-
     private val _hasMissingPrimaryProfileDetails = MutableStateFlow(false)
     val hasMissingPrimaryProfileDetails: StateFlow<Boolean> = _hasMissingPrimaryProfileDetails.asStateFlow()
 
@@ -108,10 +105,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
-
-            preferencesRepository.darkModeEnabledFlow.collect { isEnabled ->
-                _isDarkModeEnabled.value = isEnabled
-            }
         }
 
         _userProfile.combine(snapshotFlow { currentUser }) { profile, user ->

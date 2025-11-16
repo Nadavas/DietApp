@@ -59,14 +59,14 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             Text(
                 text = "Welcome back,",
                 style = MaterialTheme.typography.bodyMedium,
-                color = AppTheme.colors.TextSecondary,
+                color = AppTheme.colors.textSecondary,
                 fontSize = 14.sp
             )
             Text(
                 text = userName.ifBlank { "User" },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.TextPrimary,
+                color = AppTheme.colors.textPrimary,
                 fontSize = 24.sp
             )
         }
@@ -83,7 +83,7 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             Box(
                 modifier = Modifier
                     .fillMaxSize() // Fills the 52.dp
-                    .background(AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f), CircleShape)
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
             )
             // Avatar Image (slightly smaller to show background)
             Image(

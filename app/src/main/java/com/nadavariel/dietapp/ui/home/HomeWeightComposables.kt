@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.ui.home
 
+import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.graphics.Paint
 import android.os.Build
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,7 +67,7 @@ fun ExpandableWeightCard(
         modifier = Modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         onClick = { expanded = !expanded } // Click the whole card to toggle
     ) {
@@ -101,7 +103,7 @@ fun ExpandableWeightCard(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = if (expanded) "Collapse" else "Expand",
-                        tint = AppTheme.colors.TextSecondary,
+                        tint = AppTheme.colors.textSecondary,
                         modifier = Modifier
                             .padding(start = 16.dp)
                             .rotate(rotation)
@@ -112,9 +114,9 @@ fun ExpandableWeightCard(
             // --- Expanded Content ---
             if (expanded) {
                 Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 16.dp)) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                        color = AppTheme.colors.Divider.copy(alpha = 0.5f)
+                        color = AppTheme.colors.divider.copy(alpha = 0.5f)
                     )
 
                     // --- START OF FIX ---
@@ -187,13 +189,13 @@ internal fun WeightProgressDialogContent(
                 text = "Weight Progress",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.TextPrimary
+                color = AppTheme.colors.textPrimary
             )
             IconButton(onClick = onAddClick) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Log New Weight",
-                    tint = AppTheme.colors.PrimaryGreen
+                    tint = AppTheme.colors.primaryGreen
                 )
             }
         }
@@ -210,7 +212,7 @@ internal fun WeightProgressDialogContent(
                 Text(
                     text = "Log your weight to see your progress graph!",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = AppTheme.colors.TextSecondary,
+                    color = AppTheme.colors.textSecondary,
                     textAlign = TextAlign.Center
                 )
             }
@@ -252,7 +254,7 @@ internal fun WeightProgressDialogContent(
                 Text(
                     text = "Last updated: $formattedDate",
                     style = MaterialTheme.typography.bodySmall,
-                    color = AppTheme.colors.TextSecondary,
+                    color = AppTheme.colors.textSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
@@ -264,12 +266,13 @@ internal fun WeightProgressDialogContent(
                 onClick = onManageClick,
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Manage Entries", color = AppTheme.colors.PrimaryGreen)
+                Text("Manage Entries", color = AppTheme.colors.primaryGreen)
             }
         }
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun WeightStat(label: String, weight: Float, isMain: Boolean = false) {
     val weightText = if (weight > 0) String.format("%.1f", weight) else "---"
@@ -277,20 +280,20 @@ fun WeightStat(label: String, weight: Float, isMain: Boolean = false) {
         Text(
             text = label,
             style = if (isMain) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-            color = if (isMain) AppTheme.colors.PrimaryGreen else AppTheme.colors.TextSecondary,
+            color = if (isMain) AppTheme.colors.primaryGreen else AppTheme.colors.textSecondary,
             fontWeight = if (isMain) FontWeight.Bold else FontWeight.Normal
         )
         Text(
             text = weightText,
             style = if (isMain) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
-            color = if (isMain) AppTheme.colors.PrimaryGreen else AppTheme.colors.TextPrimary,
+            color = if (isMain) AppTheme.colors.primaryGreen else AppTheme.colors.textPrimary,
             fontWeight = FontWeight.Bold
         )
         if (isMain) {
             Text(
                 text = "kg",
                 style = MaterialTheme.typography.bodySmall,
-                color = AppTheme.colors.TextSecondary
+                color = AppTheme.colors.textSecondary
             )
         }
     }
@@ -298,6 +301,7 @@ fun WeightStat(label: String, weight: Float, isMain: Boolean = false) {
 
 // ... WeightLineChart, LogWeightDialog, and ManageWeightHistoryDialog are unchanged ...
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun WeightLineChart(
     startingWeight: Float,
@@ -307,9 +311,9 @@ fun WeightLineChart(
 ) {
     val density = LocalDensity.current
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-    val primaryColor = AppTheme.colors.PrimaryGreen
+    val primaryColor = AppTheme.colors.primaryGreen
     val targetColor = Color(0xFF4CAF50)
-    val grayColor = AppTheme.colors.TextSecondary
+    val grayColor = AppTheme.colors.textSecondary
 
     val dateFormat = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
 

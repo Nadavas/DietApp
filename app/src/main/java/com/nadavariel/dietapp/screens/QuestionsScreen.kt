@@ -53,7 +53,7 @@ fun QuestionsScreen(
     // HandleDietPlanResultDialogs(navController, questionsViewModel)
 
     Scaffold(
-        containerColor = AppTheme.colors.ScreenBackground,
+        containerColor = AppTheme.colors.screenBackground,
         topBar = {
             TopAppBar(
                 title = {
@@ -64,7 +64,7 @@ fun QuestionsScreen(
                             ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
                         },
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.DarkGreyText
+                        color = AppTheme.colors.darkGreyText
                     )
                 },
                 navigationIcon = {
@@ -88,12 +88,12 @@ fun QuestionsScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = AppTheme.colors.DarkGreyText
+                            tint = AppTheme.colors.darkGreyText
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.ScreenBackground
+                    containerColor = AppTheme.colors.screenBackground
                 )
             )
         }

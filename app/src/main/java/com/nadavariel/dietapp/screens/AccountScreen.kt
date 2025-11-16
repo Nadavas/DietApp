@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +64,7 @@ fun AccountHeaderInfo(
                 Box(
                     modifier = Modifier
                         .size(96.dp)
-                        .background(AppTheme.colors.VibrantGreen.copy(alpha = 0.1f), CircleShape)
+                        .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.1f), CircleShape)
                 )
                 Image(
                     painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
@@ -82,12 +83,12 @@ fun AccountHeaderInfo(
                 text = name,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.DarkGreyText
+                color = AppTheme.colors.darkGreyText
             )
             Text(
                 text = email,
                 style = MaterialTheme.typography.bodyLarge,
-                color = AppTheme.colors.LightGreyText
+                color = AppTheme.colors.lightGreyText
             )
         }
     }
@@ -118,10 +119,10 @@ private fun MenuRow(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(AppTheme.colors.VibrantGreen.copy(alpha = 0.1f), CircleShape),
+                    .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.VibrantGreen) {
+                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.vibrantGreen) {
                     leadingIcon()
                 }
             }
@@ -133,13 +134,13 @@ private fun MenuRow(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = AppTheme.colors.DarkGreyText
+                    color = AppTheme.colors.darkGreyText
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AppTheme.colors.LightGreyText
+                        color = AppTheme.colors.lightGreyText
                     )
                 }
             }
@@ -156,7 +157,7 @@ private fun MenuRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = null,
-                tint = AppTheme.colors.LightGreyText,
+                tint = AppTheme.colors.lightGreyText,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -175,12 +176,12 @@ private fun SectionDivider(text: String) {
             text = text,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.LightGreyText,
+            color = AppTheme.colors.lightGreyText,
             modifier = Modifier.padding(end = 12.dp)
         )
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.weight(1f),
-            color = AppTheme.colors.LightGreyText.copy(alpha = 0.3f)
+            color = AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
         )
     }
 }
@@ -202,9 +203,9 @@ fun AccountActionButtons(
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = AppTheme.colors.LightGreyText
+                contentColor = AppTheme.colors.lightGreyText
             ),
-            border = BorderStroke(1.5.dp, AppTheme.colors.LightGreyText.copy(alpha = 0.5f))
+            border = BorderStroke(1.5.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.5f))
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Logout,
@@ -288,15 +289,15 @@ fun AccountScreen(
                     Text(
                         "My Account",
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.DarkGreyText
+                        color = AppTheme.colors.darkGreyText
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.ScreenBackground
+                    containerColor = AppTheme.colors.screenBackground
                 )
             )
         },
-        containerColor = AppTheme.colors.ScreenBackground
+        containerColor = AppTheme.colors.screenBackground
     ) { paddingValues ->
         // --- START OF FIX: Add loading wrapper ---
         Box(

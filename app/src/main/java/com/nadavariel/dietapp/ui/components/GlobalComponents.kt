@@ -23,7 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -143,7 +143,7 @@ fun GeminiConfirmationDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // --- 2. RENDER BASED ON isEditing STATE ---
-                    itemsIndexed(editableFoodList, key = { index, item -> item.food_name ?: index }) { index, foodInfo ->
+                    itemsIndexed(editableFoodList, key = { index, item -> item.foodName ?: index }) { index, foodInfo ->
                         if (isEditing) {
                             // --- EDITING VIEW ---
                             EditableFoodItem(
@@ -167,7 +167,9 @@ fun GeminiConfirmationDialog(
                         }
 
                         if (index < editableFoodList.lastIndex) {
-                            Divider(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                            HorizontalDivider(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            )
                         }
                     }
                 }
@@ -210,7 +212,7 @@ private fun ReadOnlyFoodItem(index: Int, foodInfo: FoodNutritionalInfo) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "${index + 1}. ${foodInfo.food_name.orEmpty()}",
+                text = "${index + 1}. ${foodInfo.foodName.orEmpty()}",
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
@@ -225,7 +227,7 @@ private fun ReadOnlyFoodItem(index: Int, foodInfo: FoodNutritionalInfo) {
                 overflow = TextOverflow.Clip
             )
         }
-        val serving = if (foodInfo.serving_unit.isNullOrBlank()) "" else "${foodInfo.serving_amount.orEmpty()} ${foodInfo.serving_unit}"
+        val serving = if (foodInfo.servingUnit.isNullOrBlank()) "" else "${foodInfo.servingAmount.orEmpty()} ${foodInfo.servingUnit}"
         if (serving.isNotBlank()) {
             Text(
                 text = serving,
@@ -255,7 +257,7 @@ private fun EditableFoodItem(
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = item.food_name.orEmpty(),
+            text = item.foodName.orEmpty(),
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleSmall,

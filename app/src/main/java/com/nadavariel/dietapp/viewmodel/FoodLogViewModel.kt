@@ -564,10 +564,10 @@ class FoodLogViewModel : ViewModel() {
 
         for (foodInfo in foodInfoList) {
             logMeal(
-                foodName = foodInfo.food_name ?: "Unknown Meal",
+                foodName = foodInfo.foodName ?: "Unknown Meal",
                 calories = foodInfo.calories?.toIntOrNull() ?: 0,
-                servingAmount = foodInfo.serving_amount,
-                servingUnit = foodInfo.serving_unit,
+                servingAmount = foodInfo.servingAmount,
+                servingUnit = foodInfo.servingUnit,
                 mealTime = mealTime, // Use the stored time
                 protein = foodInfo.protein?.toDoubleOrNull(),
                 carbohydrates = foodInfo.carbohydrates?.toDoubleOrNull(),
@@ -580,8 +580,8 @@ class FoodLogViewModel : ViewModel() {
                 iron = foodInfo.iron?.toDoubleOrNull(),
                 vitaminC = foodInfo.vitaminC?.toDoubleOrNull(),
                 // START: Added for Vitamin A and B12
-                vitaminA = foodInfo.vitamin_a?.toDoubleOrNull(),
-                vitaminB12 = foodInfo.vitamin_b12?.toDoubleOrNull()
+                vitaminA = foodInfo.vitaminA?.toDoubleOrNull(),
+                vitaminB12 = foodInfo.vitaminB12?.toDoubleOrNull()
                 // END: Added for Vitamin A and B12
             )
         }

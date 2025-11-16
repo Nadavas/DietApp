@@ -76,7 +76,7 @@ private fun ImagePickerOption(
         Icon(
             imageVector = icon,
             contentDescription = text,
-            tint = AppTheme.colors.HealthyGreen,
+            tint = AppTheme.colors.healthyGreen,
             modifier = Modifier.size(40.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -84,7 +84,7 @@ private fun ImagePickerOption(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = AppTheme.colors.HealthyGreen
+            color = AppTheme.colors.healthyGreen
         )
     }
 }

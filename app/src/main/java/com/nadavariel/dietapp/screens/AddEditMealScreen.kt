@@ -262,13 +262,13 @@ fun AddEditMealScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.ScreenBackground,
+                    containerColor = AppTheme.colors.screenBackground,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = AppTheme.colors.ScreenBackground
+        containerColor = AppTheme.colors.screenBackground
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
@@ -444,7 +444,7 @@ fun AddEditMealScreen(
                         Text(
                             text = "Log a meal by entering all nutritional information yourself.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = AppTheme.colors.TextSecondary,
+                            color = AppTheme.colors.textSecondary,
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
                         Spacer(Modifier.height(16.dp))
@@ -452,7 +452,7 @@ fun AddEditMealScreen(
                             onClick = { navController.navigate(NavRoutes.ADD_MANUAL_MEAL) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = AppTheme.colors.PrimaryGreen
+                                containerColor = AppTheme.colors.primaryGreen
                             )
                         ) {
                             Icon(Icons.Default.EditNote, contentDescription = null)
@@ -494,7 +494,7 @@ fun AddEditMealScreen(
 
                         // We can safely use 'mealToEdit!!' because 'isEditMode' is true
                         foodLogViewModel.updateMeal(
-                            mealToEdit!!.id,
+                            mealToEdit.id,
                             newFoodName = foodName,
                             newCalories = calValue,
                             newServingAmount = servingAmountText,

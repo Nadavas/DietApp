@@ -44,7 +44,7 @@ fun StatisticsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.StatsGradient))
+            .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Modern Header
@@ -70,7 +70,7 @@ fun StatisticsScreen(
                         title = "Energy & Protein",
                         subtitle = "Daily calories and protein intake",
                         icon = Icons.Default.LocalFireDepartment,
-                        color = AppTheme.colors.WarmOrange,
+                        color = AppTheme.colors.warmOrange,
                         onClick = { navController.navigate(NavRoutes.STATS_ENERGY) }
                     )
                 }
@@ -80,7 +80,7 @@ fun StatisticsScreen(
                         title = "Macronutrients",
                         subtitle = "Protein, carbs, and fat balance",
                         icon = Icons.Default.PieChart,
-                        color = AppTheme.colors.StatsGreen,
+                        color = AppTheme.colors.statsGreen,
                         onClick = { navController.navigate(NavRoutes.STATS_MACROS) }
                     )
                 }
@@ -90,7 +90,7 @@ fun StatisticsScreen(
                         title = "Fiber & Sugar",
                         subtitle = "Carbohydrate quality metrics",
                         icon = Icons.Default.Spa,
-                        color = AppTheme.colors.AccentTeal,
+                        color = AppTheme.colors.accentTeal,
                         onClick = { navController.navigate(NavRoutes.STATS_CARBS) }
                     )
                 }
@@ -100,7 +100,7 @@ fun StatisticsScreen(
                         title = "Minerals",
                         subtitle = "Sodium, potassium, calcium, iron",
                         icon = Icons.Default.Science,
-                        color = AppTheme.colors.SoftBlue,
+                        color = AppTheme.colors.softBlue,
                         onClick = { navController.navigate(NavRoutes.STATS_MINERALS) }
                     )
                 }
@@ -110,7 +110,7 @@ fun StatisticsScreen(
                         title = "Vitamins",
                         subtitle = "Essential vitamin intake",
                         icon = Icons.Default.Favorite,
-                        color = AppTheme.colors.SunsetPink,
+                        color = AppTheme.colors.sunsetPink,
                         onClick = { navController.navigate(NavRoutes.STATS_VITAMINS) }
                     )
                 }
@@ -138,12 +138,12 @@ private fun ModernHeader() {
                 text = "Nutrition Insights",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.TextPrimary
+                color = AppTheme.colors.textPrimary
             )
             Text(
                 text = "Your weekly nutrition summary",
                 fontSize = 14.sp,
-                color = AppTheme.colors.TextSecondary,
+                color = AppTheme.colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -159,7 +159,7 @@ private fun HeroStatsRow(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -172,35 +172,35 @@ private fun HeroStatsRow(
                 label = "Avg Calories",
                 value = "$caloriesAvg",
                 unit = "kcal",
-                color = AppTheme.colors.WarmOrange
+                color = AppTheme.colors.warmOrange
             )
 
             Box(
                 modifier = Modifier
                     .width(1.dp)
                     .height(60.dp)
-                    .background(AppTheme.colors.StatsBackground)
+                    .background(AppTheme.colors.statsBackground)
             )
 
             HeroStatItem(
                 label = "Avg Protein",
                 value = "$proteinAvg",
                 unit = "g",
-                color = AppTheme.colors.StatsGreen
+                color = AppTheme.colors.statsGreen
             )
 
             Box(
                 modifier = Modifier
                     .width(1.dp)
                     .height(60.dp)
-                    .background(AppTheme.colors.StatsBackground)
+                    .background(AppTheme.colors.statsBackground)
             )
 
             HeroStatItem(
                 label = "Balance",
                 value = if (macroBalance.values.any { it > 0 }) "✓" else "-",
                 unit = "",
-                color = AppTheme.colors.AccentTeal
+                color = AppTheme.colors.accentTeal
             )
         }
     }
@@ -220,7 +220,7 @@ private fun HeroStatItem(
         Text(
             text = label,
             fontSize = 12.sp,
-            color = AppTheme.colors.TextSecondary,
+            color = AppTheme.colors.textSecondary,
             fontWeight = FontWeight.Medium
         )
         Row(
@@ -237,7 +237,7 @@ private fun HeroStatItem(
                 Text(
                     text = unit,
                     fontSize = 12.sp,
-                    color = AppTheme.colors.TextSecondary,
+                    color = AppTheme.colors.textSecondary,
                     modifier = Modifier.padding(bottom = 3.dp)
                 )
             }
@@ -258,7 +258,7 @@ private fun CategoryCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
@@ -291,19 +291,19 @@ private fun CategoryCard(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.TextPrimary
+                    color = AppTheme.colors.textPrimary
                 )
                 Text(
                     text = subtitle,
                     fontSize = 13.sp,
-                    color = AppTheme.colors.TextSecondary
+                    color = AppTheme.colors.textSecondary
                 )
             }
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "View details",
-                tint = AppTheme.colors.TextSecondary,
+                tint = AppTheme.colors.textSecondary,
                 modifier = Modifier.size(24.dp)
             )
         }

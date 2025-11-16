@@ -149,14 +149,14 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.HomeGradient))
+            .background(Brush.verticalGradient(AppTheme.colors.homeGradient))
     ) {
         if (isScreenLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = AppTheme.colors.PrimaryGreen)
+                CircularProgressIndicator(color = AppTheme.colors.primaryGreen)
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -241,13 +241,13 @@ fun HomeScreen(
                                 text = "Today's Meals",
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AppTheme.colors.TextPrimary
+                                color = AppTheme.colors.textPrimary
                             )
                             if (mealsForSelectedDate.isNotEmpty()) {
                                 Text(
                                     text = "${mealsForSelectedDate.size} meals",
                                     fontSize = 14.sp,
-                                    color = AppTheme.colors.TextSecondary
+                                    color = AppTheme.colors.textSecondary
                                 )
                             }
                         }
@@ -261,7 +261,7 @@ fun HomeScreen(
                                 MealSectionHeader(
                                     section,
                                     Modifier.background(
-                                        AppTheme.colors.ScreenBackground
+                                        AppTheme.colors.screenBackground
                                     )
                                 )
                             }
@@ -318,7 +318,7 @@ private fun CardSectionHeader(title: String, modifier: Modifier = Modifier) {
         text = title,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
-        color = AppTheme.colors.TextPrimary,
+        color = AppTheme.colors.textPrimary,
         modifier = modifier.padding(start = 4.dp) // Small indent to align with card content
     )
 }

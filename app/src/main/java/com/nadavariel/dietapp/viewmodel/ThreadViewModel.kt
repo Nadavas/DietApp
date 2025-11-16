@@ -78,7 +78,7 @@ class ThreadViewModel : ViewModel() {
                             return@addSnapshotListener
                         }
                         val threadList = snapshots?.mapNotNull { document ->
-                            document.toObject<Thread>()?.copy(id = document.id)
+                            document.toObject<Thread>().copy(id = document.id)
                         } ?: emptyList()
 
                         _threads.value = threadList
@@ -187,7 +187,7 @@ class ThreadViewModel : ViewModel() {
                             return@addSnapshotListener
                         }
                         val commentList = snapshots?.mapNotNull { document ->
-                            document.toObject<Comment>()?.copy(id = document.id)
+                            document.toObject<Comment>().copy(id = document.id)
                         } ?: emptyList()
                         _comments.value = commentList
                     }

@@ -9,7 +9,7 @@ import com.nadavariel.dietapp.model.NotificationPreference
 
 class NotificationScheduler(private val context: Context) {
 
-    private val TAG = "ALARM_DEBUG"
+    private val tag = "ALARM_DEBUG"
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
     private fun getPendingIntent(
@@ -46,7 +46,7 @@ class NotificationScheduler(private val context: Context) {
 
     fun schedule(preference: NotificationPreference, receiverClass: Class<*>) {
         if (!preference.isEnabled) {
-            Log.d(TAG, "Not scheduling alarm for ID ${preference.uniqueId}: Disabled.")
+            Log.d(tag, "Not scheduling alarm for ID ${preference.uniqueId}: Disabled.")
             return
         }
 
@@ -55,7 +55,7 @@ class NotificationScheduler(private val context: Context) {
         val triggerTime = preference.getNextScheduledCalendar().timeInMillis
 
         val readableTime = preference.getNextScheduledCalendar().time.toString()
-        Log.i(TAG, "Scheduling ${receiverClass.simpleName} for ID: ${preference.uniqueId}. Next trigger: $readableTime")
+        Log.i(tag, "Scheduling ${receiverClass.simpleName} for ID: ${preference.uniqueId}. Next trigger: $readableTime")
 
         if (preference.repetition == "DAILY") {
             alarmManager.setInexactRepeating(
@@ -64,14 +64,14 @@ class NotificationScheduler(private val context: Context) {
                 AlarmManager.INTERVAL_DAY,
                 pendingIntent
             )
-            Log.d(TAG, "Scheduled DAILY (inexact) alarm.")
+            Log.d(tag, "Scheduled DAILY (inexact) alarm.")
         } else { // "ONCE"
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
                 pendingIntent
             )
-            Log.d(TAG, "Scheduled ONCE (non-exact, Doze-safe) alarm.")
+            Log.d(tag, "Scheduled ONCE (non-exact, Doze-safe) alarm.")
         }
     }
 
@@ -80,6 +80,6 @@ class NotificationScheduler(private val context: Context) {
         val pendingIntent = getPendingIntent(preference, flags, receiverClass)
 
         alarmManager.cancel(pendingIntent)
-        Log.i(TAG, "Canceled ${receiverClass.simpleName} for ID: ${preference.uniqueId}")
+        Log.i(tag, "Canceled ${receiverClass.simpleName} for ID: ${preference.uniqueId}")
     }
 }

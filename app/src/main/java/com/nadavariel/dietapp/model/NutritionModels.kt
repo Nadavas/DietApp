@@ -108,9 +108,9 @@ data class ExampleMeal(
 // --- FoodNutritionalInfo (Your existing class) ---
 // (This is unchanged)
 data class FoodNutritionalInfo(
-    @SerializedName("food_name") val food_name: String?,
-    @SerializedName("serving_unit") val serving_unit: String?,
-    @SerializedName("serving_amount") val serving_amount: String?,
+    @SerializedName("food_name") val foodName: String?,
+    @SerializedName("serving_unit") val servingUnit: String?,
+    @SerializedName("serving_amount") val servingAmount: String?,
     @SerializedName("calories") val calories: String?,
     @SerializedName("protein") val protein: String?,
     @SerializedName("carbohydrates") val carbohydrates: String?,
@@ -123,7 +123,7 @@ data class FoodNutritionalInfo(
     @SerializedName("iron") val iron: String?,
     @SerializedName("vitamin_c") val vitaminC: String?,
     // START: Added for Vitamin A and B12
-    @SerializedName("vitamin_a") val vitamin_a: String?,
-    @SerializedName("vitamin_b12") val vitamin_b12: String?
+    @SerializedName("vitamin_a") val vitaminA: String?,
+    @SerializedName("vitamin_b12") val vitaminB12: String?
     // END: Added for Vitamin A and B12
 )

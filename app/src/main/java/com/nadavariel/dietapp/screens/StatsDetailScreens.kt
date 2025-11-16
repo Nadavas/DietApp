@@ -50,7 +50,7 @@ fun EnergyDetailScreen(
     DetailScreenScaffold(
         title = "Energy & Protein",
         icon = Icons.Default.LocalFireDepartment,
-        color = AppTheme.colors.WarmOrange,
+        color = AppTheme.colors.warmOrange,
         navController = navController
     ) {
         item {
@@ -59,7 +59,7 @@ fun EnergyDetailScreen(
                 weeklyData = weeklyCalories,
                 target = goals.getOrNull(0)?.value?.toIntOrNull(),
                 label = "kcal",
-                color = AppTheme.colors.WarmOrange
+                color = AppTheme.colors.warmOrange
             )
         }
 
@@ -69,7 +69,7 @@ fun EnergyDetailScreen(
                 weeklyData = weeklyProtein,
                 target = goals.getOrNull(1)?.value?.toIntOrNull(),
                 label = "g",
-                color = AppTheme.colors.StatsGreen
+                color = AppTheme.colors.statsGreen
             )
         }
 
@@ -117,14 +117,14 @@ fun MacrosDetailScreen(
     DetailScreenScaffold(
         title = "Macronutrients",
         icon = Icons.Default.PieChart,
-        color = AppTheme.colors.StatsGreen,
+        color = AppTheme.colors.statsGreen,
         navController = navController
     ) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+                colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
@@ -136,7 +136,7 @@ fun MacrosDetailScreen(
                         text = "Weekly Balance",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.TextPrimary,
+                        color = AppTheme.colors.textPrimary,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -185,7 +185,7 @@ fun CarbsDetailScreen(
     DetailScreenScaffold(
         title = "Fiber & Sugar",
         icon = Icons.Default.Spa,
-        color = AppTheme.colors.AccentTeal,
+        color = AppTheme.colors.accentTeal,
         navController = navController
     ) {
         item {
@@ -194,7 +194,7 @@ fun CarbsDetailScreen(
                 weeklyData = weeklyFiber,
                 target = goals.getOrNull(2)?.value?.toIntOrNull(),
                 label = "g",
-                color = AppTheme.colors.AccentTeal
+                color = AppTheme.colors.accentTeal
             )
         }
 
@@ -204,7 +204,7 @@ fun CarbsDetailScreen(
                 weeklyData = weeklySugar,
                 target = goals.getOrNull(3)?.value?.toIntOrNull(),
                 label = "g",
-                color = AppTheme.colors.SunsetPink
+                color = AppTheme.colors.sunsetPink
             )
         }
 
@@ -241,7 +241,7 @@ fun MineralsDetailScreen(
     DetailScreenScaffold(
         title = "Minerals",
         icon = Icons.Default.Science,
-        color = AppTheme.colors.SoftBlue,
+        color = AppTheme.colors.softBlue,
         navController = navController
     ) {
         item {
@@ -250,7 +250,7 @@ fun MineralsDetailScreen(
                 weeklyData = weeklySodium,
                 target = goals.getOrNull(4)?.value?.toIntOrNull(),
                 label = "mg",
-                color = AppTheme.colors.SoftBlue
+                color = AppTheme.colors.softBlue
             )
         }
 
@@ -260,7 +260,7 @@ fun MineralsDetailScreen(
                 weeklyData = weeklyPotassium,
                 target = goals.getOrNull(5)?.value?.toIntOrNull(),
                 label = "mg",
-                color = AppTheme.colors.DeepPurple
+                color = AppTheme.colors.deepPurple
             )
         }
 
@@ -270,7 +270,7 @@ fun MineralsDetailScreen(
                 weeklyData = weeklyCalcium,
                 target = goals.getOrNull(6)?.value?.toIntOrNull(),
                 label = "mg",
-                color = AppTheme.colors.AccentTeal
+                color = AppTheme.colors.accentTeal
             )
         }
 
@@ -280,7 +280,7 @@ fun MineralsDetailScreen(
                 weeklyData = weeklyIron,
                 target = goals.getOrNull(7)?.value?.toIntOrNull(),
                 label = "mg",
-                color = AppTheme.colors.WarmOrange
+                color = AppTheme.colors.warmOrange
             )
         }
 
@@ -318,7 +318,7 @@ fun VitaminsDetailScreen(
     DetailScreenScaffold(
         title = "Vitamins",
         icon = Icons.Default.Favorite,
-        color = AppTheme.colors.SunsetPink,
+        color = AppTheme.colors.sunsetPink,
         navController = navController
     ) {
         item {
@@ -327,7 +327,7 @@ fun VitaminsDetailScreen(
                 weeklyData = weeklyVitaminC,
                 target = goals.getOrNull(8)?.value?.toIntOrNull(),
                 label = "mg",
-                color = AppTheme.colors.SunsetPink
+                color = AppTheme.colors.sunsetPink
             )
         }
 
@@ -338,7 +338,7 @@ fun VitaminsDetailScreen(
                 weeklyData = weeklyVitaminA,
                 target = goals.getOrNull(9)?.value?.toIntOrNull(), // Next goal index
                 label = "μg", // Common unit for Vit A
-                color = AppTheme.colors.WarmOrange
+                color = AppTheme.colors.warmOrange
             )
         }
 
@@ -348,7 +348,7 @@ fun VitaminsDetailScreen(
                 weeklyData = weeklyVitaminB12,
                 target = goals.getOrNull(10)?.value?.toIntOrNull(), // Next goal index
                 label = "μg", // Common unit for Vit B12
-                color = AppTheme.colors.SoftBlue
+                color = AppTheme.colors.softBlue
             )
         }
         // END: Added for Vitamin A and B12
@@ -419,7 +419,7 @@ private fun DetailScreenScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(AppTheme.colors.StatsGradient))
+                .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -448,7 +448,7 @@ private fun DetailStatCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -470,7 +470,7 @@ private fun DetailStatCard(
                         text = title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.TextPrimary
+                        color = AppTheme.colors.textPrimary
                     )
 
                     // **FIX: 'average' was removed from here**
@@ -485,7 +485,7 @@ private fun DetailStatCard(
                     Text(
                         text = "daily average",
                         fontSize = 13.sp,
-                        color = AppTheme.colors.TextSecondary
+                        color = AppTheme.colors.textSecondary
                     )
                 }
 
@@ -494,13 +494,13 @@ private fun DetailStatCard(
                         Text(
                             text = "Goal",
                             fontSize = 12.sp,
-                            color = AppTheme.colors.TextSecondary
+                            color = AppTheme.colors.textSecondary
                         )
                         Text(
                             text = "$it $label",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = AppTheme.colors.TextPrimary,
+                            color = AppTheme.colors.textPrimary,
                             modifier = Modifier.padding(top = 4.dp)
                         )
 
@@ -511,7 +511,7 @@ private fun DetailStatCard(
                             text = "$percentage%",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (percentage >= 80) AppTheme.colors.StatsGreen else AppTheme.colors.WarmOrange,
+                            color = if (percentage >= 80) AppTheme.colors.statsGreen else AppTheme.colors.warmOrange,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -539,7 +539,7 @@ private fun MacroBreakdownCard(macroPercentages: Map<String, Float>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -552,14 +552,14 @@ private fun MacroBreakdownCard(macroPercentages: Map<String, Float>) {
                 text = "Breakdown",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.TextPrimary
+                color = AppTheme.colors.textPrimary
             )
 
-            MacroRow("Protein", macroPercentages["Protein"] ?: 0f, AppTheme.colors.StatsGreen)
+            MacroRow("Protein", macroPercentages["Protein"] ?: 0f, AppTheme.colors.statsGreen)
             HorizontalDivider(color = Color(0xFFEEEEEE))
-            MacroRow("Carbs", macroPercentages["Carbs"] ?: 0f, AppTheme.colors.SoftBlue)
+            MacroRow("Carbs", macroPercentages["Carbs"] ?: 0f, AppTheme.colors.softBlue)
             HorizontalDivider(color = Color(0xFFEEEEEE))
-            MacroRow("Fat", macroPercentages["Fat"] ?: 0f, AppTheme.colors.WarmOrange)
+            MacroRow("Fat", macroPercentages["Fat"] ?: 0f, AppTheme.colors.warmOrange)
         }
     }
 }
@@ -585,7 +585,7 @@ private fun MacroRow(name: String, percentage: Float, color: Color) {
                 text = name,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = AppTheme.colors.TextPrimary
+                color = AppTheme.colors.textPrimary
             )
         }
         Text(
@@ -602,7 +602,7 @@ private fun InsightCard(insights: List<String>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.StatsGreen.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.statsGreen.copy(alpha = 0.08f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -618,14 +618,14 @@ private fun InsightCard(insights: List<String>) {
                 Icon(
                     imageVector = Icons.Default.Lightbulb,
                     contentDescription = null,
-                    tint = AppTheme.colors.StatsGreen,
+                    tint = AppTheme.colors.statsGreen,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = "Insights",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.TextPrimary
+                    color = AppTheme.colors.textPrimary
                 )
             }
 
@@ -637,13 +637,13 @@ private fun InsightCard(insights: List<String>) {
                     Text(
                         text = "•",
                         fontSize = 14.sp,
-                        color = AppTheme.colors.StatsGreen,
+                        color = AppTheme.colors.statsGreen,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = insight,
                         fontSize = 14.sp,
-                        color = AppTheme.colors.TextPrimary,
+                        color = AppTheme.colors.textPrimary,
                         lineHeight = 20.sp
                     )
                 }

@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.ui.home
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,11 +70,11 @@ fun CalorieSummaryCard(
         animationSpec = spring(stiffness = 50f)
     )
 
-    val circleColor = AppTheme.colors.PrimaryGreen
+    val circleColor = AppTheme.colors.primaryGreen
 
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         // Changed outer Row to a Column
@@ -113,13 +115,13 @@ fun CalorieSummaryCard(
                         Text(
                             text = "$remaining",
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = AppTheme.colors.TextPrimary,
+                            color = AppTheme.colors.textPrimary,
                             fontSize = 32.sp
                         )
                         Text(
                             text = "left",
                             style = MaterialTheme.typography.bodySmall,
-                            color = AppTheme.colors.TextSecondary,
+                            color = AppTheme.colors.textSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -135,13 +137,13 @@ fun CalorieSummaryCard(
                     CalorieStatRow(
                         label = "Consumed",
                         value = totalCalories,
-                        color = AppTheme.colors.PrimaryGreen
+                        color = AppTheme.colors.primaryGreen
                     )
-                    Divider(color = AppTheme.colors.Divider)
+                    HorizontalDivider(color = AppTheme.colors.divider)
                     CalorieStatRow(
                         label = "Goal",
                         value = goalCalories,
-                        color = AppTheme.colors.TextSecondary
+                        color = AppTheme.colors.textSecondary
                     )
                 }
             }
@@ -149,7 +151,9 @@ fun CalorieSummaryCard(
             // --- Date Picker UI Added Below ---
 
             Spacer(modifier = Modifier.height(20.dp))
-            Divider(color = AppTheme.colors.Divider.copy(alpha = 0.5f))
+            HorizontalDivider(
+                color = AppTheme.colors.divider.copy(alpha = 0.5f)
+            )
             Spacer(modifier = Modifier.height(16.dp))
 
             // Logic from DatePickerSection
@@ -170,12 +174,12 @@ fun CalorieSummaryCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f))
+                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         "Previous Week",
-                        tint = AppTheme.colors.PrimaryGreen
+                        tint = AppTheme.colors.primaryGreen
                     )
                 }
                 val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
@@ -183,19 +187,19 @@ fun CalorieSummaryCard(
                     text = selectedDate.format(formatter),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.TextPrimary
+                    color = AppTheme.colors.textPrimary
                 )
                 IconButton(
                     onClick = onNextWeek,
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f))
+                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         "Next Week",
-                        tint = AppTheme.colors.PrimaryGreen
+                        tint = AppTheme.colors.primaryGreen
                     )
                 }
             }
@@ -231,7 +235,7 @@ fun CalorieSummaryCard(
                     ) {
                         Text(
                             "Go to Today",
-                            color = AppTheme.colors.PrimaryGreen,
+                            color = AppTheme.colors.primaryGreen,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp
                         )
@@ -254,7 +258,7 @@ private fun CalorieStatRow(label: String, value: Int, color: Color) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = AppTheme.colors.TextSecondary,
+            color = AppTheme.colors.textSecondary,
             fontWeight = FontWeight.Medium
         )
         Row(
@@ -269,7 +273,7 @@ private fun CalorieStatRow(label: String, value: Int, color: Color) {
             Text(
                 text = "kcal",
                 style = MaterialTheme.typography.bodySmall,
-                color = AppTheme.colors.TextSecondary,
+                color = AppTheme.colors.textSecondary,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
         }
@@ -286,15 +290,15 @@ private fun DayOfWeekItem(
     onClick: () -> Unit,
 ) {
     val backgroundColor = when {
-        isSelected -> AppTheme.colors.PrimaryGreen
+        isSelected -> AppTheme.colors.primaryGreen
         else -> Color.Transparent
     }
     val contentColor = when {
         isSelected -> Color.White
-        else -> AppTheme.colors.TextPrimary
+        else -> AppTheme.colors.textPrimary
     }
     val borderModifier = if (isToday && !isSelected) {
-        Modifier.border(2.dp, AppTheme.colors.PrimaryGreen.copy(alpha = 0.5f), CircleShape) // Thicker border
+        Modifier.border(2.dp, AppTheme.colors.primaryGreen.copy(alpha = 0.5f), CircleShape) // Thicker border
     } else Modifier
 
     Column(
@@ -313,7 +317,7 @@ private fun DayOfWeekItem(
             text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
             fontSize = 11.sp, // Legible small size
             fontWeight = FontWeight.Medium,
-            color = if (isSelected) contentColor else AppTheme.colors.TextSecondary
+            color = if (isSelected) contentColor else AppTheme.colors.textSecondary
         )
         Spacer(modifier = Modifier.height(2.dp)) // More space
         Text(
@@ -345,7 +349,7 @@ fun MealSectionHeader(section: MealSection, modifier: Modifier = Modifier) {
             text = section.name,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.TextPrimary,
+            color = AppTheme.colors.textPrimary,
             fontSize = 18.sp
         )
     }
@@ -366,7 +370,7 @@ fun MealItem(
 
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -395,7 +399,7 @@ fun MealItem(
                         text = meal.foodName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.TextPrimary,
+                        color = AppTheme.colors.textPrimary,
                         fontSize = 16.sp
                     )
 
@@ -407,7 +411,7 @@ fun MealItem(
                         Text(
                             text = servingInfo,
                             style = MaterialTheme.typography.bodySmall,
-                            color = AppTheme.colors.TextSecondary,
+                            color = AppTheme.colors.textSecondary,
                             fontSize = 13.sp
                         )
                     }
@@ -436,7 +440,7 @@ fun MealItem(
                                 Icon(
                                     Icons.Default.Edit,
                                     "Edit Meal",
-                                    tint = AppTheme.colors.PrimaryGreen
+                                    tint = AppTheme.colors.primaryGreen
                                 )
                             }
                             IconButton(onClick = { onDelete(meal) }) {
@@ -459,7 +463,7 @@ fun MealItem(
                             Text(
                                 text = "kcal",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = AppTheme.colors.TextSecondary,
+                                color = AppTheme.colors.textSecondary,
                                 fontSize = 11.sp
                             )
                         }
@@ -474,9 +478,9 @@ fun MealItem(
                 exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
             ) {
                 Column {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
-                        color = AppTheme.colors.Divider
+                        color = AppTheme.colors.divider
                     )
                     NutritionDetailsTable(meal)
                 }
@@ -501,7 +505,7 @@ fun NutritionDetailsTable(meal: Meal) {
             text = "Macronutrients",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.TextSecondary,
+            color = AppTheme.colors.textSecondary,
             modifier = Modifier.padding(bottom = 12.dp),
             fontSize = 13.sp
         )
@@ -510,7 +514,7 @@ fun NutritionDetailsTable(meal: Meal) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            NutritionDetailItem("Protein", meal.protein, "g", AppTheme.colors.PrimaryGreen)
+            NutritionDetailItem("Protein", meal.protein, "g", AppTheme.colors.primaryGreen)
             NutritionDetailItem("Carbs", meal.carbohydrates, "g", Color(0xFF00BFA5))
             NutritionDetailItem("Fat", meal.fat, "g", Color(0xFFFF6E40))
         }
@@ -535,14 +539,20 @@ fun NutritionDetailsTable(meal: Meal) {
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Divider(modifier = Modifier.weight(1f), color = AppTheme.colors.Divider)
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = AppTheme.colors.divider
+            )
             Icon(
                 imageVector = if (microNutrientsVisible) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                 contentDescription = if (microNutrientsVisible) "Hide" else "Show More",
-                tint = AppTheme.colors.TextSecondary,
+                tint = AppTheme.colors.textSecondary,
                 modifier = Modifier.padding(horizontal = 8.dp).size(20.dp)
             )
-            Divider(modifier = Modifier.weight(1f), color = AppTheme.colors.Divider)
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = AppTheme.colors.divider
+            )
         }
 
         AnimatedVisibility(
@@ -555,7 +565,7 @@ fun NutritionDetailsTable(meal: Meal) {
                     text = "Micronutrients & Fiber",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.TextSecondary,
+                    color = AppTheme.colors.textSecondary,
                     modifier = Modifier.padding(bottom = 12.dp),
                     fontSize = 13.sp
                 )
@@ -580,12 +590,13 @@ fun NutritionDetailsTable(meal: Meal) {
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun NutritionDetailItem(
     label: String,
     value: Double?,
     unit: String,
-    color: Color = AppTheme.colors.TextPrimary
+    color: Color = AppTheme.colors.textPrimary
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -595,7 +606,7 @@ fun NutritionDetailItem(
             text = label,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
-            color = AppTheme.colors.TextSecondary,
+            color = AppTheme.colors.textSecondary,
             fontSize = 12.sp
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -622,14 +633,14 @@ fun EmptyState() {
             imageVector = Icons.Outlined.Restaurant,
             contentDescription = "No meals",
             modifier = Modifier.size(80.dp),
-            tint = AppTheme.colors.TextSecondary.copy(alpha = 0.3f)
+            tint = AppTheme.colors.textSecondary.copy(alpha = 0.3f)
         )
         Spacer(modifier = Modifier.height(20.dp))
         Text(
             "No meals logged yet",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.TextPrimary,
+            color = AppTheme.colors.textPrimary,
             fontSize = 20.sp
         )
     }

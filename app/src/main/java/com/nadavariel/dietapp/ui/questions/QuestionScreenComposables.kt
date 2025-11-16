@@ -48,8 +48,8 @@ internal fun LandingContent(
                 .size(100.dp)
                 .clip(CircleShape)
                 .background(
-                    if (allQuestionsAnswered) AppTheme.colors.VibrantGreen.copy(alpha = 0.1f)
-                    else AppTheme.colors.LightGreyText.copy(alpha = 0.1f)
+                    if (allQuestionsAnswered) AppTheme.colors.vibrantGreen.copy(alpha = 0.1f)
+                    else AppTheme.colors.lightGreyText.copy(alpha = 0.1f)
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -57,7 +57,7 @@ internal fun LandingContent(
                 imageVector = if (allQuestionsAnswered) Icons.Default.Check else Icons.Default.Edit,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = if (allQuestionsAnswered) AppTheme.colors.VibrantGreen else AppTheme.colors.LightGreyText
+                tint = if (allQuestionsAnswered) AppTheme.colors.vibrantGreen else AppTheme.colors.lightGreyText
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
@@ -65,13 +65,13 @@ internal fun LandingContent(
             text = if (allQuestionsAnswered) "All Set!" else "Questionnaire Incomplete",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.DarkGreyText,
+            color = AppTheme.colors.darkGreyText,
             textAlign = TextAlign.Center
         )
         Text(
             text = if (allQuestionsAnswered) "You can edit your answers or retake the quiz to get an updated diet plan." else "Please complete it to generate a personalized diet plan.",
             style = MaterialTheme.typography.bodyLarge,
-            color = AppTheme.colors.LightGreyText,
+            color = AppTheme.colors.lightGreyText,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp)
         )
@@ -81,7 +81,7 @@ internal fun LandingContent(
             Button(
                 onClick = onEditAnswers,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.vibrantGreen)
             ) {
                 Text("Edit Answers")
             }
@@ -89,8 +89,8 @@ internal fun LandingContent(
             OutlinedButton(
                 onClick = onRetakeQuiz,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = AppTheme.colors.DarkGreyText),
-                border = BorderStroke(1.dp, AppTheme.colors.LightGreyText.copy(alpha = 0.3f))
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AppTheme.colors.darkGreyText),
+                border = BorderStroke(1.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.3f))
             ) {
                 Text("Retake Whole Quiz")
             }
@@ -98,7 +98,7 @@ internal fun LandingContent(
             Button(
                 onClick = onRetakeQuiz,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.vibrantGreen)
             ) {
                 Text("Complete Quiz")
             }
@@ -124,7 +124,7 @@ internal fun EditingContent(
                 Text(
                     "Tap on a question to provide or update your answer.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = AppTheme.colors.LightGreyText,
+                    color = AppTheme.colors.lightGreyText,
                     modifier = Modifier.padding(bottom = 8.dp, start = 4.dp, end = 4.dp)
                 )
             }
@@ -144,7 +144,7 @@ internal fun EditingContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
+            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.vibrantGreen)
         ) {
             Text("Save Changes & Get Plan")
         }
@@ -158,7 +158,7 @@ private fun QuestionItemCard(question: String, answer: String?, onClick: () -> U
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -172,18 +172,18 @@ private fun QuestionItemCard(question: String, answer: String?, onClick: () -> U
                     question,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = AppTheme.colors.DarkGreyText
+                    color = AppTheme.colors.darkGreyText
                 )
                 Text(
                     text = if (answer.isNullOrBlank()) "Tap to answer" else answer,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (answer.isNullOrBlank()) AppTheme.colors.LightGreyText else AppTheme.colors.VibrantGreen,
+                    color = if (answer.isNullOrBlank()) AppTheme.colors.lightGreyText else AppTheme.colors.vibrantGreen,
                     fontWeight = if (answer.isNullOrBlank()) FontWeight.Normal else FontWeight.Bold,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
             Spacer(Modifier.width(12.dp))
-            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = AppTheme.colors.VibrantGreen)
+            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = AppTheme.colors.vibrantGreen)
         }
     }
 }
@@ -218,8 +218,8 @@ internal fun QuizModeContent(
                 .padding(bottom = 24.dp)
                 .height(8.dp)
                 .clip(CircleShape),
-            color = AppTheme.colors.VibrantGreen,
-            trackColor = AppTheme.colors.VibrantGreen.copy(alpha = 0.1f),
+            color = AppTheme.colors.vibrantGreen,
+            trackColor = AppTheme.colors.vibrantGreen.copy(alpha = 0.1f),
             strokeCap = StrokeCap.Round
         )
 
@@ -227,7 +227,7 @@ internal fun QuizModeContent(
             question.text,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.DarkGreyText,
+            color = AppTheme.colors.darkGreyText,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
@@ -252,7 +252,7 @@ internal fun QuizModeContent(
             onClick = onNext,
             enabled = canProceed,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
+            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.vibrantGreen)
         ) {
             Text(if (currentIndex < questions.lastIndex) "Next" else "Submit & Get Plan")
         }

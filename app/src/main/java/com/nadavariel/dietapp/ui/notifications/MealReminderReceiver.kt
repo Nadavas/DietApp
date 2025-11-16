@@ -16,7 +16,7 @@ import androidx.core.net.toUri
 
 class MealReminderReceiver : BroadcastReceiver() {
 
-    private val TAG = "ALARM_DEBUG"
+    private val tag = "ALARM_DEBUG"
 
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "meal_reminder_channel"
@@ -26,16 +26,16 @@ class MealReminderReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        Log.i(TAG, "MealReminderReceiver: onReceive triggered. Intent action: ${intent?.action}")
+        Log.i(tag, "MealReminderReceiver: onReceive triggered. Intent action: ${intent?.action}")
 
         val notificationId = intent?.getIntExtra(NOTIFICATION_ID_EXTRA, 0) ?: 0
         val message = intent?.getStringExtra(NOTIFICATION_MESSAGE_EXTRA) ?: "Time to log your meal!"
         val repetition = intent?.getStringExtra(NOTIFICATION_REPETITION_EXTRA) ?: "DAILY"
 
-        Log.d(TAG, "Receiver details - ID: $notificationId, Message: $message, Repetition: $repetition")
+        Log.d(tag, "Receiver details - ID: $notificationId, Message: $message, Repetition: $repetition")
 
         if (notificationId == 0) {
-            Log.e(TAG, "Notification ID is 0. Cannot post notification.")
+            Log.e(tag, "Notification ID is 0. Cannot post notification.")
             return
         }
 
@@ -76,14 +76,14 @@ class MealReminderReceiver : BroadcastReceiver() {
                 .setAutoCancel(true)
                 .build()
         } catch (e: Exception) {
-            Log.e(TAG, "Error building notification: ${e.message}", e)
+            Log.e(tag, "Error building notification: ${e.message}", e)
             return
         }
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, notification)
 
-        Log.i(TAG, "Notification successfully posted with ID: $notificationId")
+        Log.i(tag, "Notification successfully posted with ID: $notificationId")
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -97,7 +97,7 @@ class MealReminderReceiver : BroadcastReceiver() {
             val notificationManager: NotificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
-            Log.d(TAG, "Notification channel created/updated.")
+            Log.d(tag, "Notification channel created/updated.")
         }
     }
 }

@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp.ui.meals
 
 import android.R.style as AndroidRStyle
@@ -44,13 +46,13 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .background(AppTheme.colors.HealthyGreen, CircleShape) // Using the correct green
+                .background(AppTheme.colors.healthyGreen, CircleShape) // Using the correct green
         )
         Text(
             text = title.uppercase(Locale.ROOT),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.LightGreyText,
+            color = AppTheme.colors.lightGreyText,
             letterSpacing = 1.2.sp
         )
     }
@@ -71,7 +73,7 @@ fun SubSectionHeader(title: String, modifier: Modifier = Modifier) {
             text = title.uppercase(Locale.ROOT),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.LightGreyText,
+            color = AppTheme.colors.lightGreyText,
             letterSpacing = 1.2.sp
         )
     }
@@ -110,15 +112,15 @@ fun ThemedOutlinedTextField(
         onValueChange = onValueChange,
         label = { Text(label) },
         modifier = modifier,
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = AppTheme.colors.LightGreyText) } },
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = AppTheme.colors.lightGreyText) } },
         keyboardOptions = keyboardOptions,
         singleLine = singleLine,
         minLines = minLines,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AppTheme.colors.HealthyGreen,
-            focusedLabelColor = AppTheme.colors.HealthyGreen,
-            cursorColor = AppTheme.colors.HealthyGreen,
+            focusedBorderColor = AppTheme.colors.healthyGreen,
+            focusedLabelColor = AppTheme.colors.healthyGreen,
+            cursorColor = AppTheme.colors.healthyGreen,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
         )
     )
@@ -272,7 +274,7 @@ private fun DateTimePickerRow(icon: ImageVector, label: String, value: String, o
         Text(
             text = value, style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = AppTheme.colors.HealthyGreen,
+            color = AppTheme.colors.healthyGreen,
             textAlign = TextAlign.End
         )
     }

@@ -27,12 +27,12 @@ class UserPreferencesRepository(private val context: Context) {
 
     val rememberMeFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
-            preferences[PreferencesKeys.REMEMBER_ME] ?: false
+            preferences[PreferencesKeys.REMEMBER_ME] == true
         }
 
     val darkModeEnabledFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
-            preferences[PreferencesKeys.DARK_MODE_ENABLED] ?: false // Default to false (light mode)
+            preferences[PreferencesKeys.DARK_MODE_ENABLED] == true // Default to false (light mode)
         }
 
     suspend fun saveUserPreferences(email: String, rememberMe: Boolean) {

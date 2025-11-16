@@ -1,20 +1,11 @@
 package com.nadavariel.dietapp.ui.questions
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.viewmodel.DietPlanResult
-import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,12 +19,12 @@ internal fun EditQuestionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = AppTheme.colors.ScreenBackground,
+        containerColor = AppTheme.colors.screenBackground,
         title = {
             Text(
                 question.text,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.DarkGreyText
+                color = AppTheme.colors.darkGreyText
             )
         },
         text = {
@@ -66,7 +57,7 @@ internal fun EditQuestionDialog(
                     }
                     onDismiss()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.vibrantGreen)
             ) {
                 Text("Save")
             }
@@ -74,79 +65,9 @@ internal fun EditQuestionDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.DarkGreyText)
+                colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.darkGreyText)
             ) {
                 Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-internal fun HandleDietPlanResultDialogs(
-    navController: NavController,
-    questionsViewModel: QuestionsViewModel
-) {
-    val dietPlanResult by questionsViewModel.dietPlanResult.collectAsState()
-
-    when (val result = dietPlanResult) {
-        is DietPlanResult.Loading -> {
-            Dialog(onDismissRequest = {}) {
-                Card(
-                    modifier = Modifier.padding(32.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        CircularProgressIndicator(color = AppTheme.colors.VibrantGreen)
-                        Spacer(Modifier.width(20.dp))
-                        Text(
-                            "Generating your plan...",
-                            color = AppTheme.colors.DarkGreyText,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-        }
-        is DietPlanResult.Success -> {
-            // --- THIS IS THE NEW LOGIC ---
-            // No dialog. Just navigate and reset.
-            // LaunchedEffect ensures this runs only once per success state.
-            LaunchedEffect(result) {
-                navController.navigate("goals")
-                questionsViewModel.resetDietPlanResult()
-            }
-        }
-        is DietPlanResult.Error -> {
-            DietPlanErrorDialog(
-                message = result.message,
-                onDismiss = { questionsViewModel.resetDietPlanResult() }
-            )
-        }
-        is DietPlanResult.Idle -> {}
-    }
-}
-
-// --- DietPlanSuccessDialog and its helpers (SectionCard, MealPlanItem, FoodChip, MacroItem) have been DELETED ---
-
-@Composable
-internal fun DietPlanErrorDialog(message: String, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = AppTheme.colors.ScreenBackground,
-        shape = RoundedCornerShape(20.dp),
-        title = { Text("Error", fontWeight = FontWeight.Bold, color = AppTheme.colors.DarkGreyText) },
-        text = { Text(message, color = AppTheme.colors.DarkGreyText, style = MaterialTheme.typography.bodyLarge) },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
-            ) {
-                Text("Dismiss")
             }
         }
     )
