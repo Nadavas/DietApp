@@ -6,13 +6,13 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.TaskStackBuilder
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
+import androidx.core.net.toUri
 
 class WeightReminderReceiver : BroadcastReceiver() {
 
@@ -36,7 +36,7 @@ class WeightReminderReceiver : BroadcastReceiver() {
         // This deep link will open the home screen and tell it to open the log weight dialog
         val deepLinkIntent = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("dietapp://home?openWeightLog=true"), // New deep link URI
+            "dietapp://home?openWeightLog=true".toUri(), // New deep link URI
             context,
             MainActivity::class.java
         )

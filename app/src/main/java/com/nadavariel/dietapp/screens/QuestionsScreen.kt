@@ -9,9 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.NavRoutes // <-- IMPORT ADDED
-import com.nadavariel.dietapp.ui.QuestionColors.DarkGreyText
-import com.nadavariel.dietapp.ui.QuestionColors.ScreenBackgroundColor
+import com.nadavariel.dietapp.NavRoutes
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.questions.*
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
@@ -54,7 +53,7 @@ fun QuestionsScreen(
     // HandleDietPlanResultDialogs(navController, questionsViewModel)
 
     Scaffold(
-        containerColor = ScreenBackgroundColor,
+        containerColor = AppTheme.colors.ScreenBackground,
         topBar = {
             TopAppBar(
                 title = {
@@ -65,7 +64,7 @@ fun QuestionsScreen(
                             ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
                         },
                         fontWeight = FontWeight.Bold,
-                        color = DarkGreyText
+                        color = AppTheme.colors.DarkGreyText
                     )
                 },
                 navigationIcon = {
@@ -89,12 +88,12 @@ fun QuestionsScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = DarkGreyText
+                            tint = AppTheme.colors.DarkGreyText
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ScreenBackgroundColor
+                    containerColor = AppTheme.colors.ScreenBackground
                 )
             )
         }

@@ -210,8 +210,8 @@ fun AddEditNotificationDialog(
     val defaultMealMessage = "Time to log your next meal!"
     val defaultWeightMessage = "Time to log your weight!"
 
-    val initialHour = if (isEdit) preferenceToEdit!!.hour else Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val initialMinute = if (isEdit) preferenceToEdit!!.minute else Calendar.getInstance().get(Calendar.MINUTE)
+    val initialHour = if (isEdit) preferenceToEdit.hour else Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val initialMinute = if (isEdit) preferenceToEdit.minute else Calendar.getInstance().get(Calendar.MINUTE)
 
     var hour by remember { mutableIntStateOf(initialHour) }
     var minute by remember { mutableIntStateOf(initialMinute) }

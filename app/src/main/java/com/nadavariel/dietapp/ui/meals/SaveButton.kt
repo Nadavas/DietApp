@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.GeminiResult
 
 @Composable
@@ -20,7 +21,6 @@ fun SubmitMealButton(
     isButtonEnabled: Boolean,
     onClick: () -> Unit
 ) {
-    val vibrantGreen = Color(0xFF4CAF50)
 
     Button(
         onClick = onClick,
@@ -30,9 +30,9 @@ fun SubmitMealButton(
             .height(56.dp),
         shape = RoundedCornerShape(50), // Pill shape
         colors = ButtonDefaults.buttonColors(
-            containerColor = vibrantGreen,
+            containerColor = AppTheme.colors.VibrantGreen,
             contentColor = Color.White,
-            disabledContainerColor = vibrantGreen.copy(alpha = 0.3f),
+            disabledContainerColor = AppTheme.colors.VibrantGreen.copy(alpha = 0.3f),
             disabledContentColor = Color.White.copy(alpha = 0.7f)
         )
     ) {

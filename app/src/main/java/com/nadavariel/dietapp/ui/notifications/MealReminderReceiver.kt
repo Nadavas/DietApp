@@ -6,13 +6,13 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri // NEW: Import
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.TaskStackBuilder // NEW: Import
+import androidx.core.app.TaskStackBuilder
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
+import androidx.core.net.toUri
 
 class MealReminderReceiver : BroadcastReceiver() {
 
@@ -46,7 +46,7 @@ class MealReminderReceiver : BroadcastReceiver() {
         // 1. Create the deep link Intent for the AddEditMealScreen
         val addMealIntent = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("dietapp://add_meal"), // The custom URI we defined
+            "dietapp://add_meal".toUri(), // The custom URI we defined
             context,
             MainActivity::class.java // The activity that hosts the NavGraph
         )

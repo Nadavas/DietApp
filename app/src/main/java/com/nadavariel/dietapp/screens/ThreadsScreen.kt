@@ -43,16 +43,10 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Topic
 import com.nadavariel.dietapp.model.communityTopics
 import com.nadavariel.dietapp.model.Thread
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.sin
-import kotlin.random.Random
-
-// --- DESIGN TOKENS (matching app theme) ---
-private val VibrantGreen = Color(0xFF4CAF50)
-private val DarkGreyText = Color(0xFF333333)
-private val LightGreyText = Color(0xFF757575)
-private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -89,7 +83,7 @@ fun ThreadsScreen(
     )
 
     Scaffold(
-        containerColor = ScreenBackgroundColor,
+        containerColor = AppTheme.colors.ScreenBackground,
         modifier = Modifier.nestedScroll(TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()).nestedScrollConnection),
         topBar = {
             TopAppBar(
@@ -108,7 +102,7 @@ fun ThreadsScreen(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = VibrantGreen,
+                            tint = AppTheme.colors.VibrantGreen,
                             modifier = Modifier
                                 .size(28.dp)
                                 .rotate(rotation)
@@ -118,7 +112,7 @@ fun ThreadsScreen(
                             text = selectedTopic?.displayName ?: "Community",
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 26.sp,
-                            color = DarkGreyText
+                            color = AppTheme.colors.DarkGreyText
                         )
                     }
                 },
@@ -128,7 +122,7 @@ fun ThreadsScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back to Community",
-                                tint = DarkGreyText
+                                tint = AppTheme.colors.DarkGreyText
                             )
                         }
                     }
@@ -137,7 +131,7 @@ fun ThreadsScreen(
                     // Pulsing FAB-style Add Thread Button
                     FloatingActionButton(
                         onClick = { navController.navigate("create_thread") },
-                        containerColor = VibrantGreen,
+                        containerColor = AppTheme.colors.VibrantGreen,
                         contentColor = Color.White,
                         elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                         modifier = Modifier
@@ -164,7 +158,7 @@ fun ThreadsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ScreenBackgroundColor
+                    containerColor = AppTheme.colors.ScreenBackground
                 )
             )
         }
@@ -238,7 +232,7 @@ fun CommunityHomeScreen(
                     )
 
                     // Cycling hottest thread with animation
-                    var currentIndex by remember { mutableStateOf(0) }
+                    var currentIndex by remember { mutableIntStateOf(0) }
 
                     LaunchedEffect(key1 = hottestThreads.size) {
                         while (true) {
@@ -301,7 +295,7 @@ fun CommunityHomeScreen(
                                         .height(height.dp)
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(
-                                            if (isSelected) VibrantGreen else LightGreyText.copy(alpha = 0.3f)
+                                            if (isSelected) AppTheme.colors.VibrantGreen else AppTheme.colors.LightGreyText.copy(alpha = 0.3f)
                                         )
                                 )
                             }
@@ -324,7 +318,7 @@ fun CommunityHomeScreen(
             AnimatedSectionHeader(
                 icon = Icons.Outlined.Category,
                 text = "Explore Topics",
-                iconColor = VibrantGreen
+                iconColor = AppTheme.colors.VibrantGreen
             )
         }
 
@@ -396,10 +390,12 @@ fun FloatingParticles() {
         )
     }
 
+    val particleColor = AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f)
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         particleOffsets.forEachIndexed { i, offset ->
             drawCircle(
-                color = VibrantGreen.copy(alpha = 0.1f),
+                color = particleColor,
                 radius = 4f + (i % 3) * 2f,
                 center = Offset(
                     x = size.width * (i / 8f),
@@ -440,7 +436,7 @@ fun AnimatedSectionHeader(icon: ImageVector, text: String, iconColor: Color) {
             text,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.ExtraBold,
-            color = DarkGreyText
+            color = AppTheme.colors.DarkGreyText
         )
     }
 }
@@ -469,7 +465,7 @@ fun QuickStatsCard(totalThreads: Int, activeUsers: Int) {
                 modifier = Modifier
                     .width(1.dp)
                     .height(60.dp),
-                color = LightGreyText.copy(alpha = 0.2f)
+                color = AppTheme.colors.LightGreyText.copy(alpha = 0.2f)
             )
             AnimatedStatItem(
                 icon = Icons.Outlined.People,
@@ -516,7 +512,7 @@ fun AnimatedStatItem(icon: ImageVector, value: Int, label: String, color: Color)
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = LightGreyText
+            color = AppTheme.colors.LightGreyText
         )
     }
 }
@@ -540,13 +536,13 @@ fun RecentActivityItem(index: Int) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(VibrantGreen.copy(alpha = 0.15f)),
+                    .background(AppTheme.colors.VibrantGreen.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Person,
                     contentDescription = null,
-                    tint = VibrantGreen,
+                    tint = AppTheme.colors.VibrantGreen,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -555,18 +551,18 @@ fun RecentActivityItem(index: Int) {
                     "User ${index + 1} commented",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = DarkGreyText
+                    color = AppTheme.colors.DarkGreyText
                 )
                 Text(
                     "${index + 2}m ago",
                     style = MaterialTheme.typography.bodySmall,
-                    color = LightGreyText
+                    color = AppTheme.colors.LightGreyText
                 )
             }
             Icon(
                 Icons.Outlined.ChatBubbleOutline,
                 contentDescription = null,
-                tint = LightGreyText,
+                tint = AppTheme.colors.LightGreyText,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -615,7 +611,7 @@ fun DynamicHottestThreadCard(
                     .fillMaxSize()
                     .alpha(shimmerAlpha)
             ) {
-                val spacing = 80f
+                
                 repeat(10) { i ->
                     drawCircle(
                         color = topic.gradient.first().copy(alpha = 0.1f),
@@ -674,7 +670,7 @@ fun DynamicHottestThreadCard(
                     text = thread.header,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
-                    color = DarkGreyText,
+                    color = AppTheme.colors.DarkGreyText,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 28.sp
@@ -791,14 +787,14 @@ fun EnhancedTopicCard(topic: Topic, onTopicSelected: (Topic) -> Unit) {
                     text = topic.displayName,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = DarkGreyText,
+                    color = AppTheme.colors.DarkGreyText,
                     textAlign = TextAlign.Center
                 )
                 Text(
                     text = topic.subtitle,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = LightGreyText,
+                    color = AppTheme.colors.LightGreyText,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -838,26 +834,26 @@ fun ThreadList(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .background(VibrantGreen.copy(alpha = 0.1f)),
+                            .background(AppTheme.colors.VibrantGreen.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Outlined.ChatBubbleOutline,
                             contentDescription = "No threads",
                             modifier = Modifier.size(40.dp),
-                            tint = VibrantGreen.copy(alpha = 0.6f)
+                            tint = AppTheme.colors.VibrantGreen.copy(alpha = 0.6f)
                         )
                     }
                     Text(
                         "No Threads Yet",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = DarkGreyText
+                        color = AppTheme.colors.DarkGreyText
                     )
                     Text(
                         "Be the first to start a conversation!\nTap 'New' to get started.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = LightGreyText,
+                        color = AppTheme.colors.LightGreyText,
                         textAlign = TextAlign.Center,
                         lineHeight = 24.sp
                     )
@@ -943,12 +939,12 @@ fun CleanThreadCard(
                         text = thread.authorName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = DarkGreyText
+                        color = AppTheme.colors.DarkGreyText
                     )
                     Text(
                         text = "2h ago", // This is hardcoded, consider passing real data
                         style = MaterialTheme.typography.bodySmall,
-                        color = LightGreyText
+                        color = AppTheme.colors.LightGreyText
                     )
                 }
             }
@@ -960,7 +956,7 @@ fun CleanThreadCard(
                 text = thread.header,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = DarkGreyText,
+                color = AppTheme.colors.DarkGreyText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 26.sp
@@ -972,7 +968,7 @@ fun CleanThreadCard(
             Text(
                 text = thread.paragraph.take(120) + if (thread.paragraph.length > 120) "..." else "",
                 style = MaterialTheme.typography.bodyMedium,
-                color = LightGreyText,
+                color = AppTheme.colors.LightGreyText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 20.sp
@@ -980,7 +976,7 @@ fun CleanThreadCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Divider(color = LightGreyText.copy(alpha = 0.15f))
+            Divider(color = AppTheme.colors.LightGreyText.copy(alpha = 0.15f))
 
             Spacer(modifier = Modifier.height(12.dp))
 

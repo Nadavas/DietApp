@@ -9,16 +9,13 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
@@ -28,7 +25,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -40,18 +36,13 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.WeightEntry
-import com.nadavariel.dietapp.ui.HomeColors.CardBackground
-import com.nadavariel.dietapp.ui.HomeColors.DividerColor
-import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen
-import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
-import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
+import com.nadavariel.dietapp.ui.AppTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -74,7 +65,7 @@ fun ExpandableWeightCard(
         modifier = Modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         onClick = { expanded = !expanded } // Click the whole card to toggle
     ) {
@@ -110,7 +101,7 @@ fun ExpandableWeightCard(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = if (expanded) "Collapse" else "Expand",
-                        tint = TextSecondary,
+                        tint = AppTheme.colors.TextSecondary,
                         modifier = Modifier
                             .padding(start = 16.dp)
                             .rotate(rotation)
@@ -123,7 +114,7 @@ fun ExpandableWeightCard(
                 Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 16.dp)) {
                     Divider(
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                        color = DividerColor.copy(alpha = 0.5f)
+                        color = AppTheme.colors.Divider.copy(alpha = 0.5f)
                     )
 
                     // --- START OF FIX ---
@@ -142,293 +133,6 @@ fun ExpandableWeightCard(
         }
     }
 }
-
-// ... CompactWeightDateRow and MiniWeightLineChart are unchanged ...
-
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-fun CompactWeightDateRow(
-    startingWeight: Float,
-    currentWeight: Float,
-    targetWeight: Float,
-    history: List<WeightEntry>,
-    onWeightClick: () -> Unit,
-    onGraphClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClick = onWeightClick),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(PrimaryGreen.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                            contentDescription = null,
-                            tint = PrimaryGreen,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = "Weight",
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = if (currentWeight > 0) String.format(
-                                    "%.1f",
-                                    currentWeight
-                                ) else "---",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen
-                            )
-                            Text(
-                                text = "kg",
-                                fontSize = 12.sp,
-                                color = TextSecondary,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (targetWeight > 0 && currentWeight > 0) {
-                    val diff = currentWeight - targetWeight
-                    val diffText = if (diff > 0) "+%.1f" else "%.1f"
-                    Text(
-                        text = "${String.format(diffText, diff)} kg to goal",
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(start = 48.dp, top = 4.dp)
-                    )
-                } else if (startingWeight > 0) {
-                    Text(
-                        text = "Start: ${String.format("%.1f", startingWeight)} kg",
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(start = 48.dp, top = 4.dp)
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .background(Color(0xFFE0E0E0))
-            )
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable(onClick = onGraphClick),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Click graph to view progress",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary,
-                    fontStyle = FontStyle.Italic,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                if (history.isEmpty() && startingWeight <= 0) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .height(60.dp)
-                    ) {
-                        Text(
-                            "Log weight",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                        Text(
-                            "to see graph",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
-                } else {
-                    MiniWeightLineChart(
-                        startingWeight = startingWeight,
-                        targetWeight = targetWeight,
-                        history = history,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .padding(end = 8.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MiniWeightLineChart(
-    startingWeight: Float,
-    targetWeight: Float,
-    history: List<WeightEntry>,
-    modifier: Modifier = Modifier
-) {
-    val density = LocalDensity.current
-    val primaryColor = PrimaryGreen
-    val grayColor = TextSecondary
-    val targetColor = Color(0xFF4CAF50)
-    val pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
-
-    val textPaint = remember(density) {
-        Paint().apply {
-            color = grayColor.toArgb()
-            textAlign = Paint.Align.LEFT
-            textSize = with(density) { 10.sp.toPx() }
-        }
-    }
-    val xTextPaint = remember(density) {
-        Paint().apply {
-            color = grayColor.toArgb()
-            textAlign = Paint.Align.CENTER
-            textSize = with(density) { 10.sp.toPx() }
-        }
-    }
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val allWeights = (history.map { it.weight } + startingWeight + targetWeight).filter { it > 0 }
-        if (allWeights.isEmpty() && startingWeight <= 0) return@Canvas
-
-        val historyWeights = history.map { it.weight }
-        val allPoints = (listOf(startingWeight) + historyWeights).filter { it > 0 }
-
-        if (allPoints.isEmpty()) return@Canvas
-
-        val minWeight = allWeights.minOrNull() ?: 0f
-        val maxWeight = allWeights.maxOrNull() ?: 0f
-
-        val verticalPadding = (maxWeight - minWeight) * 0.15f
-        val yMin = (minWeight - verticalPadding).coerceAtLeast(0f)
-        val yMax = (maxWeight + verticalPadding).coerceAtLeast(yMin + 1f)
-        val weightRange = (yMax - yMin)
-
-        val yAxisPadding = with(density) { 20.dp.toPx() }
-        val xAxisPadding = with(density) { 12.dp.toPx() }
-        val graphWidth = size.width - yAxisPadding
-        val graphHeight = size.height - xAxisPadding
-
-        val totalPoints = allPoints.size
-        val xSpacing = graphWidth / (totalPoints - 1).coerceAtLeast(1)
-
-        fun getY(weight: Float): Float {
-            return graphHeight - ((weight - yMin) / weightRange) * graphHeight
-        }
-
-        fun getX(index: Int): Float {
-            return yAxisPadding + (index * xSpacing)
-        }
-
-        val yMinLabel = String.format("%.0f", yMin)
-        val yMaxLabel = String.format("%.0f", yMax)
-
-        drawContext.canvas.nativeCanvas.drawText(
-            yMaxLabel,
-            yAxisPadding - with(density) { 4.dp.toPx() },
-            getY(yMax) + with(density) { 3.dp.toPx() },
-            textPaint
-        )
-        drawContext.canvas.nativeCanvas.drawText(
-            yMinLabel,
-            yAxisPadding - with(density) { 4.dp.toPx() },
-            getY(yMin) - with(density) { 3.dp.toPx() },
-            textPaint
-        )
-
-        drawContext.canvas.nativeCanvas.drawText(
-            "Start",
-            getX(0),
-            size.height - with(density) { 2.dp.toPx() },
-            xTextPaint
-        )
-        if (allPoints.size > 1) {
-            drawContext.canvas.nativeCanvas.drawText(
-                "Now",
-                getX(allPoints.size - 1),
-                size.height - with(density) { 2.dp.toPx() },
-                xTextPaint
-            )
-        }
-
-        if (targetWeight > 0) {
-            val targetY = getY(targetWeight)
-            drawLine(
-                color = targetColor,
-                start = Offset(yAxisPadding, targetY),
-                end = Offset(size.width, targetY),
-                strokeWidth = with(density) { 1.dp.toPx() },
-                pathEffect = pathEffect
-            )
-        }
-
-        val points = allPoints.mapIndexed { index, weight ->
-            Offset(getX(index), getY(weight))
-        }
-
-        if (points.size == 1) {
-            drawCircle(
-                color = primaryColor,
-                radius = with(density) { 2.dp.toPx() },
-                center = points.first()
-            )
-        } else {
-            val path = Path()
-            path.moveTo(points.first().x, points.first().y)
-            points.drop(1).forEach { path.lineTo(it.x, it.y) }
-
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = Stroke(
-                    width = with(density) { 2.5.dp.toPx() },
-                    cap = StrokeCap.Round
-                )
-            )
-        }
-    }
-}
-
 
 @Composable
 fun WeightGraphDialog(
@@ -483,13 +187,13 @@ internal fun WeightProgressDialogContent(
                 text = "Weight Progress",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AppTheme.colors.TextPrimary
             )
             IconButton(onClick = onAddClick) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Log New Weight",
-                    tint = PrimaryGreen
+                    tint = AppTheme.colors.PrimaryGreen
                 )
             }
         }
@@ -506,7 +210,7 @@ internal fun WeightProgressDialogContent(
                 Text(
                     text = "Log your weight to see your progress graph!",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
+                    color = AppTheme.colors.TextSecondary,
                     textAlign = TextAlign.Center
                 )
             }
@@ -548,7 +252,7 @@ internal fun WeightProgressDialogContent(
                 Text(
                     text = "Last updated: $formattedDate",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = AppTheme.colors.TextSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
@@ -560,7 +264,7 @@ internal fun WeightProgressDialogContent(
                 onClick = onManageClick,
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Manage Entries", color = PrimaryGreen)
+                Text("Manage Entries", color = AppTheme.colors.PrimaryGreen)
             }
         }
     }
@@ -573,20 +277,20 @@ fun WeightStat(label: String, weight: Float, isMain: Boolean = false) {
         Text(
             text = label,
             style = if (isMain) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-            color = if (isMain) PrimaryGreen else TextSecondary,
+            color = if (isMain) AppTheme.colors.PrimaryGreen else AppTheme.colors.TextSecondary,
             fontWeight = if (isMain) FontWeight.Bold else FontWeight.Normal
         )
         Text(
             text = weightText,
             style = if (isMain) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
-            color = if (isMain) PrimaryGreen else TextPrimary,
+            color = if (isMain) AppTheme.colors.PrimaryGreen else AppTheme.colors.TextPrimary,
             fontWeight = FontWeight.Bold
         )
         if (isMain) {
             Text(
                 text = "kg",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary
+                color = AppTheme.colors.TextSecondary
             )
         }
     }
@@ -603,9 +307,9 @@ fun WeightLineChart(
 ) {
     val density = LocalDensity.current
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-    val primaryColor = PrimaryGreen
+    val primaryColor = AppTheme.colors.PrimaryGreen
     val targetColor = Color(0xFF4CAF50)
-    val grayColor = TextSecondary
+    val grayColor = AppTheme.colors.TextSecondary
 
     val dateFormat = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
 
@@ -801,7 +505,7 @@ fun LogWeightDialog(
     var isError by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyY", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     val datePickerDialog = DatePickerDialog(
         context,
@@ -880,9 +584,7 @@ fun LogWeightDialog(
                     val weight = weightInput.toFloatOrNull()
                     if (weight != null && weight > 0) {
                         if (isEditMode) {
-                            if (entryToEdit != null) {
-                                onUpdate(entryToEdit.id, weight, selectedDate)
-                            }
+                            onUpdate(entryToEdit.id, weight, selectedDate)
                         } else {
                             onSave(weight, selectedDate)
                         }

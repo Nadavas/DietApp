@@ -47,10 +47,4 @@ class UserPreferencesRepository(private val context: Context) {
             preferences.clear()
         }
     }
-
-    suspend fun saveDarkModePreference(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.DARK_MODE_ENABLED] = enabled
-        }
-    }
 }

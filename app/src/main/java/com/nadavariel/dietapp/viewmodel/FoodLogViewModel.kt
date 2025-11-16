@@ -62,7 +62,6 @@ class FoodLogViewModel : ViewModel() {
     private var targetWeightListener: ListenerRegistration? = null
 
     private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
-    val graphPreferences = _graphPreferences.asStateFlow() // <-- Made this public
 
     private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
     val weightHistory = _weightHistory.asStateFlow()

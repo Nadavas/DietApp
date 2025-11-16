@@ -16,9 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen
-import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
-import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.AvatarConstants
 
 @Composable
@@ -61,14 +59,14 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             Text(
                 text = "Welcome back,",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                color = AppTheme.colors.TextSecondary,
                 fontSize = 14.sp
             )
             Text(
                 text = userName.ifBlank { "User" },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = AppTheme.colors.TextPrimary,
                 fontSize = 24.sp
             )
         }
@@ -85,7 +83,7 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
             Box(
                 modifier = Modifier
                     .fillMaxSize() // Fills the 52.dp
-                    .background(PrimaryGreen.copy(alpha = 0.1f), CircleShape)
+                    .background(AppTheme.colors.PrimaryGreen.copy(alpha = 0.1f), CircleShape)
             )
             // Avatar Image (slightly smaller to show background)
             Image(

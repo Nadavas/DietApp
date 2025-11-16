@@ -28,13 +28,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nadavariel.dietapp.ui.AppTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-
-// --- DESIGN TOKENS TO MATCH YOUR HOME SCREEN DESIGN ---
-private val HealthyGreen = Color(0xFF4CAF50)
-private val LightGreyText = Color(0xFF757575)
 
 // --- THIS IS NOW THE ONLY SectionHeader ---
 @Composable
@@ -47,13 +44,13 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .background(HealthyGreen, CircleShape) // Using the correct green
+                .background(AppTheme.colors.HealthyGreen, CircleShape) // Using the correct green
         )
         Text(
             text = title.uppercase(Locale.ROOT),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            color = LightGreyText,
+            color = AppTheme.colors.LightGreyText,
             letterSpacing = 1.2.sp
         )
     }
@@ -74,7 +71,7 @@ fun SubSectionHeader(title: String, modifier: Modifier = Modifier) {
             text = title.uppercase(Locale.ROOT),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            color = LightGreyText,
+            color = AppTheme.colors.LightGreyText,
             letterSpacing = 1.2.sp
         )
     }
@@ -113,15 +110,15 @@ fun ThemedOutlinedTextField(
         onValueChange = onValueChange,
         label = { Text(label) },
         modifier = modifier,
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = LightGreyText) } },
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = AppTheme.colors.LightGreyText) } },
         keyboardOptions = keyboardOptions,
         singleLine = singleLine,
         minLines = minLines,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = HealthyGreen,
-            focusedLabelColor = HealthyGreen,
-            cursorColor = HealthyGreen,
+            focusedBorderColor = AppTheme.colors.HealthyGreen,
+            focusedLabelColor = AppTheme.colors.HealthyGreen,
+            cursorColor = AppTheme.colors.HealthyGreen,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
         )
     )
@@ -275,7 +272,7 @@ private fun DateTimePickerRow(icon: ImageVector, label: String, value: String, o
         Text(
             text = value, style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = HealthyGreen,
+            color = AppTheme.colors.HealthyGreen,
             textAlign = TextAlign.End
         )
     }

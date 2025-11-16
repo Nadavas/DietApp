@@ -24,42 +24,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.ui.stats.*
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
-import java.util.Locale
-
-// Modern Color Palette
-private val PrimaryGreen = Color(0xFF00C853)
-private val AccentTeal = Color(0xFF00BFA5)
-private val SoftBlue = Color(0xFF40C4FF)
-private val WarmOrange = Color(0xFFFF6E40)
-private val DeepPurple = Color(0xFF7C4DFF)
-private val SunsetPink = Color(0xFFFF4081)
-private val BackgroundGradient = listOf(Color(0xFFF8F9FA), Color(0xFFFFFFFF))
-private val CardBackground = Color.White
-private val TextPrimary = Color(0xFF1A1A1A)
-private val TextSecondary = Color(0xFF6B7280)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun StatisticsScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
-    goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
     val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsState()
-    val weeklyFiber by foodLogViewModel.weeklyFiber.collectAsState()
-    val weeklySugar by foodLogViewModel.weeklySugar.collectAsState()
-    val weeklySodium by foodLogViewModel.weeklySodium.collectAsState()
-    val weeklyPotassium by foodLogViewModel.weeklyPotassium.collectAsState()
-    val weeklyCalcium by foodLogViewModel.weeklyCalcium.collectAsState()
-    val weeklyIron by foodLogViewModel.weeklyIron.collectAsState()
-    val weeklyVitaminC by foodLogViewModel.weeklyVitaminC.collectAsState()
-
-    val goals by goalViewModel.goals.collectAsState()
 
     LaunchedEffect(Unit) {
         foodLogViewModel.refreshStatistics()
@@ -68,7 +44,7 @@ fun StatisticsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(BackgroundGradient))
+            .background(Brush.verticalGradient(AppTheme.colors.StatsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Modern Header
@@ -94,7 +70,7 @@ fun StatisticsScreen(
                         title = "Energy & Protein",
                         subtitle = "Daily calories and protein intake",
                         icon = Icons.Default.LocalFireDepartment,
-                        color = WarmOrange,
+                        color = AppTheme.colors.WarmOrange,
                         onClick = { navController.navigate(NavRoutes.STATS_ENERGY) }
                     )
                 }
@@ -104,7 +80,7 @@ fun StatisticsScreen(
                         title = "Macronutrients",
                         subtitle = "Protein, carbs, and fat balance",
                         icon = Icons.Default.PieChart,
-                        color = PrimaryGreen,
+                        color = AppTheme.colors.StatsGreen,
                         onClick = { navController.navigate(NavRoutes.STATS_MACROS) }
                     )
                 }
@@ -114,7 +90,7 @@ fun StatisticsScreen(
                         title = "Fiber & Sugar",
                         subtitle = "Carbohydrate quality metrics",
                         icon = Icons.Default.Spa,
-                        color = AccentTeal,
+                        color = AppTheme.colors.AccentTeal,
                         onClick = { navController.navigate(NavRoutes.STATS_CARBS) }
                     )
                 }
@@ -124,7 +100,7 @@ fun StatisticsScreen(
                         title = "Minerals",
                         subtitle = "Sodium, potassium, calcium, iron",
                         icon = Icons.Default.Science,
-                        color = SoftBlue,
+                        color = AppTheme.colors.SoftBlue,
                         onClick = { navController.navigate(NavRoutes.STATS_MINERALS) }
                     )
                 }
@@ -134,7 +110,7 @@ fun StatisticsScreen(
                         title = "Vitamins",
                         subtitle = "Essential vitamin intake",
                         icon = Icons.Default.Favorite,
-                        color = SunsetPink,
+                        color = AppTheme.colors.SunsetPink,
                         onClick = { navController.navigate(NavRoutes.STATS_VITAMINS) }
                     )
                 }
@@ -162,12 +138,12 @@ private fun ModernHeader() {
                 text = "Nutrition Insights",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AppTheme.colors.TextPrimary
             )
             Text(
                 text = "Your weekly nutrition summary",
                 fontSize = 14.sp,
-                color = TextSecondary,
+                color = AppTheme.colors.TextSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -183,7 +159,7 @@ private fun HeroStatsRow(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -196,7 +172,7 @@ private fun HeroStatsRow(
                 label = "Avg Calories",
                 value = "$caloriesAvg",
                 unit = "kcal",
-                color = WarmOrange
+                color = AppTheme.colors.WarmOrange
             )
 
             Box(
@@ -210,7 +186,7 @@ private fun HeroStatsRow(
                 label = "Avg Protein",
                 value = "$proteinAvg",
                 unit = "g",
-                color = PrimaryGreen
+                color = AppTheme.colors.StatsGreen
             )
 
             Box(
@@ -224,7 +200,7 @@ private fun HeroStatsRow(
                 label = "Balance",
                 value = if (macroBalance.values.any { it > 0 }) "✓" else "-",
                 unit = "",
-                color = AccentTeal
+                color = AppTheme.colors.AccentTeal
             )
         }
     }
@@ -244,7 +220,7 @@ private fun HeroStatItem(
         Text(
             text = label,
             fontSize = 12.sp,
-            color = TextSecondary,
+            color = AppTheme.colors.TextSecondary,
             fontWeight = FontWeight.Medium
         )
         Row(
@@ -261,7 +237,7 @@ private fun HeroStatItem(
                 Text(
                     text = unit,
                     fontSize = 12.sp,
-                    color = TextSecondary,
+                    color = AppTheme.colors.TextSecondary,
                     modifier = Modifier.padding(bottom = 3.dp)
                 )
             }
@@ -282,7 +258,7 @@ private fun CategoryCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
@@ -315,19 +291,19 @@ private fun CategoryCard(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = AppTheme.colors.TextPrimary
                 )
                 Text(
                     text = subtitle,
                     fontSize = 13.sp,
-                    color = TextSecondary
+                    color = AppTheme.colors.TextSecondary
                 )
             }
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "View details",
-                tint = TextSecondary,
+                tint = AppTheme.colors.TextSecondary,
                 modifier = Modifier.size(24.dp)
             )
         }

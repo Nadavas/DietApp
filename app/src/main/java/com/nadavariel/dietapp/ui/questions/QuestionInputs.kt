@@ -17,10 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
-import com.nadavariel.dietapp.ui.QuestionColors.CardBackgroundColor
-import com.nadavariel.dietapp.ui.QuestionColors.DarkGreyText
-import com.nadavariel.dietapp.ui.QuestionColors.LightGreyText
-import com.nadavariel.dietapp.ui.QuestionColors.VibrantGreen
+import com.nadavariel.dietapp.ui.AppTheme
 import java.util.*
 import kotlin.math.roundToInt
 
@@ -79,9 +76,9 @@ private fun TextInput(currentValue: String?, onValueChange: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         placeholder = { Text("Type your answer...") },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = VibrantGreen,
-            focusedLabelColor = VibrantGreen,
-            cursorColor = VibrantGreen
+            focusedBorderColor = AppTheme.colors.VibrantGreen,
+            focusedLabelColor = AppTheme.colors.VibrantGreen,
+            cursorColor = AppTheme.colors.VibrantGreen
         ),
         minLines = 3 // Makes more sense for "types of exercise"
     )
@@ -109,8 +106,8 @@ private fun OptionCardItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) VibrantGreen else LightGreyText.copy(alpha = 0.3f)
-    val containerColor = if (isSelected) VibrantGreen.copy(alpha = 0.05f) else CardBackgroundColor
+    val borderColor = if (isSelected) AppTheme.colors.VibrantGreen else AppTheme.colors.LightGreyText.copy(alpha = 0.3f)
+    val containerColor = if (isSelected) AppTheme.colors.VibrantGreen.copy(alpha = 0.05f) else AppTheme.colors.CardBackground
 
     Card(
         onClick = onClick,
@@ -130,7 +127,7 @@ private fun OptionCardItem(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) VibrantGreen else DarkGreyText,
+                color = if (isSelected) AppTheme.colors.VibrantGreen else AppTheme.colors.DarkGreyText,
                 modifier = Modifier.weight(1f)
             )
             if (isSelected) {
@@ -138,7 +135,7 @@ private fun OptionCardItem(
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Selected",
-                    tint = VibrantGreen
+                    tint = AppTheme.colors.VibrantGreen
                 )
             }
         }
@@ -175,8 +172,8 @@ internal fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
-        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        border = BorderStroke(1.dp, AppTheme.colors.LightGreyText.copy(alpha = 0.3f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -186,12 +183,12 @@ internal fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
             Icon(
                 Icons.Default.CalendarToday,
                 contentDescription = "Pick Date",
-                tint = VibrantGreen,
+                tint = AppTheme.colors.VibrantGreen,
                 modifier = Modifier.padding(end = 12.dp)
             )
             Text(
                 if (hasAnswer) currentAnswer else "Select Date of Birth",
-                color = if (hasAnswer) VibrantGreen else DarkGreyText,
+                color = if (hasAnswer) AppTheme.colors.VibrantGreen else AppTheme.colors.DarkGreyText,
                 fontWeight = if (hasAnswer) FontWeight.Bold else FontWeight.Normal,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -233,8 +230,8 @@ private fun AnimatedSliderInput(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
-        border = BorderStroke(1.dp, LightGreyText.copy(alpha = 0.3f)),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground),
+        border = BorderStroke(1.dp, AppTheme.colors.LightGreyText.copy(alpha = 0.3f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -246,7 +243,7 @@ private fun AnimatedSliderInput(
                 text = String.format(Locale.US, "%.1f %s", sliderValue, unit),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = VibrantGreen
+                color = AppTheme.colors.VibrantGreen
             )
             Spacer(Modifier.height(16.dp))
 
@@ -257,9 +254,9 @@ private fun AnimatedSliderInput(
                 valueRange = valueRange,
                 onValueChangeFinished = { saveValue() },
                 colors = SliderDefaults.colors(
-                    thumbColor = VibrantGreen,
-                    activeTrackColor = VibrantGreen,
-                    inactiveTrackColor = VibrantGreen.copy(alpha = 0.2f)
+                    thumbColor = AppTheme.colors.VibrantGreen,
+                    activeTrackColor = AppTheme.colors.VibrantGreen,
+                    inactiveTrackColor = AppTheme.colors.VibrantGreen.copy(alpha = 0.2f)
                 )
             )
 
@@ -272,13 +269,13 @@ private fun AnimatedSliderInput(
                     sliderValue = (sliderValue - step).coerceIn(valueRange)
                     saveValue()
                 }) {
-                    Icon(Icons.Default.Remove, "Decrease", tint = DarkGreyText)
+                    Icon(Icons.Default.Remove, "Decrease", tint = AppTheme.colors.DarkGreyText)
                 }
                 IconButton(onClick = {
                     sliderValue = (sliderValue + step).coerceIn(valueRange)
                     saveValue()
                 }) {
-                    Icon(Icons.Default.Add, "Increase", tint = DarkGreyText)
+                    Icon(Icons.Default.Add, "Increase", tint = AppTheme.colors.DarkGreyText)
                 }
             }
         }
@@ -335,9 +332,9 @@ private fun ExerciseChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) VibrantGreen else LightGreyText.copy(alpha = 0.3f)
-    val containerColor = if (isSelected) VibrantGreen.copy(alpha = 0.05f) else CardBackgroundColor
-    val contentColor = if (isSelected) VibrantGreen else DarkGreyText
+    val borderColor = if (isSelected) AppTheme.colors.VibrantGreen else AppTheme.colors.LightGreyText.copy(alpha = 0.3f)
+    val containerColor = if (isSelected) AppTheme.colors.VibrantGreen.copy(alpha = 0.05f) else AppTheme.colors.CardBackground
+    val contentColor = if (isSelected) AppTheme.colors.VibrantGreen else AppTheme.colors.DarkGreyText
 
     // Simple keyword to icon mapping
     val icon = remember(text) {

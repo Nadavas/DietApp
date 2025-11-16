@@ -12,10 +12,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
-import com.nadavariel.dietapp.ui.QuestionColors.CardBackgroundColor
-import com.nadavariel.dietapp.ui.QuestionColors.DarkGreyText
-import com.nadavariel.dietapp.ui.QuestionColors.ScreenBackgroundColor
-import com.nadavariel.dietapp.ui.QuestionColors.VibrantGreen
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.DietPlanResult
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
@@ -31,12 +28,12 @@ internal fun EditQuestionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = ScreenBackgroundColor,
+        containerColor = AppTheme.colors.ScreenBackground,
         title = {
             Text(
                 question.text,
                 fontWeight = FontWeight.Bold,
-                color = DarkGreyText
+                color = AppTheme.colors.DarkGreyText
             )
         },
         text = {
@@ -69,7 +66,7 @@ internal fun EditQuestionDialog(
                     }
                     onDismiss()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
             ) {
                 Text("Save")
             }
@@ -77,7 +74,7 @@ internal fun EditQuestionDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = DarkGreyText)
+                colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.DarkGreyText)
             ) {
                 Text("Cancel")
             }
@@ -98,17 +95,17 @@ internal fun HandleDietPlanResultDialogs(
                 Card(
                     modifier = Modifier.padding(32.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackgroundColor)
+                    colors = CardDefaults.cardColors(containerColor = AppTheme.colors.CardBackground)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(24.dp)
                     ) {
-                        CircularProgressIndicator(color = VibrantGreen)
+                        CircularProgressIndicator(color = AppTheme.colors.VibrantGreen)
                         Spacer(Modifier.width(20.dp))
                         Text(
                             "Generating your plan...",
-                            color = DarkGreyText,
+                            color = AppTheme.colors.DarkGreyText,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -140,14 +137,14 @@ internal fun HandleDietPlanResultDialogs(
 internal fun DietPlanErrorDialog(message: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = ScreenBackgroundColor,
+        containerColor = AppTheme.colors.ScreenBackground,
         shape = RoundedCornerShape(20.dp),
-        title = { Text("Error", fontWeight = FontWeight.Bold, color = DarkGreyText) },
-        text = { Text(message, color = DarkGreyText, style = MaterialTheme.typography.bodyLarge) },
+        title = { Text("Error", fontWeight = FontWeight.Bold, color = AppTheme.colors.DarkGreyText) },
+        text = { Text(message, color = AppTheme.colors.DarkGreyText, style = MaterialTheme.typography.bodyLarge) },
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = VibrantGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.VibrantGreen)
             ) {
                 Text("Dismiss")
             }

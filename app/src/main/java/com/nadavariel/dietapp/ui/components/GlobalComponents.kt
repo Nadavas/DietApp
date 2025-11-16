@@ -104,8 +104,7 @@ fun HoveringNotificationCard(
 @Composable
 fun GeminiConfirmationDialog(
     foodInfoList: List<FoodNutritionalInfo>,
-    onAccept: (List<FoodNutritionalInfo>) -> Unit, // <-- MODIFIED
-    onEdit: () -> Unit, // This will now just toggle state
+    onAccept: (List<FoodNutritionalInfo>) -> Unit,
     onCancel: () -> Unit
 ) {
     // --- 1. SET UP INTERNAL STATE FOR EDITING ---

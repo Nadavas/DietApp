@@ -8,9 +8,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,11 +27,7 @@ import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.model.WeightEntry
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.home.*
-import com.nadavariel.dietapp.ui.HomeColors.BackgroundGradient
-import com.nadavariel.dietapp.ui.HomeColors.TextPrimary
-import com.nadavariel.dietapp.ui.HomeColors.TextSecondary
-import com.nadavariel.dietapp.ui.HomeColors.PageBackgroundColor
-import com.nadavariel.dietapp.ui.HomeColors.PrimaryGreen
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
@@ -156,14 +149,14 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(BackgroundGradient))
+            .background(Brush.verticalGradient(AppTheme.colors.HomeGradient))
     ) {
         if (isScreenLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = PrimaryGreen)
+                CircularProgressIndicator(color = AppTheme.colors.PrimaryGreen)
             }
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -186,9 +179,7 @@ fun HomeScreen(
 
                     if (dietPlan == null) {
                         item {
-                            Card(
-                                // ... (Questionnaire card unchanged)
-                            ) {
+                            Card {
                                 // ...
                             }
                         }
@@ -250,13 +241,13 @@ fun HomeScreen(
                                 text = "Today's Meals",
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = AppTheme.colors.TextPrimary
                             )
                             if (mealsForSelectedDate.isNotEmpty()) {
                                 Text(
                                     text = "${mealsForSelectedDate.size} meals",
                                     fontSize = 14.sp,
-                                    color = TextSecondary
+                                    color = AppTheme.colors.TextSecondary
                                 )
                             }
                         }
@@ -270,7 +261,7 @@ fun HomeScreen(
                                 MealSectionHeader(
                                     section,
                                     Modifier.background(
-                                        PageBackgroundColor
+                                        AppTheme.colors.ScreenBackground
                                     )
                                 )
                             }
@@ -327,7 +318,7 @@ private fun CardSectionHeader(title: String, modifier: Modifier = Modifier) {
         text = title,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
-        color = TextPrimary,
+        color = AppTheme.colors.TextPrimary,
         modifier = modifier.padding(start = 4.dp) // Small indent to align with card content
     )
 }

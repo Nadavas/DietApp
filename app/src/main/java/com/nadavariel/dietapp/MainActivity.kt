@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -127,15 +126,12 @@ class MainActivity : ComponentActivity() {
             val questionsViewModel: QuestionsViewModel = viewModel(factory = appViewModelFactory)
             val goalsViewModel: GoalsViewModel = viewModel(factory = appViewModelFactory)
 
-
-            val isDarkModeEnabled by authViewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
             val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
-            val useDarkTheme = isDarkModeEnabled || isSystemInDarkTheme()
             val currentUser = authViewModel.currentUser
 
             var showGeminiDialog by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
 
-            DietAppTheme(darkTheme = useDarkTheme) {
+            DietAppTheme { // <-- Dark theme parameter removed
 
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
@@ -666,9 +662,6 @@ class MainActivity : ComponentActivity() {
                         onAccept = { modifiedList ->
                             foodLogViewModel.logMealsFromFoodInfoList(modifiedList)
                             showGeminiDialog = null
-                        },
-                        onEdit = {
-                            Log.d("MainActivity", "Edit button clicked")
                         },
                         onCancel = {
                             foodLogViewModel.resetGeminiResult()

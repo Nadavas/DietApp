@@ -16,8 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-private val HealthyGreen = Color(0xFF4CAF50)
+import com.nadavariel.dietapp.ui.AppTheme
 
 @Composable
 fun ImageInputSection(
@@ -77,7 +76,7 @@ private fun ImagePickerOption(
         Icon(
             imageVector = icon,
             contentDescription = text,
-            tint = HealthyGreen,
+            tint = AppTheme.colors.HealthyGreen,
             modifier = Modifier.size(40.dp)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -85,7 +84,7 @@ private fun ImagePickerOption(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = HealthyGreen
+            color = AppTheme.colors.HealthyGreen
         )
     }
 }

@@ -168,7 +168,4 @@ fun ChangePasswordScreen(
             }
         }
     }
-
-    // --- 4. REMOVED THE RE-AUTHENTICATION DIALOG ---
-    // (It's no longer needed as we proactively ask for the password)
 }

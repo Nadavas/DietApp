@@ -39,7 +39,7 @@ import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
-import com.nadavariel.dietapp.ui.HomeColors
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.meals.*
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
@@ -444,7 +444,7 @@ fun AddEditMealScreen(
                         Text(
                             text = "Log a meal by entering all nutritional information yourself.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = HomeColors.TextSecondary,
+                            color = AppTheme.colors.TextSecondary,
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
                         Spacer(Modifier.height(16.dp))
@@ -452,7 +452,7 @@ fun AddEditMealScreen(
                             onClick = { navController.navigate(NavRoutes.ADD_MANUAL_MEAL) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = HomeColors.PrimaryGreen
+                                containerColor = AppTheme.colors.PrimaryGreen
                             )
                         ) {
                             Icon(Icons.Default.EditNote, contentDescription = null)
