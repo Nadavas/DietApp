@@ -14,7 +14,7 @@ object NavRoutes {
     const val CREATE_THREAD = "create_thread"
     const val THREAD_DETAIL = "thread_detail"
     const val THREAD_DETAIL_WITH_ARG = "thread_detail/{threadId}"
-    const val GOALS = "goals"
+    const val DIET_PLAN = "diet_plan"
     const val UPDATE_PROFILE_BASE = "update_profile"
     const val IS_NEW_USER_ARG = "isNewUser"
     const val UPDATE_PROFILE = "$UPDATE_PROFILE_BASE?${IS_NEW_USER_ARG}={${IS_NEW_USER_ARG}}"

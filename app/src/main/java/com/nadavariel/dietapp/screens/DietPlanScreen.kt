@@ -2,21 +2,24 @@ package com.nadavariel.dietapp.screens
 
 import androidx.activity.compose.BackHandler // <-- IMPORT ADDED
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -33,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -41,15 +45,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes // <-- IMPORT ADDED
 import com.nadavariel.dietapp.model.ExampleMeal
-import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import kotlin.math.sin
 
@@ -61,14 +62,14 @@ private val ScreenBackgroundColor = Color(0xFFF7F9FC)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun GoalsScreen(
+fun DietPlanScreen(
     navController: NavController,
     goalsViewModel: GoalsViewModel = viewModel()
 ) {
-    val goals by goalsViewModel.goals.collectAsStateWithLifecycle()
-    val userWeight by goalsViewModel.userWeight.collectAsState()
+    // We still need these to display the plan
     val hasAiGeneratedGoals by goalsViewModel.hasAiGeneratedGoals.collectAsState()
     val dietPlan by goalsViewModel.currentDietPlan.collectAsState()
+    val userWeight by goalsViewModel.userWeight.collectAsState() // Keep for protein card
 
     // --- THIS IS THE FIX (PART 1) ---
     // Define the navigation action you want
@@ -202,89 +203,35 @@ fun GoalsScreen(
             dietPlan?.let { plan ->
 
                 // --- NEW CARD: Health Overview ---
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                CollapsibleCard(
+                    icon = Icons.Default.PersonSearch,
+                    iconBackgroundColor = Color(0xFFE3F2FD),
+                    iconTint = Color(0xFF2196F3),
+                    title = "Your Health Overview"
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFE3F2FD)), // Light Blue
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.PersonSearch,
-                                    contentDescription = null,
-                                    tint = Color(0xFF2196F3),
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Text(
-                                "Your Health Overview",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkGreyText
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            text = plan.healthOverview,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = DarkGreyText.copy(alpha = 0.85f),
-                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
-                        )
-                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = plan.healthOverview,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = DarkGreyText.copy(alpha = 0.85f),
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
+                    )
                 }
 
                 // --- NEW CARD: Goal Strategy ---
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                CollapsibleCard(
+                    icon = Icons.Default.Flag,
+                    iconBackgroundColor = Color(0xFFE8F5E9),
+                    iconTint = Color(0xFF4CAF50),
+                    title = "Your Goal Strategy"
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFE8F5E9)), // Light Green
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Flag,
-                                    contentDescription = null,
-                                    tint = Color(0xFF4CAF50),
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Text(
-                                "Your Goal Strategy",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkGreyText
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            text = plan.goalStrategy,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = DarkGreyText.copy(alpha = 0.85f),
-                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
-                        )
-                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = plan.goalStrategy,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = DarkGreyText.copy(alpha = 0.85f),
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
+                    )
                 }
 
                 AnimatedCalorieHeroCard(
@@ -339,156 +286,73 @@ fun GoalsScreen(
                 }
 
                 // --- NEW CARD: Meal Guidelines ---
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                CollapsibleCard(
+                    icon = Icons.AutoMirrored.Filled.Rule,
+                    iconBackgroundColor = Color(0xFFF3E5F5),
+                    iconTint = Color(0xFF9C27B0),
+                    title = "Meal Guidelines"
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFF3E5F5)), // Light Purple
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.Rule,
-                                    contentDescription = null,
-                                    tint = Color(0xFF9C27B0),
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Text(
-                                "Meal Guidelines",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkGreyText
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                        // Meal Frequency
-                        Text(
-                            plan.concretePlan.mealGuidelines.mealFrequency,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = DarkGreyText,
-                            fontStyle = FontStyle.Italic,
-                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.times(1.4f)
-                        )
-                        Spacer(Modifier.height(16.dp))
+                    // Meal Frequency
+                    Text(
+                        plan.concretePlan.mealGuidelines.mealFrequency,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DarkGreyText,
+                        fontStyle = FontStyle.Italic,
+                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.times(1.4f)
+                    )
+                    Spacer(Modifier.height(16.dp))
 
-                        // Foods to Emphasize
-                        Text("Foods to Emphasize:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = VibrantGreen)
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            plan.concretePlan.mealGuidelines.foodsToEmphasize.forEach { FoodChip(it, true) }
-                        }
-                        Spacer(Modifier.height(16.dp))
+                    // Foods to Emphasize
+                    Text("Foods to Emphasize:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = VibrantGreen)
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        plan.concretePlan.mealGuidelines.foodsToEmphasize.forEach { FoodChip(it, true) }
+                    }
+                    Spacer(Modifier.height(16.dp))
 
-                        // Foods to Limit
-                        Text("Foods to Limit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = Color(0xFFD32F2F))
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            plan.concretePlan.mealGuidelines.foodsToLimit.forEach { FoodChip(it, false) }
-                        }
+                    // Foods to Limit
+                    Text("Foods to Limit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = Color(0xFFD32F2F))
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        plan.concretePlan.mealGuidelines.foodsToLimit.forEach { FoodChip(it, false) }
                     }
                 }
 
                 // --- NEW CARD: Example Meal Plan ---
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                CollapsibleCard(
+                    icon = Icons.Default.Restaurant,
+                    iconBackgroundColor = Color(0xFFEDE7F6),
+                    iconTint = Color(0xFF5E35B1),
+                    title = "Example Meal Plan"
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFEDE7F6)), // Light Indigo
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Restaurant,
-                                    contentDescription = null,
-                                    tint = Color(0xFF5E35B1),
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Text(
-                                "Example Meal Plan",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkGreyText
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            MealPlanItem("Breakfast", plan.exampleMealPlan.breakfast)
-                            HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
-                            MealPlanItem("Lunch", plan.exampleMealPlan.lunch)
-                            HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
-                            MealPlanItem("Dinner", plan.exampleMealPlan.dinner)
-                            HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
-                            MealPlanItem("Snacks", plan.exampleMealPlan.snacks)
-                        }
+                    Spacer(Modifier.height(16.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        MealPlanItem("Breakfast", plan.exampleMealPlan.breakfast)
+                        HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+                        MealPlanItem("Lunch", plan.exampleMealPlan.lunch)
+                        HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+                        MealPlanItem("Dinner", plan.exampleMealPlan.dinner)
+                        HorizontalDivider(color = LightGreyText.copy(alpha = 0.2f))
+                        MealPlanItem("Snacks", plan.exampleMealPlan.snacks)
                     }
                 }
 
                 // AI Recommendations (Existing, now just for Training)
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+                CollapsibleCard(
+                    icon = Icons.Default.Lightbulb,
+                    iconBackgroundColor = Color(0xFFFFF3E0),
+                    iconTint = Color(0xFFFF9800),
+                    title = "Personalized Training Advice"
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFFFF3E0)), // Light orange
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Lightbulb,
-                                    contentDescription = null,
-                                    tint = Color(0xFFFF9800),
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Text(
-                                "Personalized Training Advice",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkGreyText
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            text = plan.concretePlan.trainingAdvice,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = DarkGreyText.copy(alpha = 0.85f),
-                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
-                        )
-                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = plan.concretePlan.trainingAdvice,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = DarkGreyText.copy(alpha = 0.85f),
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
+                    )
                 }
 
                 // Disclaimer - Subtle and informative (This was already correct)
@@ -520,60 +384,10 @@ fun GoalsScreen(
                 }
             }
 
-            // Editable Goals Section
-            if (goals.isNotEmpty()) {
-                Divider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                    color = LightGreyText.copy(alpha = 0.2f)
-                )
-
-                Text(
-                    "Custom Adjustments",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkGreyText
-                )
-
-                Text(
-                    "Fine-tune your targets manually",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = LightGreyText,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                goals.forEach { goal ->
-                    EditableGoalCard(
-                        goal = goal,
-                        onValueChange = { newValue ->
-                            goalsViewModel.updateAnswer(goal.id, newValue)
-                        }
-                    )
-                }
-
-                // Save Button - Enhanced
-                Button(
-                    onClick = {
-                        goalsViewModel.saveUserAnswers()
-                        navController.popBackStack()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VibrantGreen
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null)
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        "Save Custom Goals",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            // --- SECTION REMOVED ---
+            // The "Editable Goals Section" and "Save" button
+            // have been moved to UpdateProfileScreen.kt
+            // --- END OF REMOVAL ---
 
             // Empty state - Enhanced
             if (dietPlan == null) {
@@ -587,6 +401,91 @@ fun GoalsScreen(
         }
     }
 }
+
+// ---
+// --- REUSABLE COMPOSABLE (Added from last step)
+// ---
+@Composable
+private fun CollapsibleCard(
+    icon: ImageVector,
+    iconBackgroundColor: Color,
+    iconTint: Color,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) } // Default hidden as requested
+    val rotationAngle by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "arrowRotation"
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+                .animateContentSize() // Animate the size change of the Column
+        ) {
+            // Title Row - now clickable
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(iconBackgroundColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGreyText,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = DarkGreyText,
+                    modifier = Modifier.rotate(rotationAngle)
+                )
+            }
+
+            // Collapsible Content
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
+                exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeOut()
+            ) {
+                // We wrap the content in another Column to prevent animation glitches
+                // and to apply padding uniformly.
+                Column(
+                    modifier = Modifier.padding(top = 8.dp) // Add padding between title and content
+                ) {
+                    content()
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun AnimatedCalorieHeroCard(dailyCalories: Int) {
@@ -875,70 +774,9 @@ fun RecommendationRow(label: String, range: String, color: Color) {
     }
 }
 
-@Composable
-fun EditableGoalCard(
-    goal: Goal,
-    onValueChange: (String) -> Unit
-) {
-    var textValue by remember(goal.value) { mutableStateOf(goal.value ?: "") }
-
-    val isCalorieGoal = goal.text.contains("calorie", ignoreCase = true)
-    val isProteinGoal = goal.text.contains("protein", ignoreCase = true)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = goal.text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = DarkGreyText
-            )
-
-            OutlinedTextField(
-                value = textValue,
-                onValueChange = { newValue ->
-                    textValue = newValue
-                    onValueChange(newValue)
-                },
-                label = {
-                    Text(when {
-                        isCalorieGoal -> "Target (kcal)"
-                        isProteinGoal -> "Target (g)"
-                        else -> "Enter your goal"
-                    })
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = VibrantGreen,
-                    focusedLabelColor = VibrantGreen
-                ),
-                trailingIcon = {
-                    if (textValue.isNotBlank()) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = VibrantGreen
-                        )
-                    }
-                }
-            )
-        }
-    }
-}
+// --- THIS COMPOSABLE IS NOW MOVING TO UPDATE_PROFILE_SCREEN.KT ---
+// @Composable
+// fun EditableGoalCard( ... ) { ... }
 
 @Composable
 fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {

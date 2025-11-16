@@ -64,13 +64,27 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
 import com.nadavariel.dietapp.model.Gender
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MenuAnchorType
+// Imports needed for the new section
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import com.nadavariel.dietapp.model.Goal
+import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateProfileScreen(
     authViewModel: AuthViewModel,
+    goalsViewModel: GoalsViewModel, // <-- 1. ADDED GOALS VIEW MODEL
     navController: NavController,
     onBack: () -> Unit,
     isNewUser: Boolean = false
@@ -78,10 +92,10 @@ fun UpdateProfileScreen(
     val context = LocalContext.current
 
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    val goals by goalsViewModel.goals.collectAsStateWithLifecycle() // <-- 2. COLLECT GOALS STATE
 
     // State variables
     var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
-    // FIX: Bind to 'startingWeight' from the profile
     var weightInput by remember(userProfile.startingWeight) {
         mutableStateOf(if (userProfile.startingWeight > 0f) userProfile.startingWeight.toString() else "")
     }
@@ -96,8 +110,9 @@ fun UpdateProfileScreen(
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
+    // --- 3. UPDATED SAVE ACTION ---
     val saveProfileAction: () -> Unit = {
-        // This call is correct, as AuthViewModel's updateProfile maps 'weight' param to 'startingWeight'
+        // Save profile details
         authViewModel.updateProfile(
             name = nameInput,
             weight = weightInput,
@@ -106,6 +121,11 @@ fun UpdateProfileScreen(
             avatarId = selectedAvatarId,
             gender = selectedGender
         )
+
+        // Save goal adjustments
+        goalsViewModel.saveUserAnswers()
+
+        // Navigate
         if (isNewUser) {
             navController.navigate(NavRoutes.HOME) {
                 popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
@@ -122,7 +142,6 @@ fun UpdateProfileScreen(
         } else {
             userProfile.name
         }
-        // FIX: Update weightInput from startingWeight
         weightInput = if (userProfile.startingWeight > 0f) userProfile.startingWeight.toString() else ""
         heightInput = if (userProfile.height > 0f) userProfile.height.toString() else ""
         dateOfBirthInput = userProfile.dateOfBirth
@@ -133,7 +152,7 @@ fun UpdateProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isNewUser) "Create Profile" else "Update Profile") },
+                title = { Text(if (isNewUser) "Create Profile" else "Edit Profile") }, // <-- Title changed
                 navigationIcon = {
                     IconButton(onClick = {
                         if (isNewUser) {
@@ -161,9 +180,9 @@ fun UpdateProfileScreen(
             verticalArrangement = Arrangement.Top
         ) {
             Text(
-                text = if (isNewUser) "Tell us about yourself!" else "Update Your Profile",
+                text = if (isNewUser) "Tell us about yourself!" else "", // <-- Title changed
                 fontSize = 28.sp,
-                modifier = Modifier.padding(vertical = 24.dp)
+                modifier = if (isNewUser) Modifier.padding(vertical = 24.dp) else Modifier.padding(vertical = 0.dp)
             )
 
             Image(
@@ -182,6 +201,7 @@ fun UpdateProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- Profile Fields ---
             OutlinedTextField(
                 value = nameInput,
                 onValueChange = { nameInput = it },
@@ -200,7 +220,6 @@ fun UpdateProfileScreen(
                         weightInput = newValue
                     }
                 },
-                // FIX: Changed label to "Starting Weight (kg)"
                 label = { Text("Starting Weight (kg)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 modifier = Modifier
@@ -316,11 +335,47 @@ fun UpdateProfileScreen(
                 }
             }
 
+            // --- 4. ADDED CUSTOM ADJUSTMENTS SECTION ---
+            if (goals.isNotEmpty()) {
+                Divider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    color = AppTheme.colors.TextSecondary.copy(alpha = 0.2f)
+                )
+
+                Text(
+                    "Custom Adjustments",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.TextPrimary
+                )
+
+                Text(
+                    "Fine-tune your targets manually",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AppTheme.colors.TextSecondary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    goals.forEach { goal ->
+                        EditableGoalCard(
+                            goal = goal,
+                            onValueChange = { newValue ->
+                                goalsViewModel.updateAnswer(goal.id, newValue)
+                            }
+                        )
+                    }
+                }
+            }
+            // --- END OF ADDED SECTION ---
+
+            Spacer(modifier = Modifier.height(32.dp)) // Increased spacing
+
             Button(
                 onClick = { saveProfileAction() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isNewUser) "Create Profile" else "Save Changes")
+                Text(if (isNewUser) "Create Profile" else "Save All Changes") // <-- Text updated
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -378,6 +433,74 @@ fun UpdateProfileScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+// --- 5. PASTED EDITABLEGOALCARD COMPOSABLE HERE ---
+@Composable
+fun EditableGoalCard(
+    goal: Goal,
+    onValueChange: (String) -> Unit
+) {
+    var textValue by remember(goal.value) { mutableStateOf(goal.value ?: "") }
+
+    val isCalorieGoal = goal.text.contains("calorie", ignoreCase = true)
+    val isProteinGoal = goal.text.contains("protein", ignoreCase = true)
+    val isWeightGoal = goal.text.contains("weight", ignoreCase = true)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = goal.text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AppTheme.colors.TextPrimary
+            )
+
+            OutlinedTextField(
+                value = textValue,
+                onValueChange = { newValue ->
+                    textValue = newValue
+                    onValueChange(newValue)
+                },
+                label = {
+                    Text(when {
+                        isCalorieGoal -> "Target (kcal)"
+                        isProteinGoal -> "Target (g)"
+                        isWeightGoal -> "Target (kg)"
+                        else -> "Enter your goal"
+                    })
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AppTheme.colors.PrimaryGreen,
+                    focusedLabelColor = AppTheme.colors.PrimaryGreen
+                ),
+                trailingIcon = {
+                    if (textValue.isNotBlank()) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = AppTheme.colors.PrimaryGreen
+                        )
+                    }
+                }
+            )
         }
     }
 }

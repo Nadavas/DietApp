@@ -55,7 +55,6 @@ import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
-import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
 import com.nadavariel.dietapp.ui.components.GeminiConfirmationDialog
 import com.nadavariel.dietapp.ui.components.HoveringNotificationCard
@@ -132,7 +131,7 @@ class MainActivity : ComponentActivity() {
 
             var showGeminiDialog by remember { mutableStateOf<List<FoodNutritionalInfo>?>(null) }
 
-            DietAppTheme { // <-- Dark theme parameter removed
+            DietAppTheme {
 
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
@@ -232,8 +231,8 @@ class MainActivity : ComponentActivity() {
                                             selectedRoute == NavRoutes.ACCOUNT
                                     )) {
                             NavigationBar(
-                                containerColor = AppTheme.colors.VibrantGreen,
-                                contentColor = AppTheme.colors.CardBackground.copy(alpha = 0.9f)
+                                containerColor = Color(0xFF4CAF50),
+                                contentColor = Color.White.copy(alpha = 0.9f)
                             ) {
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.HOME,
@@ -357,7 +356,7 @@ class MainActivity : ComponentActivity() {
                             }
                             composable(NavRoutes.SIGN_IN) {
                                 SignInScreen(
-                                    authViewModel = authViewModel, // <-- 1. PASS VM
+                                    authViewModel = authViewModel,
                                     onBack = {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
@@ -378,18 +377,15 @@ class MainActivity : ComponentActivity() {
                             }
                             composable(NavRoutes.SIGN_UP) {
                                 SignUpScreen(
-                                    authViewModel = authViewModel, // <-- 2. PASS VM
+                                    authViewModel = authViewModel,
                                     onBack = {
                                         authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
                                     onSignUpSuccess = { isNewUser ->
-                                        // 3. THIS LOGIC IS NOW CORRECT
                                         if (isNewUser) {
-                                            // New user (Email or Google) -> Go to Questions
                                             navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true")
                                         } else {
-                                            // Existing Google user -> Go to Home
                                             navController.navigate(NavRoutes.HOME) {
                                                 popUpTo(NavRoutes.LANDING) { inclusive = true }
                                                 launchSingleTop = true
@@ -471,6 +467,7 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.MY_PROFILE) {
                                 MyProfileScreen(
                                     authViewModel = authViewModel,
+                                    goalsViewModel = goalsViewModel, // <-- PASS VIEWMODEL
                                     navController = navController
                                 )
                             }
@@ -505,8 +502,8 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            composable(NavRoutes.GOALS) {
-                                GoalsScreen(
+                            composable(NavRoutes.DIET_PLAN) {
+                                DietPlanScreen(
                                     navController = navController,
                                     goalsViewModel = goalsViewModel
                                 )
@@ -528,6 +525,7 @@ class MainActivity : ComponentActivity() {
                                 val isNewUser = isNewUserString?.toBooleanStrictOrNull() == true
                                 UpdateProfileScreen(
                                     authViewModel = authViewModel,
+                                    goalsViewModel = goalsViewModel,
                                     navController = navController,
                                     onBack = { navController.popBackStack() },
                                     isNewUser = isNewUser
@@ -646,7 +644,7 @@ class MainActivity : ComponentActivity() {
                                         message = msg,
                                         showSpinner = false,
                                         onClick = {
-                                            navController.navigate(NavRoutes.GOALS)
+                                            navController.navigate(NavRoutes.DIET_PLAN)
                                             planReadyMessage = null
                                             questionsViewModel.resetDietPlanResult()
                                         }

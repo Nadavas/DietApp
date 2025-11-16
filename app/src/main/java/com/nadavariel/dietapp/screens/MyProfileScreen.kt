@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.GoalsViewModel // <-- IMPORT ADDED
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -32,11 +33,30 @@ import java.util.Locale
 @Composable
 fun MyProfileScreen(
     authViewModel: AuthViewModel,
+    goalsViewModel: GoalsViewModel, // <-- PARAMETER ADDED
     navController: NavController
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+
+    // --- 1. COLLECT GOALS STATE ---
+    val goals by goalsViewModel.goals.collectAsStateWithLifecycle()
+
+    // --- 2. HELPER LOGIC TO FIND GOALS ---
+    val calorieGoal = remember(goals) {
+        (goals.find { it.text.contains("calorie", ignoreCase = true) }?.value ?: "Not Set")
+            .let { if (it.isNotBlank() && it != "Not Set") "$it kcal" else "Not Set" }
+    }
+    val proteinGoal = remember(goals) {
+        (goals.find { it.text.contains("protein", ignoreCase = true) }?.value ?: "Not Set")
+            .let { if (it.isNotBlank() && it != "Not Set") "$it g" else "Not Set" }
+    }
+    val weightGoal = remember(goals) {
+        (goals.find { it.text.contains("weight", ignoreCase = true) }?.value ?: "Not Set")
+            .let { if (it.isNotBlank() && it != "Not Set") "$it kg" else "Not Set" }
+    }
+
 
     Scaffold(
         topBar = {
@@ -68,7 +88,7 @@ fun MyProfileScreen(
                     .padding(bottom = 16.dp)
             )
             Text(
-                text = "Profile Details",
+                text = "Personal Details",
                 fontSize = 20.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -139,6 +159,22 @@ fun MyProfileScreen(
                 )
             }
 
+            // --- 3. ADDED GOALS SECTION ---
+            Spacer(modifier = Modifier.height(24.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Your Targets",
+                fontSize = 20.sp,
+                modifier = Modifier.padding(bottom = 16.dp) // Aligned with "Personal Details"
+            )
+
+            ProfileDetailRow("Calorie Target:", calorieGoal)
+            ProfileDetailRow("Protein Target:", proteinGoal)
+            ProfileDetailRow("Weight Target:", weightGoal)
+            // --- END OF ADDED SECTION ---
+
             Spacer(modifier = Modifier.height(32.dp))
 
             // Edit profile button
@@ -150,7 +186,7 @@ fun MyProfileScreen(
                     contentColor = MaterialTheme.colorScheme.onSecondary
                 )
             ) {
-                Text("Edit Profile")
+                Text("Edit Profile & Goals") // <-- Updated button text
             }
         }
     }
