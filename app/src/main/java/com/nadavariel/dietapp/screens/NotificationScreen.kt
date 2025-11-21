@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.NotificationPreference
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.NotificationViewModel
 import java.util.Calendar
 
@@ -50,6 +51,8 @@ fun NotificationScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
+    // NEW: State to track deletion
+    var preferenceToDelete by remember { mutableStateOf<NotificationPreference?>(null) }
 
     val context = LocalContext.current
     var hasNotificationPermission by remember {
@@ -160,7 +163,8 @@ fun NotificationScreen(
                                 showAddDialog = true
                             },
                             onDelete = {
-                                notificationViewModel.deleteNotification(pref)
+                                // Open confirmation dialog instead of deleting directly
+                                preferenceToDelete = pref
                             }
                         )
                     }
@@ -176,6 +180,21 @@ fun NotificationScreen(
             onDismiss = { showAddDialog = false; selectedPreference = null }
         )
     }
+
+    // NEW: Delete Confirmation Dialog
+    if (preferenceToDelete != null) {
+        StyledAlertDialog(
+            onDismissRequest = { preferenceToDelete = null },
+            title = "Delete Reminder",
+            text = "Are you sure you want to delete this reminder?",
+            confirmButtonText = "Delete",
+            dismissButtonText = "Cancel",
+            onConfirm = {
+                preferenceToDelete?.let { notificationViewModel.deleteNotification(it) }
+                preferenceToDelete = null
+            }
+        )
+    }
 }
 
 @SuppressLint("DefaultLocale")
@@ -186,7 +205,6 @@ fun NotificationCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // Use local state for instant UI switch response
     var isSwitchOn by remember(preference.id) { mutableStateOf(preference.isEnabled) }
 
     LaunchedEffect(preference.isEnabled) {
@@ -213,7 +231,6 @@ fun NotificationCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon Box
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -332,7 +349,6 @@ fun AddEditNotificationDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Type Selection
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -359,7 +375,6 @@ fun AddEditNotificationDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Repetition Selection
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
