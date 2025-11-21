@@ -10,33 +10,57 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.TaskStackBuilder
+import androidx.core.net.toUri
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
-import androidx.core.net.toUri
 
 class WeightReminderReceiver : BroadcastReceiver() {
 
     private val tag = "ALARM_DEBUG_WEIGHT"
 
     companion object {
-        // Use a different channel ID for weight reminders
         const val WEIGHT_CHANNEL_ID = "weight_reminder_channel"
         const val WEIGHT_NOTIF_ID_EXTRA = "weight_notification_id"
         const val WEIGHT_MESSAGE_EXTRA = "weight_message"
+        const val WEIGHT_REPETITION_EXTRA = "weight_repetition" // NEW constant
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        val notificationId = intent?.getIntExtra(WEIGHT_NOTIF_ID_EXTRA, 2) ?: 2 // Use a different base ID (e.g., 2)
+        val notificationId = intent?.getIntExtra(WEIGHT_NOTIF_ID_EXTRA, 2) ?: 2
         val message = intent?.getStringExtra(WEIGHT_MESSAGE_EXTRA) ?: "Time to log your weight!"
+
+        // NEW: Get Firestore ID and Repetition
+        val repetition = intent?.getStringExtra(WEIGHT_REPETITION_EXTRA) ?: "DAILY"
+        val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
 
         Log.i(tag, "WeightReminderReceiver: onReceive triggered.")
 
+        // --- NEW LOGIC: Disable One-Time Reminder in Firestore ---
+        if (repetition == "ONCE" && !firestoreId.isNullOrEmpty()) {
+            val auth = Firebase.auth
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                Log.d(tag, "One-time weight reminder fired. Disabling in Firestore: $firestoreId")
+                Firebase.firestore.collection("users")
+                    .document(userId)
+                    .collection("notifications")
+                    .document(firestoreId)
+                    .update("isEnabled", false)
+                    .addOnFailureListener { e ->
+                        Log.e(tag, "Failed to disable weight reminder: ${e.message}")
+                    }
+            }
+        }
+        // ---------------------------------------------------------
+
         createNotificationChannel(context)
 
-        // This deep link will open the home screen and tell it to open the log weight dialog
         val deepLinkIntent = Intent(
             Intent.ACTION_VIEW,
-            "dietapp://home?openWeightLog=true".toUri(), // New deep link URI
+            "dietapp://home?openWeightLog=true".toUri(),
             context,
             MainActivity::class.java
         )
@@ -50,7 +74,7 @@ class WeightReminderReceiver : BroadcastReceiver() {
         }
 
         val notification = NotificationCompat.Builder(context, WEIGHT_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Use your icon
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Weight Log Reminder")
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

@@ -10,9 +10,12 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.TaskStackBuilder
+import androidx.core.net.toUri
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
-import androidx.core.net.toUri
 
 class MealReminderReceiver : BroadcastReceiver() {
 
@@ -32,6 +35,9 @@ class MealReminderReceiver : BroadcastReceiver() {
         val message = intent?.getStringExtra(NOTIFICATION_MESSAGE_EXTRA) ?: "Time to log your meal!"
         val repetition = intent?.getStringExtra(NOTIFICATION_REPETITION_EXTRA) ?: "DAILY"
 
+        // NEW: Get the Firestore Document ID we added in the Scheduler
+        val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
+
         Log.d(tag, "Receiver details - ID: $notificationId, Message: $message, Repetition: $repetition")
 
         if (notificationId == 0) {
@@ -39,32 +45,40 @@ class MealReminderReceiver : BroadcastReceiver() {
             return
         }
 
+        // --- NEW LOGIC: If this is a One-Time reminder, turn it off in Firestore ---
+        if (repetition == "ONCE" && !firestoreId.isNullOrEmpty()) {
+            val auth = Firebase.auth
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                Log.d(tag, "One-time reminder fired. Updating Firestore to disable: $firestoreId")
+                Firebase.firestore.collection("users")
+                    .document(userId)
+                    .collection("notifications")
+                    .document(firestoreId)
+                    .update("isEnabled", false)
+                    .addOnFailureListener { e ->
+                        Log.e(tag, "Failed to disable one-time reminder in Firestore: ${e.message}")
+                    }
+            }
+        }
+        // --------------------------------------------------------------------------
+
         createNotificationChannel(context)
 
-        // --- NEW: Create a deep link intent with a back stack ---
-
-        // 1. Create the deep link Intent for the AddEditMealScreen
         val addMealIntent = Intent(
             Intent.ACTION_VIEW,
-            "dietapp://add_meal".toUri(), // The custom URI we defined
+            "dietapp://add_meal".toUri(),
             context,
-            MainActivity::class.java // The activity that hosts the NavGraph
+            MainActivity::class.java
         )
 
-        // 2. Use TaskStackBuilder to create a proper back stack (so "back" goes to Home)
         val pendingIntent: PendingIntent? = TaskStackBuilder.create(context).run {
-            // This reads the manifest and adds the parent (MainActivity) automatically
             addNextIntentWithParentStack(addMealIntent)
-
-            // Create the PendingIntent
             getPendingIntent(
                 notificationId,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         }
-
-        // --- End of new intent logic ---
-
 
         val notification = try {
             NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
@@ -72,7 +86,7 @@ class MealReminderReceiver : BroadcastReceiver() {
                 .setContentTitle("Meal Logging Reminder")
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent) // Use the new deep link pendingIntent
+                .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build()
         } catch (e: Exception) {

@@ -19,10 +19,15 @@ class NotificationScheduler(private val context: Context) {
     ): PendingIntent {
 
         val intent = Intent(context, receiverClass).apply {
+            // Pass the Firestore Document ID so the receiver can update the DB
+            putExtra("NOTIFICATION_FIRESTORE_ID", preference.id)
+
             // Check the type to set the correct extras
             if (preference.type == "WEIGHT") {
                 putExtra(WeightReminderReceiver.WEIGHT_NOTIF_ID_EXTRA, preference.uniqueId)
                 putExtra(WeightReminderReceiver.WEIGHT_MESSAGE_EXTRA, preference.message)
+                // NEW: Pass repetition so WeightReceiver knows if it's ONCE
+                putExtra(WeightReminderReceiver.WEIGHT_REPETITION_EXTRA, preference.repetition)
             } else {
                 // Default to MEAL
                 putExtra(MealReminderReceiver.NOTIFICATION_ID_EXTRA, preference.uniqueId)
@@ -38,11 +43,6 @@ class NotificationScheduler(private val context: Context) {
             flags
         )
     }
-
-    // This default function is no longer safe as we don't know the type.
-    // All calls should use the specific schedule/cancel methods.
-    // fun schedule(preference: NotificationPreference) { ... }
-    // fun cancel(preference: NotificationPreference) { ... }
 
     fun schedule(preference: NotificationPreference, receiverClass: Class<*>) {
         if (!preference.isEnabled) {

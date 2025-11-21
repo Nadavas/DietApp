@@ -1,6 +1,9 @@
-package com.nadavariel.dietapp.model // You can place this in your 'model' package
+package com.nadavariel.dietapp.model
 
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.PropertyName
 import java.util.Calendar
 
 
@@ -16,6 +19,7 @@ data class GraphPreference(
 
 // --- NotificationPreference ---
 
+@IgnoreExtraProperties
 data class NotificationPreference(
     @DocumentId
     val id: String = "",
@@ -23,12 +27,18 @@ data class NotificationPreference(
     val minute: Int = 0,
     val repetition: String = "DAILY",
     val message: String = "",
-    val isEnabled: Boolean = true,
-    val type: String = "MEAL" // NEW: "MEAL" or "WEIGHT"
+
+    @get:PropertyName("isEnabled")
+    @set:PropertyName("isEnabled")
+    var isEnabled: Boolean = true,
+
+    val type: String = "MEAL"
 ) {
+    @get:Exclude
     val uniqueId: Int
         get() = id.hashCode()
 
+    @Exclude
     fun getNextScheduledCalendar(): Calendar {
         val now = Calendar.getInstance()
         val scheduled = Calendar.getInstance().apply {

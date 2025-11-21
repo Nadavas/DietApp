@@ -167,28 +167,38 @@ fun NotificationItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    // LOGIC CHANGE: Use local state for immediate UI response
+    var isSwitchOn by remember(preference.id) { mutableStateOf(preference.isEnabled) }
+
+    // If the backend eventually confirms a different state, sync up
+    LaunchedEffect(preference.isEnabled) {
+        isSwitchOn = preference.isEnabled
+    }
+
     val repetitionText = if (preference.repetition == "DAILY") "Every Day" else "One Time"
     val timeText = String.format("%02d:%02d", preference.hour, preference.minute)
-
-    // Updated: Use a more descriptive type text
     val typeText = if (preference.type == "WEIGHT") "Weight Reminder" else "Meal Reminder"
 
     ListItem(
         headlineContent = { Text(timeText, style = MaterialTheme.typography.headlineSmall) },
-        // UPDATED: Supporting content is now the type
         supportingContent = { Text(typeText) },
         leadingContent = {
             Icon(Icons.Default.NotificationsActive, contentDescription = "Reminder Icon")
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // UPDATED: Only show repetition text
                 Text(
                     text = repetitionText,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(end = 8.dp)
                 )
-                Switch(checked = preference.isEnabled, onCheckedChange = onToggle)
+                Switch(
+                    checked = isSwitchOn, // Bind to local state
+                    onCheckedChange = { newValue ->
+                        isSwitchOn = newValue // Update UI instantly
+                        onToggle(newValue)    // Fire background request
+                    }
+                )
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, "Delete Reminder", tint = MaterialTheme.colorScheme.error)
                 }
@@ -226,8 +236,6 @@ fun AddEditNotificationDialog(
             preferenceToEdit?.message ?: defaultMealMessage
         )
     }
-
-    // Removed the LaunchedEffect that was here
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -282,7 +290,7 @@ fun AddEditNotificationDialog(
                         selected = type == "MEAL",
                         onClick = {
                             type = "MEAL"
-                            message = defaultMealMessage // Reverted: Always set message
+                            message = defaultMealMessage
                         },
                         label = { Text("Meal") }
                     )
@@ -290,7 +298,7 @@ fun AddEditNotificationDialog(
                         selected = type == "WEIGHT",
                         onClick = {
                             type = "WEIGHT"
-                            message = defaultWeightMessage // Reverted: Always set message
+                            message = defaultWeightMessage
                         },
                         label = { Text("Weight") }
                     )
