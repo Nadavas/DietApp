@@ -237,10 +237,13 @@ class MainActivity : ComponentActivity() {
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.HOME,
                                     onClick = {
+                                        // FIX: Force a hard reset to Home.
+                                        // This clears the corrupted/deep-linked back stack and ensures Home loads fresh.
                                         navController.navigate(NavRoutes.HOME) {
-                                            popUpTo(NavRoutes.HOME) { saveState = true }
+                                            popUpTo(navController.graph.id) {
+                                                inclusive = true
+                                            }
                                             launchSingleTop = true
-                                            restoreState = true
                                         }
                                     },
                                     icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
@@ -400,7 +403,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // UPDATED: Home no longer needs arguments, since weight logic moved to WeightScreen
                             composable(NavRoutes.HOME) {
                                 HomeScreen(
                                     authViewModel = authViewModel,
@@ -410,7 +412,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // UPDATED: WeightTracker now handles deep links and arguments for the popup
                             composable(
                                 route = "${NavRoutes.WEIGHT_TRACKER}?openWeightLog={openWeightLog}",
                                 arguments = listOf(
@@ -420,7 +421,6 @@ class MainActivity : ComponentActivity() {
                                     }
                                 ),
                                 deepLinks = listOf(
-                                    // Updated Deep Link to point here
                                     navDeepLink { uriPattern = "dietapp://weight_tracker?openWeightLog={openWeightLog}" }
                                 )
                             ) { backStackEntry ->
