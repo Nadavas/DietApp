@@ -103,7 +103,7 @@ fun ThreadsScreen(
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = AppTheme.colors.vibrantGreen,
+                            tint = AppTheme.colors.primaryGreen,
                             modifier = Modifier
                                 .size(28.dp)
                                 .rotate(rotation)
@@ -132,7 +132,7 @@ fun ThreadsScreen(
                     // Pulsing FAB-style Add Thread Button
                     FloatingActionButton(
                         onClick = { navController.navigate("create_thread") },
-                        containerColor = AppTheme.colors.vibrantGreen,
+                        containerColor = AppTheme.colors.primaryGreen,
                         contentColor = Color.White,
                         elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                         modifier = Modifier
@@ -296,7 +296,7 @@ fun CommunityHomeScreen(
                                         .height(height.dp)
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(
-                                            if (isSelected) AppTheme.colors.vibrantGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
+                                            if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
                                         )
                                 )
                             }
@@ -319,7 +319,7 @@ fun CommunityHomeScreen(
             AnimatedSectionHeader(
                 icon = Icons.Outlined.Category,
                 text = "Explore Topics",
-                iconColor = AppTheme.colors.vibrantGreen
+                iconColor = AppTheme.colors.primaryGreen
             )
         }
 
@@ -537,13 +537,13 @@ fun RecentActivityItem(index: Int) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.15f)),
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Person,
                     contentDescription = null,
-                    tint = AppTheme.colors.vibrantGreen,
+                    tint = AppTheme.colors.primaryGreen,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -835,14 +835,14 @@ fun ThreadList(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.1f)),
+                            .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Outlined.ChatBubbleOutline,
                             contentDescription = "No threads",
                             modifier = Modifier.size(40.dp),
-                            tint = AppTheme.colors.vibrantGreen.copy(alpha = 0.6f)
+                            tint = AppTheme.colors.primaryGreen.copy(alpha = 0.6f)
                         )
                     }
                     Text(

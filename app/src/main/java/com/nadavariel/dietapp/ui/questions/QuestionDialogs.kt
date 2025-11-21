@@ -57,7 +57,7 @@ internal fun EditQuestionDialog(
                     }
                     onDismiss()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.vibrantGreen)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primaryGreen)
             ) {
                 Text("Save")
             }

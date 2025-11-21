@@ -30,9 +30,9 @@ fun SubmitMealButton(
             .height(56.dp),
         shape = RoundedCornerShape(50), // Pill shape
         colors = ButtonDefaults.buttonColors(
-            containerColor = AppTheme.colors.vibrantGreen,
+            containerColor = AppTheme.colors.primaryGreen,
             contentColor = Color.White,
-            disabledContainerColor = AppTheme.colors.vibrantGreen.copy(alpha = 0.3f),
+            disabledContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.3f),
             disabledContentColor = Color.White.copy(alpha = 0.7f)
         )
     ) {

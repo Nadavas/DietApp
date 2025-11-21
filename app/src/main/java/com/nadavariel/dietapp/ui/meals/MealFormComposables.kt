@@ -46,7 +46,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(8.dp)
-                .background(AppTheme.colors.healthyGreen, CircleShape) // Using the correct green
+                .background(AppTheme.colors.primaryGreen, CircleShape) // Using the correct green
         )
         Text(
             text = title.uppercase(Locale.ROOT),
@@ -118,9 +118,9 @@ fun ThemedOutlinedTextField(
         minLines = minLines,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AppTheme.colors.healthyGreen,
-            focusedLabelColor = AppTheme.colors.healthyGreen,
-            cursorColor = AppTheme.colors.healthyGreen,
+            focusedBorderColor = AppTheme.colors.primaryGreen,
+            focusedLabelColor = AppTheme.colors.primaryGreen,
+            cursorColor = AppTheme.colors.primaryGreen,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
         )
     )
@@ -274,7 +274,7 @@ private fun DateTimePickerRow(icon: ImageVector, label: String, value: String, o
         Text(
             text = value, style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
-            color = AppTheme.colors.healthyGreen,
+            color = AppTheme.colors.primaryGreen,
             textAlign = TextAlign.End
         )
     }

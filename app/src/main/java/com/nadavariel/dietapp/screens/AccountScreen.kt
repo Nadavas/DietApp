@@ -64,7 +64,7 @@ fun AccountHeaderInfo(
                 Box(
                     modifier = Modifier
                         .size(96.dp)
-                        .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.1f), CircleShape)
+                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
                 )
                 Image(
                     painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
@@ -119,10 +119,10 @@ private fun MenuRow(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.1f), CircleShape),
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.vibrantGreen) {
+                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.primaryGreen) {
                     leadingIcon()
                 }
             }

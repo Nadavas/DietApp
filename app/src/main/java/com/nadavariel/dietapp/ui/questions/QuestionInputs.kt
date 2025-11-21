@@ -76,9 +76,9 @@ private fun TextInput(currentValue: String?, onValueChange: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         placeholder = { Text("Type your answer...") },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AppTheme.colors.vibrantGreen,
-            focusedLabelColor = AppTheme.colors.vibrantGreen,
-            cursorColor = AppTheme.colors.vibrantGreen
+            focusedBorderColor = AppTheme.colors.primaryGreen,
+            focusedLabelColor = AppTheme.colors.primaryGreen,
+            cursorColor = AppTheme.colors.primaryGreen
         ),
         minLines = 3 // Makes more sense for "types of exercise"
     )
@@ -106,8 +106,8 @@ private fun OptionCardItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) AppTheme.colors.vibrantGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-    val containerColor = if (isSelected) AppTheme.colors.vibrantGreen.copy(alpha = 0.05f) else AppTheme.colors.cardBackground
+    val borderColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
+    val containerColor = if (isSelected) AppTheme.colors.primaryGreen.copy(alpha = 0.05f) else AppTheme.colors.cardBackground
 
     Card(
         onClick = onClick,
@@ -127,7 +127,7 @@ private fun OptionCardItem(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) AppTheme.colors.vibrantGreen else AppTheme.colors.darkGreyText,
+                color = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.darkGreyText,
                 modifier = Modifier.weight(1f)
             )
             if (isSelected) {
@@ -135,7 +135,7 @@ private fun OptionCardItem(
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Selected",
-                    tint = AppTheme.colors.vibrantGreen
+                    tint = AppTheme.colors.primaryGreen
                 )
             }
         }
@@ -183,12 +183,12 @@ internal fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
             Icon(
                 Icons.Default.CalendarToday,
                 contentDescription = "Pick Date",
-                tint = AppTheme.colors.vibrantGreen,
+                tint = AppTheme.colors.primaryGreen,
                 modifier = Modifier.padding(end = 12.dp)
             )
             Text(
                 if (hasAnswer) currentAnswer else "Select Date of Birth",
-                color = if (hasAnswer) AppTheme.colors.vibrantGreen else AppTheme.colors.darkGreyText,
+                color = if (hasAnswer) AppTheme.colors.primaryGreen else AppTheme.colors.darkGreyText,
                 fontWeight = if (hasAnswer) FontWeight.Bold else FontWeight.Normal,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -243,7 +243,7 @@ private fun AnimatedSliderInput(
                 text = String.format(Locale.US, "%.1f %s", sliderValue, unit),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.vibrantGreen
+                color = AppTheme.colors.primaryGreen
             )
             Spacer(Modifier.height(16.dp))
 
@@ -254,9 +254,9 @@ private fun AnimatedSliderInput(
                 valueRange = valueRange,
                 onValueChangeFinished = { saveValue() },
                 colors = SliderDefaults.colors(
-                    thumbColor = AppTheme.colors.vibrantGreen,
-                    activeTrackColor = AppTheme.colors.vibrantGreen,
-                    inactiveTrackColor = AppTheme.colors.vibrantGreen.copy(alpha = 0.2f)
+                    thumbColor = AppTheme.colors.primaryGreen,
+                    activeTrackColor = AppTheme.colors.primaryGreen,
+                    inactiveTrackColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f)
                 )
             )
 
@@ -332,9 +332,9 @@ private fun ExerciseChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (isSelected) AppTheme.colors.vibrantGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-    val containerColor = if (isSelected) AppTheme.colors.vibrantGreen.copy(alpha = 0.05f) else AppTheme.colors.cardBackground
-    val contentColor = if (isSelected) AppTheme.colors.vibrantGreen else AppTheme.colors.darkGreyText
+    val borderColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
+    val containerColor = if (isSelected) AppTheme.colors.primaryGreen.copy(alpha = 0.05f) else AppTheme.colors.cardBackground
+    val contentColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.darkGreyText
 
     // Simple keyword to icon mapping
     val icon = remember(text) {

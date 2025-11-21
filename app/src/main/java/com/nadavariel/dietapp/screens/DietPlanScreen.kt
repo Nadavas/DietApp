@@ -142,7 +142,7 @@ fun DietPlanScreen(
                                 .background(
                                     Brush.linearGradient(
                                         colors = listOf(
-                                            AppTheme.colors.vibrantGreen.copy(alpha = 0.15f),
+                                            AppTheme.colors.primaryGreen.copy(alpha = 0.15f),
                                             Color.Transparent
                                         )
                                     )
@@ -159,13 +159,13 @@ fun DietPlanScreen(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.15f)),
+                                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     Icons.Default.AutoAwesome,
                                     contentDescription = null,
-                                    tint = AppTheme.colors.vibrantGreen,
+                                    tint = AppTheme.colors.primaryGreen,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -210,7 +210,7 @@ fun DietPlanScreen(
                 CollapsibleCard(
                     icon = Icons.Default.Flag,
                     iconBackgroundColor = AppTheme.colors.goalStrategyBackground,
-                    iconTint = AppTheme.colors.goalStrategyTint,
+                    iconTint = AppTheme.colors.primaryGreen,
                     title = "Your Goal Strategy"
                 ) {
                     Spacer(Modifier.height(16.dp))
@@ -293,7 +293,7 @@ fun DietPlanScreen(
                     Spacer(Modifier.height(16.dp))
 
                     // Foods to Emphasize
-                    Text("Foods to Emphasize:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = AppTheme.colors.vibrantGreen)
+                    Text("Foods to Emphasize:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = AppTheme.colors.primaryGreen)
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         plan.concretePlan.mealGuidelines.foodsToEmphasize.forEach { FoodChip(it, true) }
@@ -495,7 +495,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                 .height(240.dp)
         ) {
             // Decorative background pattern
-            val circleColor = AppTheme.colors.vibrantGreen
+            val circleColor = AppTheme.colors.primaryGreen
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -530,8 +530,8 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    AppTheme.colors.vibrantGreen.copy(alpha = 0.3f),
-                                    AppTheme.colors.vibrantGreen.copy(alpha = 0.1f)
+                                    AppTheme.colors.primaryGreen.copy(alpha = 0.3f),
+                                    AppTheme.colors.primaryGreen.copy(alpha = 0.1f)
                                 )
                             )
                         ),
@@ -541,7 +541,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         Icons.Default.LocalFireDepartment,
                         contentDescription = null,
                         modifier = Modifier.size(44.dp),
-                        tint = AppTheme.colors.vibrantGreen
+                        tint = AppTheme.colors.primaryGreen
                     )
                 }
 
@@ -564,7 +564,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         text = animatedCalories.toInt().toString(),
                         style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = AppTheme.colors.vibrantGreen
+                        color = AppTheme.colors.primaryGreen
                     )
                     Text(
                         text = " kcal",
@@ -784,14 +784,14 @@ fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .background(AppTheme.colors.vibrantGreen.copy(alpha = 0.1f)),
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Restaurant,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = AppTheme.colors.vibrantGreen.copy(alpha = 0.6f)
+                    tint = AppTheme.colors.primaryGreen.copy(alpha = 0.6f)
                 )
             }
 
@@ -817,7 +817,7 @@ fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AppTheme.colors.vibrantGreen
+                    containerColor = AppTheme.colors.primaryGreen
                 ),
                 shape = RoundedCornerShape(16.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
@@ -844,7 +844,7 @@ private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
             mealType,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.vibrantGreen
+            color = AppTheme.colors.primaryGreen
         )
         Text(
             meal.description,
@@ -862,7 +862,7 @@ private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
 // Helper for Food Chips
 @Composable
 private fun FoodChip(text: String, isGood: Boolean) {
-    val chipColor = if (isGood) AppTheme.colors.vibrantGreen else AppTheme.colors.foodsToLimit
+    val chipColor = if (isGood) AppTheme.colors.primaryGreen else AppTheme.colors.foodsToLimit
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
