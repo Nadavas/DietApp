@@ -68,7 +68,6 @@ fun WeightScreen(
     var entryToEdit by remember { mutableStateOf<WeightEntry?>(null) }
     var entryToDelete by remember { mutableStateOf<WeightEntry?>(null) }
 
-    // FIX: Wait for loading to finish before showing the dialog
     LaunchedEffect(openWeightLog, isScreenLoading) {
         if (openWeightLog && !isScreenLoading) {
             showLogDialog = true
@@ -627,10 +626,20 @@ fun LogWeightDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                color = AppTheme.colors.textPrimary
+            )
+        },
+        containerColor = Color.White,
         text = {
             Column {
-                Text("Enter your weight and the date you weighed in.")
+                Text(
+                    text = "Enter your weight and the date you weighed in.",
+                    color = AppTheme.colors.textSecondary
+                )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -647,7 +656,12 @@ fun LogWeightDialog(
                         if (isError) {
                             Text("Please enter a valid weight.")
                         }
-                    }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen,
+                        cursorColor = AppTheme.colors.primaryGreen
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -662,19 +676,20 @@ fun LogWeightDialog(
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = AppTheme.colors.primaryGreen
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = "Date",
                         style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        color = AppTheme.colors.textPrimary
                     )
                     Text(
                         text = dateFormatter.format(selectedDate.time),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = AppTheme.colors.primaryGreen
                     )
                 }
             }
@@ -692,13 +707,22 @@ fun LogWeightDialog(
                     } else {
                         isError = true
                     }
-                }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppTheme.colors.primaryGreen,
+                    contentColor = Color.White
+                )
             ) {
                 Text(if (isEditMode) "Update" else "Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = AppTheme.colors.textSecondary
+                )
+            ) {
                 Text("Cancel")
             }
         }

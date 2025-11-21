@@ -8,20 +8,26 @@ import android.widget.TimePicker
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -29,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.NotificationPreference
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.NotificationViewModel
 import java.util.Calendar
 
@@ -60,9 +67,7 @@ fun NotificationScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            hasNotificationPermission = isGranted
-        }
+        onResult = { isGranted -> hasNotificationPermission = isGranted }
     )
 
     LaunchedEffect(key1 = true) {
@@ -74,26 +79,35 @@ fun NotificationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("All Reminders") },
+                title = { Text("Reminders", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = AppTheme.colors.textPrimary
+                )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    selectedPreference = null
-                    showAddDialog = true
-                }
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        selectedPreference = null
+                        showAddDialog = true
+                    }
+                },
+                containerColor = AppTheme.colors.primaryGreen,
+                contentColor = Color.White
+            ) {
                 Icon(Icons.Filled.Add, "Add New Reminder")
             }
-        }
+        },
+        containerColor = AppTheme.colors.screenBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -104,14 +118,15 @@ fun NotificationScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "Notifications are disabled. Please grant permission in your device settings to receive reminders.",
+                        text = "Notifications are disabled. Please enable them in settings.",
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -122,16 +137,20 @@ fun NotificationScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No reminders set yet. Tap '+' to add one.")
+                    Text(
+                        text = "No reminders set yet.",
+                        color = AppTheme.colors.textSecondary,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(allNotifications, key = { it.id }) { pref ->
-                        NotificationItem(
+                        NotificationCard(
                             preference = pref,
                             onToggle = { enabled ->
                                 notificationViewModel.toggleNotification(pref, enabled)
@@ -161,54 +180,105 @@ fun NotificationScreen(
 
 @SuppressLint("DefaultLocale")
 @Composable
-fun NotificationItem(
+fun NotificationCard(
     preference: NotificationPreference,
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // LOGIC CHANGE: Use local state for immediate UI response
+    // Use local state for instant UI switch response
     var isSwitchOn by remember(preference.id) { mutableStateOf(preference.isEnabled) }
 
-    // If the backend eventually confirms a different state, sync up
     LaunchedEffect(preference.isEnabled) {
         isSwitchOn = preference.isEnabled
     }
 
-    val repetitionText = if (preference.repetition == "DAILY") "Every Day" else "One Time"
     val timeText = String.format("%02d:%02d", preference.hour, preference.minute)
-    val typeText = if (preference.type == "WEIGHT") "Weight Reminder" else "Meal Reminder"
+    val typeText = if (preference.type == "WEIGHT") "Weight Log" else "Meal Log"
+    val repeatText = if (preference.repetition == "DAILY") "Daily" else "Once"
 
-    ListItem(
-        headlineContent = { Text(timeText, style = MaterialTheme.typography.headlineSmall) },
-        supportingContent = { Text(typeText) },
-        leadingContent = {
-            Icon(Icons.Default.NotificationsActive, contentDescription = "Reminder Icon")
-        },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = repetitionText,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Switch(
-                    checked = isSwitchOn, // Bind to local state
-                    onCheckedChange = { newValue ->
-                        isSwitchOn = newValue // Update UI instantly
-                        onToggle(newValue)    // Fire background request
-                    }
-                )
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Delete Reminder", tint = MaterialTheme.colorScheme.error)
-                }
-            }
-        },
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onEdit)
-    )
-    HorizontalDivider()
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Icon Box
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccessTime,
+                        contentDescription = null,
+                        tint = AppTheme.colors.primaryGreen
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column {
+                    Text(
+                        text = timeText,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = typeText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppTheme.colors.textSecondary
+                        )
+                        Text(
+                            text = " • $repeatText",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppTheme.colors.textSecondary
+                        )
+                    }
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = isSwitchOn,
+                    onCheckedChange = { newValue ->
+                        isSwitchOn = newValue
+                        onToggle(newValue)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = AppTheme.colors.primaryGreen,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = AppTheme.colors.textSecondary.copy(alpha = 0.3f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -218,7 +288,6 @@ fun AddEditNotificationDialog(
     onDismiss: () -> Unit
 ) {
     val isEdit = preferenceToEdit != null
-
     val defaultMealMessage = "Time to log your next meal!"
     val defaultWeightMessage = "Time to log your weight!"
 
@@ -228,21 +297,20 @@ fun AddEditNotificationDialog(
     var hour by remember { mutableIntStateOf(initialHour) }
     var minute by remember { mutableIntStateOf(initialMinute) }
     var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") }
-
     var type by remember { mutableStateOf(preferenceToEdit?.type ?: "MEAL") }
-
-    var message by remember {
-        mutableStateOf(
-            preferenceToEdit?.message ?: defaultMealMessage
-        )
-    }
+    var message by remember { mutableStateOf(preferenceToEdit?.message ?: defaultMealMessage) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEdit) "Edit Reminder" else "Add New Reminder") },
+        title = {
+            Text(
+                text = if (isEdit) "Edit Reminder" else "Add New Reminder",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        containerColor = Color.White,
         text = {
-            Column(horizontalAlignment = Alignment.Start) {
-
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 AndroidView(
                     modifier = Modifier.fillMaxWidth(),
                     factory = { context ->
@@ -257,50 +325,62 @@ fun AddEditNotificationDialog(
                         }
                     },
                     update = { view ->
-                        if (view.hour != hour) {
-                            view.hour = hour
-                        }
-                        if (view.minute != minute) {
-                            view.minute = minute
-                        }
+                        if (view.hour != hour) view.hour = hour
+                        if (view.minute != minute) view.minute = minute
                     }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Repetition", style = MaterialTheme.typography.labelLarge)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Type Selection
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    FilterChip(
+                        selected = type == "MEAL",
+                        onClick = { type = "MEAL"; message = defaultMealMessage },
+                        label = { Text("Meal") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            selectedLabelColor = AppTheme.colors.primaryGreen
+                        )
+                    )
+                    FilterChip(
+                        selected = type == "WEIGHT",
+                        onClick = { type = "WEIGHT"; message = defaultWeightMessage },
+                        label = { Text("Weight") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            selectedLabelColor = AppTheme.colors.primaryGreen
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Repetition Selection
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
                     FilterChip(
                         selected = repetition == "ONCE",
                         onClick = { repetition = "ONCE" },
-                        label = { Text("One Time") }
+                        label = { Text("One Time") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            selectedLabelColor = AppTheme.colors.primaryGreen
+                        )
                     )
                     FilterChip(
                         selected = repetition == "DAILY",
                         onClick = { repetition = "DAILY" },
-                        label = { Text("Every Day") }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("Type", style = MaterialTheme.typography.labelLarge)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = type == "MEAL",
-                        onClick = {
-                            type = "MEAL"
-                            message = defaultMealMessage
-                        },
-                        label = { Text("Meal") }
-                    )
-                    FilterChip(
-                        selected = type == "WEIGHT",
-                        onClick = {
-                            type = "WEIGHT"
-                            message = defaultWeightMessage
-                        },
-                        label = { Text("Weight") }
+                        label = { Text("Every Day") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            selectedLabelColor = AppTheme.colors.primaryGreen
+                        )
                     )
                 }
 
@@ -309,9 +389,13 @@ fun AddEditNotificationDialog(
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
-                    label = { Text("Notification Message") },
+                    label = { Text("Message") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen
+                    )
                 )
             }
         },
@@ -328,13 +412,19 @@ fun AddEditNotificationDialog(
                     )
                     viewModel.saveNotification(finalPref)
                     onDismiss()
-                }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primaryGreen)
             ) {
                 Text(if (isEdit) "Update" else "Add")
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+            ) {
+                Text("Cancel")
+            }
         }
     )
 }
