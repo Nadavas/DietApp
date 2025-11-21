@@ -6,7 +6,10 @@ import android.app.Activity
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -28,25 +31,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-// import androidx.lifecycle.viewmodel.compose.viewModel // <-- REMOVED
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.nadavariel.dietapp.R
+import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -54,9 +59,9 @@ import kotlinx.coroutines.tasks.await
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
-    authViewModel: AuthViewModel, // <-- 1. REMOVED DEFAULT INITIALIZER
+    authViewModel: AuthViewModel,
     onBack: () -> Unit,
-    onSignUpSuccess: (isNewUser: Boolean) -> Unit, // <-- This is the correct signature
+    onSignUpSuccess: (isNewUser: Boolean) -> Unit,
     onNavigateToSignIn: () -> Unit
 ) {
     val context = LocalContext.current
@@ -67,7 +72,7 @@ fun SignUpScreen(
     val selectedAvatarId by authViewModel.selectedAvatarId
     val authResult by authViewModel.authResult.collectAsState()
 
-    val isGoogleSignUp by authViewModel.isGoogleSignUp // This now works
+    val isGoogleSignUp by authViewModel.isGoogleSignUp
 
     var showAvatarDialog by remember { mutableStateOf(false) }
 
@@ -93,16 +98,9 @@ fun SignUpScreen(
                 val account = task.getResult(ApiException::class.java)
                 authViewModel.handleGoogleSignIn(account) { flowResult ->
                     when (flowResult) {
-                        // --- 2. THIS IS THE FIX ---
-                        GoogleSignInFlowResult.GoToHome -> {
-                            // User exists, call success with isNewUser = false
-                            onSignUpSuccess(false)
-                        }
-                        // --- END OF FIX ---
-                        GoogleSignInFlowResult.GoToSignUp -> {
-                            // New user, stay on this screen.
-                        }
-                        GoogleSignInFlowResult.Error -> { /* Error handled in LaunchedEffect */ }
+                        GoogleSignInFlowResult.GoToHome -> onSignUpSuccess(false)
+                        GoogleSignInFlowResult.GoToSignUp -> {}
+                        GoogleSignInFlowResult.Error -> {}
                     }
                 }
             } catch (e: ApiException) {
@@ -123,9 +121,7 @@ fun SignUpScreen(
 
     LaunchedEffect(authResult) {
         when (val result = authResult) {
-            is AuthResult.Success -> {
-                authViewModel.resetAuthResult()
-            }
+            is AuthResult.Success -> authViewModel.resetAuthResult()
             is AuthResult.Error -> {
                 scope.launch {
                     snackbarHostState.showSnackbar(
@@ -148,162 +144,208 @@ fun SignUpScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = AppTheme.colors.textPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = Color.Transparent,
+                    titleContentColor = AppTheme.colors.textPrimary
                 )
             )
-        }
+        },
+        containerColor = Color.Transparent
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Brush.verticalGradient(AppTheme.colors.homeGradient))
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Create Account", fontSize = 28.sp, modifier = Modifier.padding(bottom = 24.dp))
-
-            Image(
-                painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
-                contentDescription = "User Avatar",
-                contentScale = ContentScale.Crop,
+            Column(
                 modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = { showAvatarDialog = true }) {
-                Text("Choose Avatar")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { authViewModel.nameState.value = it },
-                label = { Text("Name") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { authViewModel.emailState.value = it },
-                label = { Text("Email") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                singleLine = true,
-                enabled = !isGoogleSignUp // This now works
-            )
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = { authViewModel.passwordState.value = it },
-                label = { Text("Password") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                singleLine = true,
-                enabled = !isGoogleSignUp // This now works
-            )
-
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { authViewModel.confirmPasswordState.value = it },
-                label = { Text("Confirm Password") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                singleLine = true,
-                enabled = !isGoogleSignUp // This now works
-            )
-
-            Button(
-                onClick = {
-                    // New log
-                    Log.d("SignUpScreen", "Next clicked. nameState='${authViewModel.nameState.value}', avatarId='${authViewModel.selectedAvatarId.value}'")
-                    authViewModel.signUp {
-                        onSignUpSuccess(true) // This is a new user (Email or new Google)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = authResult != AuthResult.Loading
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (authResult == AuthResult.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Next", fontSize = 18.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val annotatedTextLogin = buildAnnotatedString {
-                append("Already have an account? ")
-                pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
-                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                    append("Log in")
-                }
-                pop()
-            }
-            ClickableText(
-                text = annotatedTextLogin,
-                onClick = { offset ->
-                    annotatedTextLogin.getStringAnnotations(tag = "LOGIN", start = offset, end = offset)
-                        .firstOrNull()?.let {
-                            onNavigateToSignIn()
-                        }
-                },
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            if (!isGoogleSignUp) { // This now works
                 Text(
-                    "OR",
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp
+                    text = "Create Account",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textPrimary,
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                OutlinedButton(
+                // Avatar Selection - FIX: Removed the outer Box with the border
+                Image(
+                    painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
+                    contentDescription = "User Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .clickable { showAvatarDialog = true }
+                )
+
+                TextButton(onClick = { showAvatarDialog = true }) {
+                    Text("Change Avatar", color = AppTheme.colors.primaryGreen)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { authViewModel.nameState.value = it },
+                    label = { Text("Name") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen,
+                        cursorColor = AppTheme.colors.primaryGreen
+                    )
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { authViewModel.emailState.value = it },
+                    label = { Text("Email") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    singleLine = true,
+                    enabled = !isGoogleSignUp,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen,
+                        cursorColor = AppTheme.colors.primaryGreen
+                    )
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { authViewModel.passwordState.value = it },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    singleLine = true,
+                    enabled = !isGoogleSignUp,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen,
+                        cursorColor = AppTheme.colors.primaryGreen
+                    )
+                )
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { authViewModel.confirmPasswordState.value = it },
+                    label = { Text("Confirm Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp),
+                    singleLine = true,
+                    enabled = !isGoogleSignUp,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen,
+                        cursorColor = AppTheme.colors.primaryGreen
+                    )
+                )
+
+                Button(
                     onClick = {
-                        scope.launch {
-                            try {
-                                googleSignInClient.signOut().await()
-                            } catch (e: Exception) {
-                                Log.w("SignUpScreen", "Could not sign out of Google Client: ${e.message}")
-                            }
-                            launcher.launch(googleSignInClient.signInIntent)
-                        }
+                        Log.d("SignUpScreen", "Next clicked. nameState='${authViewModel.nameState.value}', avatarId='${authViewModel.selectedAvatarId.value}'")
+                        authViewModel.signUp { onSignUpSuccess(true) }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = authResult != AuthResult.Loading
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    enabled = authResult != AuthResult.Loading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppTheme.colors.primaryGreen,
+                        contentColor = Color.White
+                    ),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.google_logo),
-                        contentDescription = "Google Logo",
-                        modifier = Modifier.size(24.dp),
-                        tint = Color.Unspecified
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    if (authResult == AuthResult.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text("Next", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val annotatedTextLogin = buildAnnotatedString {
+                    append("Already have an account? ")
+                    pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
+                    withStyle(style = SpanStyle(color = AppTheme.colors.primaryGreen, fontWeight = FontWeight.Bold)) {
+                        append("Log in")
+                    }
+                    pop()
+                }
+                ClickableText(
+                    text = annotatedTextLogin,
+                    onClick = { offset ->
+                        annotatedTextLogin.getStringAnnotations(tag = "LOGIN", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                onNavigateToSignIn()
+                            }
+                    },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (!isGoogleSignUp) {
                     Text(
-                        text = "Continue with Google",
-                        fontSize = 18.sp
+                        "OR",
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        color = AppTheme.colors.textSecondary,
+                        fontSize = 14.sp
                     )
+
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    googleSignInClient.signOut().await()
+                                } catch (e: Exception) {
+                                    Log.w("SignUpScreen", "Could not sign out of Google Client: ${e.message}")
+                                }
+                                launcher.launch(googleSignInClient.signInIntent)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        enabled = authResult != AuthResult.Loading,
+                        border = BorderStroke(1.dp, AppTheme.colors.textSecondary.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = AppTheme.colors.textPrimary
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.google_logo),
+                            contentDescription = "Google Logo",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Continue with Google",
+                            fontSize = 16.sp
+                        )
+                    }
                 }
             }
         }
@@ -316,7 +358,7 @@ fun SignUpScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surfaceVariant
+                color = Color.White
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -324,7 +366,9 @@ fun SignUpScreen(
                 ) {
                     Text(
                         text = "Select an Avatar",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = AppTheme.colors.textPrimary,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -338,24 +382,37 @@ fun SignUpScreen(
                         contentPadding = PaddingValues(8.dp)
                     ) {
                         items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
-                            Image(
-                                painter = painterResource(id = drawableResId),
-                                contentDescription = "Avatar $avatarId",
-                                contentScale = ContentScale.Crop,
+                            val isSelected = selectedAvatarId == avatarId
+                            Box(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(CircleShape)
+                                    .border(
+                                        width = if (isSelected) 3.dp else 0.dp,
+                                        color = if (isSelected) AppTheme.colors.primaryGreen else Color.Transparent,
+                                        shape = CircleShape
+                                    )
                                     .clickable {
                                         authViewModel.selectedAvatarId.value = avatarId
                                         showAvatarDialog = false
                                     }
-                            )
+                            ) {
+                                Image(
+                                    painter = painterResource(id = drawableResId),
+                                    contentDescription = "Avatar $avatarId",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    TextButton(onClick = { showAvatarDialog = false }) {
+                    TextButton(
+                        onClick = { showAvatarDialog = false },
+                        colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+                    ) {
                         Text("Cancel")
                     }
                 }
