@@ -8,11 +8,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.TrendingDown
+import androidx.compose.material.icons.rounded.TrendingFlat
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +38,7 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -64,7 +72,6 @@ fun HomeScreen(
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
     var mealWithActionsShownId by remember { mutableStateOf<String?>(null) }
-    var showWeightGraphDialog by remember { mutableStateOf(false) }
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
@@ -128,24 +135,6 @@ fun HomeScreen(
         )
     }
 
-    if (showWeightGraphDialog) {
-        WeightGraphDialog(
-            startingWeight = userProfile.startingWeight,
-            targetWeight = targetWeight,
-            history = weightHistory,
-            onDismiss = { showWeightGraphDialog = false },
-            onManageClick = {
-                showWeightGraphDialog = false
-                showManageWeightDialog = true
-            },
-            onAddClick = {
-                showWeightGraphDialog = false
-                weightEntryToEdit = null
-                showLogWeightDialog = true
-            }
-        )
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -178,24 +167,30 @@ fun HomeScreen(
                 ) {
 
                     if (dietPlan == null) {
-                        item {
-                            Card {
-                                // ...
-                            }
-                        }
+                        item { /* Placeholder */ }
                     }
 
-                    // --- START OF HEADER CHANGES ---
+                    // --- SECTION 1: WEIGHT (Top Hierarchy) ---
+                    item {
+                        val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
+                        val startWeight = userProfile.startingWeight
+
+                        WeightStatusCard(
+                            currentWeight = currentWeight,
+                            startWeight = startWeight,
+                            onClick = { navController.navigate(NavRoutes.WEIGHT_TRACKER) }
+                        )
+                    }
+
+                    // --- SECTION 2: CALORIES ---
                     item {
                         CardSectionHeader("Calorie Tracker")
                     }
-                    // --- END OF HEADER CHANGES ---
 
                     item {
                         CalorieSummaryCard(
                             totalCalories = totalCaloriesForSelectedDate,
                             goalCalories = goalCalories,
-                            // Parameters for the embedded DatePicker:
                             currentWeekStartDate = currentWeekStartDate,
                             selectedDate = selectedDate,
                             onPreviousWeek = { foodLogViewModel.previousWeek() },
@@ -208,32 +203,12 @@ fun HomeScreen(
                         )
                     }
 
-                    // --- START OF HEADER CHANGES ---
-                    item {
-                        CardSectionHeader("Weight Tracker")
-                    }
-                    // --- END OF HEADER CHANGES ---
-
-                    item {
-                        ExpandableWeightCard(
-                            startingWeight = userProfile.startingWeight,
-                            currentWeight = weightHistory.lastOrNull()?.weight
-                                ?: userProfile.startingWeight,
-                            targetWeight = targetWeight,
-                            history = weightHistory,
-                            onAddClick = {
-                                weightEntryToEdit = null
-                                showLogWeightDialog = true
-                            },
-                            onManageClick = {
-                                showManageWeightDialog = true
-                            }
-                        )
-                    }
-
+                    // --- SECTION 3: MEALS ---
                     item {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -260,9 +235,7 @@ fun HomeScreen(
                             stickyHeader {
                                 MealSectionHeader(
                                     section,
-                                    Modifier.background(
-                                        AppTheme.colors.screenBackground
-                                    )
+                                    Modifier.background(AppTheme.colors.screenBackground)
                                 )
                             }
                             items(mealsInSection, key = { it.id }) { meal ->
@@ -311,7 +284,6 @@ fun HomeScreen(
     }
 }
 
-// --- START OF HELPER COMPOSABLE ---
 @Composable
 private fun CardSectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
@@ -319,7 +291,130 @@ private fun CardSectionHeader(title: String, modifier: Modifier = Modifier) {
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         color = AppTheme.colors.textPrimary,
-        modifier = modifier.padding(start = 4.dp) // Small indent to align with card content
+        modifier = modifier.padding(start = 4.dp)
     )
 }
-// --- END OF HELPER COMPOSABLE ---
+
+// --- NEW REDESIGNED COMPONENT ---
+@Composable
+fun WeightStatusCard(
+    currentWeight: Float,
+    startWeight: Float,
+    onClick: () -> Unit
+) {
+    // Calculate logic
+    val difference = currentWeight - startWeight
+    val isLoss = difference < 0
+    val isGain = difference > 0
+    val absoluteDiff = abs(difference)
+
+    // Visual configurations
+    val trendIcon = when {
+        isLoss -> Icons.Rounded.TrendingDown
+        isGain -> Icons.Rounded.TrendingUp
+        else -> Icons.Rounded.TrendingFlat
+    }
+
+    // In diet apps, weight loss is usually "Green" (Success)
+    val trendColor = when {
+        isLoss -> AppTheme.colors.primaryGreen
+        isGain -> AppTheme.colors.warmOrange // Or a warning color
+        else -> AppTheme.colors.textSecondary
+    }
+
+    val formattedDiff = "%.1f".format(absoluteDiff)
+
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface,
+                            AppTheme.colors.primaryGreen.copy(alpha = 0.05f)
+                        )
+                    )
+                )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left Side: Current Status
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "CURRENT WEIGHT",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = AppTheme.colors.textSecondary,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$currentWeight kg",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = AppTheme.colors.textPrimary
+                        )
+                    )
+                }
+
+                // Right Side: Progress Pill & Action
+                Column(horizontalAlignment = Alignment.End) {
+                    // Trend Pill
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = trendColor.copy(alpha = 0.1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = trendIcon,
+                                contentDescription = null,
+                                tint = trendColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (difference.toDouble() == 0.0) "No change" else "$formattedDiff kg",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = trendColor
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Call to Action
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "View Graph",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AppTheme.colors.textSecondary.copy(alpha = 0.7f)
+                        )
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            tint = AppTheme.colors.textSecondary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

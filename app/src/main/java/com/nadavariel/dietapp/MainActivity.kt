@@ -421,6 +421,17 @@ class MainActivity : ComponentActivity() {
                                     openWeightLog = openWeightLog
                                 )
                             }
+
+                            // --- NEW: WEIGHT TRACKER ROUTE ---
+                            composable(NavRoutes.WEIGHT_TRACKER) {
+                                WeightScreen(
+                                    navController = navController,
+                                    foodLogViewModel = foodLogViewModel,
+                                    authViewModel = authViewModel
+                                )
+                            }
+                            // ---------------------------------
+
                             composable(NavRoutes.STATISTICS) {
                                 StatisticsScreen(
                                     foodLogViewModel = foodLogViewModel,
@@ -467,7 +478,7 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.MY_PROFILE) {
                                 MyProfileScreen(
                                     authViewModel = authViewModel,
-                                    goalsViewModel = goalsViewModel, // <-- PASS VIEWMODEL
+                                    goalsViewModel = goalsViewModel,
                                     navController = navController
                                 )
                             }
