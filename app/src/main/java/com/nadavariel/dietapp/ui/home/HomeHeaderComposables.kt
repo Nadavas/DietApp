@@ -49,9 +49,8 @@ fun ModernHomeHeader(
 @Composable
 fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
     Row(
-        // Note: This was fillMaxWidth(), but ModernHomeHeader's Row is now responsible for spacing.
-        // Kept it as is, but this modifier might not be necessary if it's always used inside ModernHomeHeader
-        // modifier = Modifier.fillMaxWidth(),
+        // FIX 1: Added fillMaxWidth() to ensure SpaceBetween pushes elements to edges
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -70,28 +69,30 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
                 fontSize = 24.sp
             )
         }
-        Spacer(Modifier.width(16.dp)) // Add spacer for cases where column doesn't fill width
 
-        // --- THIS IS THE UPDATED AVATAR CODE ---
+        // Spacer is less critical now with SpaceBetween + fillMaxWidth, but keeps safe distance
+        Spacer(Modifier.width(16.dp))
+
+        // --- UPDATED AVATAR CODE ---
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(52.dp) // This is the total size including the background
-                .clickable(onClick = onAvatarClick) // Clickable is now on the outer box
+                .size(60.dp) // FIX 2: Increased from 52.dp to 60.dp
+                .clickable(onClick = onAvatarClick)
         ) {
             // Background Circle
             Box(
                 modifier = Modifier
-                    .fillMaxSize() // Fills the 52.dp
+                    .fillMaxSize()
                     .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
             )
-            // Avatar Image (slightly smaller to show background)
+            // Avatar Image
             Image(
                 painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
                 contentDescription = "User Avatar",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(60.dp) // FIX 3: Increased from 48.dp to 60.dp (Full size of box)
                     .clip(CircleShape)
             )
         }

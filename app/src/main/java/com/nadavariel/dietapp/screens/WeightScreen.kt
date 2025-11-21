@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.os.Build
 import android.widget.DatePicker
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -53,28 +52,32 @@ fun WeightScreen(
     navController: NavController,
     foodLogViewModel: FoodLogViewModel,
     authViewModel: AuthViewModel,
-    openWeightLog: Boolean = false // NEW: Parameter to auto-open dialog
+    openWeightLog: Boolean = false
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+
+    val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
+    val isLoadingLogs by foodLogViewModel.isLoadingLogs.collectAsStateWithLifecycle()
+
     val weightHistory by foodLogViewModel.weightHistory.collectAsStateWithLifecycle()
     val targetWeight by foodLogViewModel.targetWeight.collectAsStateWithLifecycle()
+
+    val isScreenLoading = isLoadingProfile || isLoadingLogs
 
     var showLogDialog by remember { mutableStateOf(false) }
     var entryToEdit by remember { mutableStateOf<WeightEntry?>(null) }
     var entryToDelete by remember { mutableStateOf<WeightEntry?>(null) }
 
-    // FIX: Auto-open dialog if requested, then clear the flag so it doesn't reopen on back nav
-    LaunchedEffect(openWeightLog) {
-        if (openWeightLog) {
+    // FIX: Wait for loading to finish before showing the dialog
+    LaunchedEffect(openWeightLog, isScreenLoading) {
+        if (openWeightLog && !isScreenLoading) {
             showLogDialog = true
-            // Remove the argument from SavedStateHandle to prevent re-triggering
             navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("openWeightLog")
         }
     }
 
     val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
 
-    // Calculate metrics
     val totalGoal = abs(targetWeight - userProfile.startingWeight)
     val currentProgress = abs(currentWeight - userProfile.startingWeight)
     val progressPercentage = if (totalGoal > 0) (currentProgress / totalGoal * 100f).coerceIn(0f, 100f) else 0f
@@ -97,98 +100,111 @@ fun WeightScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    entryToEdit = null
-                    showLogDialog = true
-                },
-                containerColor = AppTheme.colors.primaryGreen,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Log Weight")
+            if (!isScreenLoading) {
+                FloatingActionButton(
+                    onClick = {
+                        entryToEdit = null
+                        showLogDialog = true
+                    },
+                    containerColor = AppTheme.colors.primaryGreen,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Log Weight")
+                }
             }
         },
         containerColor = AppTheme.colors.screenBackground
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // 1. Stats Row
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                WeightStatsRowFull(
-                    startingWeight = userProfile.startingWeight,
-                    currentWeight = currentWeight,
-                    targetWeight = targetWeight
-                )
+        if (isScreenLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = AppTheme.colors.primaryGreen)
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // 1. Stats Row
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    WeightStatsRowFull(
+                        startingWeight = userProfile.startingWeight,
+                        currentWeight = currentWeight,
+                        targetWeight = targetWeight
+                    )
+                }
 
-            // 2. Main Chart
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Progress Chart",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        EnhancedWeightLineChart(
-                            startingWeight = userProfile.startingWeight,
-                            targetWeight = targetWeight,
-                            history = weightHistory,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
-                        )
+                // 2. Main Chart
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Progress Chart",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            EnhancedWeightLineChart(
+                                startingWeight = userProfile.startingWeight,
+                                targetWeight = targetWeight,
+                                history = weightHistory,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(250.dp)
+                            )
+                        }
                     }
                 }
-            }
 
-            // 3. Progress Bar
-            item {
-                AnimatedProgressBar(progress = progressPercentage, isOnTrack = isOnTrack)
-            }
+                // 3. Progress Bar
+                item {
+                    AnimatedProgressBar(progress = progressPercentage, isOnTrack = isOnTrack)
+                }
 
-            // 4. History Header
-            item {
-                Text(
-                    text = "History",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-
-            // 5. History List
-            if (weightHistory.isEmpty()) {
+                // 4. History Header
                 item {
                     Text(
-                        text = "No records yet. Tap + to start tracking!",
-                        color = AppTheme.colors.textSecondary,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                        text = "History",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
-            } else {
-                items(weightHistory.reversed(), key = { it.id }) { entry ->
-                    WeightHistoryItem(
-                        entry = entry,
-                        onEdit = {
-                            entryToEdit = it
-                            showLogDialog = true
-                        },
-                        onDelete = { entryToDelete = it }
-                    )
+
+                // 5. History List
+                if (weightHistory.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No records yet. Tap + to start tracking!",
+                            color = AppTheme.colors.textSecondary,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    }
+                } else {
+                    items(weightHistory.reversed(), key = { it.id }) { entry ->
+                        WeightHistoryItem(
+                            entry = entry,
+                            onEdit = {
+                                entryToEdit = it
+                                showLogDialog = true
+                            },
+                            onDelete = { entryToDelete = it }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
@@ -669,9 +685,7 @@ fun LogWeightDialog(
                     val weight = weightInput.toFloatOrNull()
                     if (weight != null && weight > 0) {
                         if (isEditMode) {
-                            if (entryToEdit != null) {
-                                onUpdate(entryToEdit.id, weight, selectedDate)
-                            }
+                            onUpdate(entryToEdit.id, weight, selectedDate)
                         } else {
                             onSave(weight, selectedDate)
                         }
