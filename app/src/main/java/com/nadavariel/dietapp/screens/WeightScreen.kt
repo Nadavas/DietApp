@@ -9,12 +9,10 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -28,7 +26,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -36,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +52,8 @@ import kotlin.math.abs
 fun WeightScreen(
     navController: NavController,
     foodLogViewModel: FoodLogViewModel,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    openWeightLog: Boolean = false // NEW: Parameter to auto-open dialog
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val weightHistory by foodLogViewModel.weightHistory.collectAsStateWithLifecycle()
@@ -65,6 +62,15 @@ fun WeightScreen(
     var showLogDialog by remember { mutableStateOf(false) }
     var entryToEdit by remember { mutableStateOf<WeightEntry?>(null) }
     var entryToDelete by remember { mutableStateOf<WeightEntry?>(null) }
+
+    // FIX: Auto-open dialog if requested, then clear the flag so it doesn't reopen on back nav
+    LaunchedEffect(openWeightLog) {
+        if (openWeightLog) {
+            showLogDialog = true
+            // Remove the argument from SavedStateHandle to prevent re-triggering
+            navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("openWeightLog")
+        }
+    }
 
     val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
 
@@ -141,7 +147,7 @@ fun WeightScreen(
                             history = weightHistory,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(250.dp) // Taller chart for full screen
+                                .height(250.dp)
                         )
                     }
                 }
@@ -162,7 +168,7 @@ fun WeightScreen(
                 )
             }
 
-            // 5. History List (Replaces the Manage Dialog)
+            // 5. History List
             if (weightHistory.isEmpty()) {
                 item {
                     Text(
@@ -182,7 +188,6 @@ fun WeightScreen(
                         onDelete = { entryToDelete = it }
                     )
                 }
-                // Add spacer for FAB
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
@@ -359,10 +364,6 @@ fun AnimatedProgressBar(progress: Float, isOnTrack: Boolean) {
     }
 }
 
-// -----------------------------------------------------------------------------
-// REUSED COMPONENTS (Chart & Dialog)
-// -----------------------------------------------------------------------------
-
 @SuppressLint("DefaultLocale")
 @Composable
 fun EnhancedWeightLineChart(
@@ -397,7 +398,6 @@ fun EnhancedWeightLineChart(
         }
     }
 
-    // Animation for drawing the chart
     val animationProgress by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
@@ -438,7 +438,6 @@ fun EnhancedWeightLineChart(
             return yAxisPadding + (index * xSpacing)
         }
 
-        // Draw Y-axis labels
         drawContext.canvas.nativeCanvas.drawText(
             String.format("%.1f", yMax),
             yAxisPadding - with(density) { 6.dp.toPx() },
@@ -455,7 +454,6 @@ fun EnhancedWeightLineChart(
             )
         }
 
-        // Target weight dashed line
         if (targetWeight > 0) {
             val targetY = getY(targetWeight)
             drawLine(
@@ -467,7 +465,6 @@ fun EnhancedWeightLineChart(
             )
         }
 
-        // Calculate animated points
         val points = allPointsWithStart.mapIndexed { index, (weight, _) ->
             Offset(getX(index), getY(weight))
         }
@@ -475,7 +472,6 @@ fun EnhancedWeightLineChart(
         val animatedPointCount = (points.size * animationProgress).toInt().coerceAtLeast(1)
         val visiblePoints = points.take(animatedPointCount)
 
-        // Draw gradient fill under the line
         if (visiblePoints.size > 1) {
             val gradientPath = Path().apply {
                 moveTo(visiblePoints.first().x, graphHeight)
@@ -495,7 +491,6 @@ fun EnhancedWeightLineChart(
             )
         }
 
-        // Draw the main line
         if (visiblePoints.size > 1) {
             val linePath = Path()
             linePath.moveTo(visiblePoints.first().x, visiblePoints.first().y)
@@ -511,7 +506,6 @@ fun EnhancedWeightLineChart(
             )
         }
 
-        // Draw points with glow effect
         visiblePoints.forEach { point ->
             drawCircle(
                 color = primaryColor.copy(alpha = 0.3f),
@@ -530,7 +524,6 @@ fun EnhancedWeightLineChart(
             )
         }
 
-        // Draw X-axis labels (only after animation)
         if (animationProgress > 0.5f) {
             drawContext.canvas.nativeCanvas.drawText(
                 "Start",

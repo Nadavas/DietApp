@@ -25,20 +25,17 @@ class WeightReminderReceiver : BroadcastReceiver() {
         const val WEIGHT_CHANNEL_ID = "weight_reminder_channel"
         const val WEIGHT_NOTIF_ID_EXTRA = "weight_notification_id"
         const val WEIGHT_MESSAGE_EXTRA = "weight_message"
-        const val WEIGHT_REPETITION_EXTRA = "weight_repetition" // NEW constant
+        const val WEIGHT_REPETITION_EXTRA = "weight_repetition"
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
         val notificationId = intent?.getIntExtra(WEIGHT_NOTIF_ID_EXTRA, 2) ?: 2
         val message = intent?.getStringExtra(WEIGHT_MESSAGE_EXTRA) ?: "Time to log your weight!"
-
-        // NEW: Get Firestore ID and Repetition
         val repetition = intent?.getStringExtra(WEIGHT_REPETITION_EXTRA) ?: "DAILY"
         val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
 
         Log.i(tag, "WeightReminderReceiver: onReceive triggered.")
 
-        // --- NEW LOGIC: Disable One-Time Reminder in Firestore ---
         if (repetition == "ONCE" && !firestoreId.isNullOrEmpty()) {
             val auth = Firebase.auth
             val userId = auth.currentUser?.uid
@@ -54,13 +51,13 @@ class WeightReminderReceiver : BroadcastReceiver() {
                     }
             }
         }
-        // ---------------------------------------------------------
 
         createNotificationChannel(context)
 
+        // FIXED: Deep link points to weight_tracker screen now
         val deepLinkIntent = Intent(
             Intent.ACTION_VIEW,
-            "dietapp://home?openWeightLog=true".toUri(),
+            "dietapp://weight_tracker?openWeightLog=true".toUri(),
             context,
             MainActivity::class.java
         )

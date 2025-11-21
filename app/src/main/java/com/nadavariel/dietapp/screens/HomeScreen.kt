@@ -31,7 +31,6 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
-import com.nadavariel.dietapp.model.WeightEntry
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.home.*
 import com.nadavariel.dietapp.ui.AppTheme
@@ -47,8 +46,8 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     foodLogViewModel: FoodLogViewModel,
     goalViewModel: GoalsViewModel = viewModel(),
-    navController: NavController,
-    openWeightLog: Boolean = false
+    navController: NavController
+    // REMOVED: openWeightLog parameter is no longer needed here
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
@@ -57,7 +56,6 @@ fun HomeScreen(
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
     val weightHistory by foodLogViewModel.weightHistory.collectAsState()
-    val targetWeight by foodLogViewModel.targetWeight.collectAsState()
     val isLoadingLogs by foodLogViewModel.isLoadingLogs.collectAsStateWithLifecycle()
 
     val goals by goalViewModel.goals.collectAsState()
@@ -66,9 +64,8 @@ fun HomeScreen(
 
     val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan
 
-    var showLogWeightDialog by remember { mutableStateOf(false) }
-    var showManageWeightDialog by remember { mutableStateOf(false) }
-    var weightEntryToEdit by remember { mutableStateOf<WeightEntry?>(null) }
+    // REMOVED: Weight dialog states (showLogWeightDialog, showManageWeightDialog, weightEntryToEdit)
+
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
     var mealWithActionsShownId by remember { mutableStateOf<String?>(null) }
@@ -88,11 +85,7 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(openWeightLog) {
-        if (openWeightLog) {
-            showLogWeightDialog = true
-        }
-    }
+    // REMOVED: LaunchedEffect(openWeightLog) - Moved to WeightScreen logic
 
     val groupedMeals = remember(mealsForSelectedDate) {
         mealsForSelectedDate
@@ -100,40 +93,7 @@ fun HomeScreen(
             .toSortedMap(compareBy { it.ordinal })
     }
 
-    if (showLogWeightDialog) {
-        LogWeightDialog(
-            entryToEdit = weightEntryToEdit,
-            onDismiss = {
-                showLogWeightDialog = false
-                weightEntryToEdit = null
-            },
-            onSave = { weight, date ->
-                foodLogViewModel.addWeightEntry(weight, date)
-                showLogWeightDialog = false
-                weightEntryToEdit = null
-            },
-            onUpdate = { id, weight, date ->
-                foodLogViewModel.updateWeightEntry(id, weight, date)
-                showLogWeightDialog = false
-                weightEntryToEdit = null
-            }
-        )
-    }
-
-    if (showManageWeightDialog) {
-        ManageWeightHistoryDialog(
-            history = weightHistory,
-            onDismiss = { showManageWeightDialog = false },
-            onEdit = { entry ->
-                weightEntryToEdit = entry
-                showManageWeightDialog = false
-                showLogWeightDialog = true
-            },
-            onDelete = { entry ->
-                foodLogViewModel.deleteWeightEntry(entry.id)
-            }
-        )
-    }
+    // REMOVED: LogWeightDialog and ManageWeightHistoryDialog composables
 
     Box(
         modifier = Modifier
@@ -295,30 +255,26 @@ private fun CardSectionHeader(title: String, modifier: Modifier = Modifier) {
     )
 }
 
-// --- NEW REDESIGNED COMPONENT ---
 @Composable
 fun WeightStatusCard(
     currentWeight: Float,
     startWeight: Float,
     onClick: () -> Unit
 ) {
-    // Calculate logic
     val difference = currentWeight - startWeight
     val isLoss = difference < 0
     val isGain = difference > 0
     val absoluteDiff = abs(difference)
 
-    // Visual configurations
     val trendIcon = when {
         isLoss -> Icons.Rounded.TrendingDown
         isGain -> Icons.Rounded.TrendingUp
         else -> Icons.Rounded.TrendingFlat
     }
 
-    // In diet apps, weight loss is usually "Green" (Success)
     val trendColor = when {
         isLoss -> AppTheme.colors.primaryGreen
-        isGain -> AppTheme.colors.warmOrange // Or a warning color
+        isGain -> AppTheme.colors.warmOrange
         else -> AppTheme.colors.textSecondary
     }
 
@@ -349,7 +305,6 @@ fun WeightStatusCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Side: Current Status
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -370,9 +325,7 @@ fun WeightStatusCard(
                     )
                 }
 
-                // Right Side: Progress Pill & Action
                 Column(horizontalAlignment = Alignment.End) {
-                    // Trend Pill
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = trendColor.copy(alpha = 0.1f)
@@ -399,7 +352,6 @@ fun WeightStatusCard(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Call to Action
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "View Graph",

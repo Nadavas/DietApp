@@ -399,8 +399,20 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+
+                            // UPDATED: Home no longer needs arguments, since weight logic moved to WeightScreen
+                            composable(NavRoutes.HOME) {
+                                HomeScreen(
+                                    authViewModel = authViewModel,
+                                    foodLogViewModel = foodLogViewModel,
+                                    goalViewModel = goalsViewModel,
+                                    navController = navController
+                                )
+                            }
+
+                            // UPDATED: WeightTracker now handles deep links and arguments for the popup
                             composable(
-                                route = "${NavRoutes.HOME}?openWeightLog={openWeightLog}",
+                                route = "${NavRoutes.WEIGHT_TRACKER}?openWeightLog={openWeightLog}",
                                 arguments = listOf(
                                     navArgument("openWeightLog") {
                                         type = NavType.BoolType
@@ -408,29 +420,19 @@ class MainActivity : ComponentActivity() {
                                     }
                                 ),
                                 deepLinks = listOf(
-                                    navDeepLink { uriPattern = "dietapp://home?openWeightLog={openWeightLog}" }
+                                    // Updated Deep Link to point here
+                                    navDeepLink { uriPattern = "dietapp://weight_tracker?openWeightLog={openWeightLog}" }
                                 )
                             ) { backStackEntry ->
                                 val openWeightLog = backStackEntry.arguments?.getBoolean("openWeightLog") == true
 
-                                HomeScreen(
-                                    authViewModel = authViewModel,
-                                    foodLogViewModel = foodLogViewModel,
-                                    goalViewModel = goalsViewModel,
-                                    navController = navController,
-                                    openWeightLog = openWeightLog
-                                )
-                            }
-
-                            // --- NEW: WEIGHT TRACKER ROUTE ---
-                            composable(NavRoutes.WEIGHT_TRACKER) {
                                 WeightScreen(
                                     navController = navController,
                                     foodLogViewModel = foodLogViewModel,
-                                    authViewModel = authViewModel
+                                    authViewModel = authViewModel,
+                                    openWeightLog = openWeightLog
                                 )
                             }
-                            // ---------------------------------
 
                             composable(NavRoutes.STATISTICS) {
                                 StatisticsScreen(
