@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -134,10 +135,12 @@ fun HomeScreen(
                     item {
                         val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
                         val startWeight = userProfile.startingWeight
+                        val targetWeight by foodLogViewModel.targetWeight.collectAsState() // Add this line
 
                         WeightStatusCard(
                             currentWeight = currentWeight,
                             startWeight = startWeight,
+                            targetWeight = targetWeight, // Add this parameter
                             onClick = { navController.navigate(NavRoutes.WEIGHT_TRACKER) }
                         )
                     }
@@ -259,112 +262,119 @@ private fun CardSectionHeader(title: String, modifier: Modifier = Modifier) {
 fun WeightStatusCard(
     currentWeight: Float,
     startWeight: Float,
+    targetWeight: Float,
     onClick: () -> Unit
 ) {
-    val difference = currentWeight - startWeight
-    val isLoss = difference < 0
-    val isGain = difference > 0
-    val absoluteDiff = abs(difference)
+    val totalGoal = abs(targetWeight - startWeight)
+    val currentProgress = abs(currentWeight - startWeight)
+    val progressPercentage = if (totalGoal > 0) (currentProgress / totalGoal * 100f).coerceIn(0f, 100f) else 0f
 
-    val trendIcon = when {
-        isLoss -> Icons.Rounded.TrendingDown
-        isGain -> Icons.Rounded.TrendingUp
-        else -> Icons.Rounded.TrendingFlat
+    val isGaining = targetWeight > startWeight
+    val progressText = if (isGaining) "gained" else "lost"
+    val formattedProgress = "%.1f".format(abs(currentWeight - startWeight))
+
+    // Determine badge
+    val badge = when {
+        progressPercentage >= 75f -> "🥇"
+        progressPercentage >= 50f -> "🥈"
+        progressPercentage >= 25f -> "🥉"
+        else -> null
     }
 
-    val trendColor = when {
-        isLoss -> AppTheme.colors.primaryGreen
-        isGain -> AppTheme.colors.warmOrange
-        else -> AppTheme.colors.textSecondary
+    val badgeTitle = when {
+        progressPercentage >= 75f -> "Almost There!"
+        progressPercentage >= 50f -> "Halfway Hero"
+        progressPercentage >= 25f -> "First Steps"
+        else -> null
     }
-
-    val formattedDiff = "%.1f".format(absoluteDiff)
 
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface,
-                            AppTheme.colors.primaryGreen.copy(alpha = 0.05f)
+                .padding(20.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side - Progress info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "WEIGHT PROGRESS",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textSecondary,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "${progressPercentage.toInt()}%",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = AppTheme.colors.primaryGreen
                         )
                     )
-                )
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "CURRENT WEIGHT",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = AppTheme.colors.textSecondary,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "$currentWeight kg",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = AppTheme.colors.textPrimary
-                        )
+                        text = "complete",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary,
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$formattedProgress kg $progressText",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppTheme.colors.textSecondary
+                )
+            }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = trendColor.copy(alpha = 0.1f)
+            // Right side - Badge or arrow
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (badge != null && badgeTitle != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    listOf(
+                                        AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                                        AppTheme.colors.primaryGreen.copy(alpha = 0.05f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(28.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = trendIcon,
-                                contentDescription = null,
-                                tint = trendColor,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (difference.toDouble() == 0.0) "No change" else "$formattedDiff kg",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = trendColor
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "View Graph",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AppTheme.colors.textSecondary.copy(alpha = 0.7f)
-                        )
-                        Icon(
-                            imageVector = Icons.Rounded.ChevronRight,
-                            contentDescription = null,
-                            tint = AppTheme.colors.textSecondary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(16.dp)
+                            text = badge,
+                            fontSize = 28.sp
                         )
                     }
+                    Text(
+                        text = badgeTitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppTheme.colors.primaryGreen,
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronRight,
+                        contentDescription = "View details",
+                        tint = AppTheme.colors.textSecondary,
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
             }
         }
