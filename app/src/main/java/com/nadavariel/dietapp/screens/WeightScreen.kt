@@ -81,11 +81,16 @@ fun WeightScreen(
     val totalGoal = abs(targetWeight - userProfile.startingWeight)
     val currentProgress = abs(currentWeight - userProfile.startingWeight)
     val progressPercentage = if (totalGoal > 0) (currentProgress / totalGoal * 100f).coerceIn(0f, 100f) else 0f
+    val isGaining = targetWeight > userProfile.startingWeight
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Header
-            ModernWeightHeader(navController)
+            // Modern Header with progress
+            PersonalizedHeader(
+                navController = navController,
+                userName = userProfile.name,
+                progressPercentage = progressPercentage
+            )
 
             if (isScreenLoading) {
                 Box(
@@ -100,13 +105,34 @@ fun WeightScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Achievement Summary Card
+                    // Story Card - Your Journey
                     item {
-                        AchievementSummaryCard(
+                        JourneyStoryCard(
                             startingWeight = userProfile.startingWeight,
                             currentWeight = currentWeight,
                             targetWeight = targetWeight,
-                            progressPercentage = progressPercentage
+                            progressPercentage = progressPercentage,
+                            isGaining = isGaining,
+                            daysTracking = weightHistory.size
+                        )
+                    }
+
+                    // Next Milestone Card
+                    item {
+                        NextMilestoneCard(
+                            progressPercentage = progressPercentage,
+                            currentProgress = currentProgress,
+                            totalGoal = totalGoal,
+                            isGaining = isGaining
+                        )
+                    }
+
+                    // Trophy Section with motivation
+                    item {
+                        MotivationalTrophySection(
+                            progressPercentage = progressPercentage,
+                            currentWeight = currentWeight,
+                            targetWeight = targetWeight
                         )
                     }
 
@@ -123,12 +149,19 @@ fun WeightScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = "Progress Chart",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppTheme.colors.textPrimary
-                                    )
+                                    Column {
+                                        Text(
+                                            text = "Your Progress",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AppTheme.colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Every point is a victory",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = AppTheme.colors.textSecondary
+                                        )
+                                    }
                                     Icon(
                                         imageVector = Icons.Default.TrendingUp,
                                         contentDescription = null,
@@ -149,11 +182,6 @@ fun WeightScreen(
                         }
                     }
 
-                    // Trophy Section
-                    item {
-                        TrophySection(progressPercentage = progressPercentage)
-                    }
-
                     // Action Buttons
                     item {
                         Row(
@@ -171,7 +199,7 @@ fun WeightScreen(
                                 }
                             )
                             ActionButton(
-                                text = "Manage History",
+                                text = "View History",
                                 icon = Icons.Default.History,
                                 color = AppTheme.colors.softBlue,
                                 modifier = Modifier.weight(1f),
@@ -180,7 +208,6 @@ fun WeightScreen(
                         }
                     }
 
-                    // Bottom spacing
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
@@ -239,38 +266,53 @@ fun WeightScreen(
 // -----------------------------------------------------------------------------
 
 @Composable
-private fun ModernWeightHeader(navController: NavController) {
+private fun PersonalizedHeader(
+    navController: NavController,
+    userName: String,
+    progressPercentage: Float
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shadowElevation = 2.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = AppTheme.colors.textPrimary
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text = "Weight Journey",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary
-                )
-                Text(
-                    text = "Track your progress towards your goal",
-                    fontSize = 13.sp,
-                    color = AppTheme.colors.textSecondary
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = AppTheme.colors.textPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Your Journey",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
+                    )
+                    Text(
+                        text = when {
+                            progressPercentage >= 75f -> "You're almost there! 🎉"
+                            progressPercentage >= 50f -> "Halfway through! Keep going! 💪"
+                            progressPercentage >= 25f -> "Great start! Stay consistent! ✨"
+                            progressPercentage > 0f -> "Every journey begins with a single step! 🌟"
+                            else -> "Your transformation starts today! 🚀"
+                        },
+                        fontSize = 13.sp,
+                        color = AppTheme.colors.primaryGreen,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
@@ -278,173 +320,320 @@ private fun ModernWeightHeader(navController: NavController) {
 
 @SuppressLint("DefaultLocale")
 @Composable
-private fun AchievementSummaryCard(
+private fun JourneyStoryCard(
     startingWeight: Float,
     currentWeight: Float,
     targetWeight: Float,
-    progressPercentage: Float
+    progressPercentage: Float,
+    isGaining: Boolean,
+    daysTracking: Int
 ) {
-    val weightLost = abs(currentWeight - startingWeight)
+    val weightChange = abs(currentWeight - startingWeight)
     val weightRemaining = abs(targetWeight - currentWeight)
-    val isGaining = targetWeight > startingWeight
+
+    val storyText = when {
+        progressPercentage >= 100f -> "🎊 Incredible! You've reached your goal! You ${if (isGaining) "gained" else "lost"} ${String.format("%.1f", weightChange)} kg!"
+        progressPercentage >= 75f -> "🔥 You're in the final stretch! Only ${String.format("%.1f", weightRemaining)} kg to go!"
+        progressPercentage >= 50f -> "💪 Amazing progress! You've ${if (isGaining) "gained" else "lost"} ${String.format("%.1f", weightChange)} kg and you're halfway there!"
+        progressPercentage >= 25f -> "✨ Great start! You've ${if (isGaining) "gained" else "lost"} ${String.format("%.1f", weightChange)} kg. Keep the momentum!"
+        progressPercentage > 0f -> "🌱 Your journey has begun! ${String.format("%.1f", weightChange)} kg ${if (isGaining) "gained" else "lost"}. Stay consistent!"
+        else -> "🚀 Ready to start your transformation? Log your first weight to begin!"
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.1f)
+            containerColor = AppTheme.colors.cardBackground
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Program Summary",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary
-                )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(AppTheme.colors.primaryGreen)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "${progressPercentage.toInt()}%",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            AppTheme.colors.primaryGreen.copy(alpha = 0.15f),
+                            AppTheme.colors.primaryGreen.copy(alpha = 0.05f)
+                        )
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                AchievementStatItem(
-                    label = "Starting",
-                    value = String.format("%.1f", startingWeight),
-                    unit = "kg",
-                    icon = Icons.Default.FlagCircle,
-                    color = AppTheme.colors.textSecondary
                 )
-
-                AchievementStatItem(
-                    label = if (isGaining) "Gained" else "Lost",
-                    value = String.format("%.1f", weightLost),
-                    unit = "kg",
-                    icon = if (isGaining) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
-                    color = AppTheme.colors.primaryGreen
-                )
-
-                AchievementStatItem(
-                    label = "Remaining",
-                    value = String.format("%.1f", weightRemaining),
-                    unit = "kg",
-                    icon = Icons.Default.Flag,
-                    color = AppTheme.colors.warmOrange
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Progress bar
-            Box(
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White.copy(alpha = 0.5f))
+                    .padding(20.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(progressPercentage / 100f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    AppTheme.colors.primaryGreen,
-                                    AppTheme.colors.primaryGreen.copy(alpha = 0.7f)
-                                )
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Your Story",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppTheme.colors.textPrimary
                         )
-                )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = storyText,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            color = AppTheme.colors.textPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(AppTheme.colors.primaryGreen),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${progressPercentage.toInt()}%",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    JourneyStatBubble(
+                        value = String.format("%.1f", startingWeight),
+                        label = "Start",
+                        color = AppTheme.colors.textSecondary
+                    )
+
+                    JourneyStatBubble(
+                        value = String.format("%.1f", currentWeight),
+                        label = "Current",
+                        color = AppTheme.colors.primaryGreen,
+                        isHighlight = true
+                    )
+
+                    JourneyStatBubble(
+                        value = String.format("%.1f", targetWeight),
+                        label = "Goal",
+                        color = AppTheme.colors.warmOrange
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Animated Progress Bar
+                AnimatedJourneyProgressBar(progressPercentage = progressPercentage)
+
+                if (daysTracking > 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            tint = AppTheme.colors.textSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$daysTracking ${if (daysTracking == 1) "entry" else "entries"} logged",
+                            fontSize = 12.sp,
+                            color = AppTheme.colors.textSecondary
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AchievementStatItem(
-    label: String,
+private fun JourneyStatBubble(
     value: String,
-    unit: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color
+    label: String,
+    color: Color,
+    isHighlight: Boolean = false
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(if (isHighlight) 70.dp else 60.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.15f)),
+                .background(
+                    if (isHighlight) {
+                        Brush.radialGradient(
+                            listOf(
+                                color.copy(alpha = 0.3f),
+                                color.copy(alpha = 0.1f)
+                            )
+                        )
+                    } else {
+                        // FIX: Wrap the Color in SolidColor so both branches return a Brush
+                        SolidColor(color.copy(alpha = 0.1f))
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = value,
+                    fontSize = if (isHighlight) 20.sp else 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = "kg",
+                    fontSize = 10.sp,
+                    color = color.copy(alpha = 0.7f)
+                )
+            }
         }
         Text(
             text = label,
             fontSize = 12.sp,
-            color = AppTheme.colors.textSecondary,
-            fontWeight = FontWeight.Medium
+            fontWeight = if (isHighlight) FontWeight.Bold else FontWeight.Medium,
+            color = if (isHighlight) color else AppTheme.colors.textSecondary
         )
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+    }
+}
+
+@Composable
+private fun AnimatedJourneyProgressBar(progressPercentage: Float) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressPercentage,
+        animationSpec = tween(1200, easing = FastOutSlowInEasing)
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(14.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(Color.White.copy(alpha = 0.3f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(animatedProgress / 100f)
+                .clip(RoundedCornerShape(7.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            AppTheme.colors.primaryGreen,
+                            AppTheme.colors.primaryGreen.copy(alpha = 0.8f)
+                        )
+                    )
+                )
+        )
+    }
+}
+
+@SuppressLint("DefaultLocale")
+@Composable
+private fun NextMilestoneCard(
+    progressPercentage: Float,
+    currentProgress: Float,
+    totalGoal: Float,
+    isGaining: Boolean
+) {
+    val nextMilestone = when {
+        progressPercentage < 25f -> 25f
+        progressPercentage < 50f -> 50f
+        progressPercentage < 75f -> 75f
+        progressPercentage < 100f -> 100f
+        else -> null
+    }
+
+    if (nextMilestone != null) {
+        val progressToNextMilestone = (nextMilestone / 100f * totalGoal) - currentProgress
+        val badge = when (nextMilestone) {
+            25f -> "🥉"
+            50f -> "🥈"
+            75f -> "🥇"
+            else -> "🏆"
+        }
+        val milestoneName = when (nextMilestone) {
+            25f -> "First Steps"
+            50f -> "Halfway Hero"
+            75f -> "Almost There"
+            else -> "Goal Complete"
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = AppTheme.colors.warmOrange.copy(alpha = 0.1f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Text(
-                text = value,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Text(
-                text = unit,
-                fontSize = 11.sp,
-                color = AppTheme.colors.textSecondary,
-                modifier = Modifier.padding(bottom = 2.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = badge,
+                        fontSize = 32.sp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Next: $milestoneName",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppTheme.colors.textPrimary
+                        )
+                        Text(
+                            text = "${String.format("%.1f", progressToNextMilestone)} kg to unlock",
+                            fontSize = 12.sp,
+                            color = AppTheme.colors.textSecondary
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = AppTheme.colors.warmOrange,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun TrophySection(progressPercentage: Float) {
+private fun MotivationalTrophySection(
+    progressPercentage: Float,
+    currentWeight: Float,
+    targetWeight: Float
+) {
     val badges = listOf(
-        BadgeData(25f, "First Steps", "🥉", AppTheme.colors.warmOrange),
-        BadgeData(50f, "Halfway Hero", "🥈", AppTheme.colors.softBlue),
-        BadgeData(75f, "Almost There", "🥇", AppTheme.colors.primaryGreen)
+        BadgeData(25f, "First Steps", "🥉", AppTheme.colors.warmOrange, "You're on your way!"),
+        BadgeData(50f, "Halfway Hero", "🥈", AppTheme.colors.softBlue, "Keep pushing forward!"),
+        BadgeData(75f, "Almost There", "🥇", AppTheme.colors.primaryGreen, "The finish line awaits!")
     )
 
     Card(
@@ -463,12 +652,19 @@ private fun TrophySection(progressPercentage: Float) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Achievements",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary
-                )
+                Column {
+                    Text(
+                        text = "Achievement Gallery",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
+                    )
+                    Text(
+                        text = "Unlock badges as you progress",
+                        fontSize = 12.sp,
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
                 Icon(
                     imageVector = Icons.Default.EmojiEvents,
                     contentDescription = null,
@@ -484,7 +680,7 @@ private fun TrophySection(progressPercentage: Float) {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 badges.forEach { badge ->
-                    BadgeItem(
+                    MotivationalBadgeItem(
                         badge = badge,
                         isUnlocked = progressPercentage >= badge.threshold
                     )
@@ -498,14 +694,24 @@ private data class BadgeData(
     val threshold: Float,
     val title: String,
     val emoji: String,
-    val color: Color
+    val color: Color,
+    val motivation: String
 )
 
 @Composable
-private fun BadgeItem(badge: BadgeData, isUnlocked: Boolean) {
+private fun MotivationalBadgeItem(badge: BadgeData, isUnlocked: Boolean) {
     val scale by animateFloatAsState(
         targetValue = if (isUnlocked) 1f else 0.9f,
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 200f)
+    )
+
+    val rotation by rememberInfiniteTransition().animateFloat(
+        initialValue = if (isUnlocked) -5f else 0f,
+        targetValue = if (isUnlocked) 5f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
     )
 
     Column(
@@ -514,14 +720,15 @@ private fun BadgeItem(badge: BadgeData, isUnlocked: Boolean) {
     ) {
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .size(90.dp)
                 .scale(scale)
+                .graphicsLayer { rotationZ = if (isUnlocked) rotation else 0f }
                 .clip(CircleShape)
                 .background(
                     if (isUnlocked)
                         Brush.radialGradient(
                             listOf(
-                                badge.color.copy(alpha = 0.3f),
+                                badge.color.copy(alpha = 0.4f),
                                 badge.color.copy(alpha = 0.1f)
                             )
                         )
@@ -535,18 +742,31 @@ private fun BadgeItem(badge: BadgeData, isUnlocked: Boolean) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = badge.emoji,
-                fontSize = 40.sp,
-                modifier = Modifier.graphicsLayer {
-                    alpha = if (isUnlocked) 1f else 0.3f
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = badge.emoji,
+                    fontSize = 44.sp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = if (isUnlocked) 1f else 0.3f
+                    }
+                )
+                if (isUnlocked) {
+                    Text(
+                        text = "✓",
+                        fontSize = 16.sp,
+                        color = badge.color,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-            )
+            }
         }
 
         Text(
             text = "${badge.threshold.toInt()}%",
-            fontSize = 14.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = if (isUnlocked) badge.color else AppTheme.colors.textSecondary
         )
@@ -554,10 +774,29 @@ private fun BadgeItem(badge: BadgeData, isUnlocked: Boolean) {
         Text(
             text = badge.title,
             fontSize = 11.sp,
-            color = AppTheme.colors.textSecondary,
+            fontWeight = FontWeight.SemiBold,
+            color = AppTheme.colors.textPrimary,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(90.dp)
         )
+
+        if (isUnlocked) {
+            Text(
+                text = badge.motivation,
+                fontSize = 10.sp,
+                color = badge.color,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(90.dp)
+            )
+        } else {
+            Text(
+                text = "Locked",
+                fontSize = 10.sp,
+                color = AppTheme.colors.textSecondary.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -702,7 +941,6 @@ fun ManageHistoryDialog(
     )
 }
 
-// Keep existing chart and dialog components
 @SuppressLint("DefaultLocale")
 @Composable
 fun EnhancedWeightLineChart(
