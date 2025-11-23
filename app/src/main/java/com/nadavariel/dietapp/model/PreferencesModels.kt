@@ -32,7 +32,9 @@ data class NotificationPreference(
     @set:PropertyName("isEnabled")
     var isEnabled: Boolean = true,
 
-    val type: String = "MEAL"
+    val type: String = "MEAL",
+
+    val daysOfWeek: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7)
 ) {
     @get:Exclude
     val uniqueId: Int

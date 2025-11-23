@@ -15,6 +15,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
+import java.util.Calendar
 
 class WeightReminderReceiver : BroadcastReceiver() {
 
@@ -33,6 +34,19 @@ class WeightReminderReceiver : BroadcastReceiver() {
         val repetition = intent?.getStringExtra(WEIGHT_REPETITION_EXTRA) ?: "DAILY"
         val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
 
+        // NEW: Get the allowed days
+        val daysOfWeek = intent?.getIntegerArrayListExtra("DAYS_OF_WEEK")
+
+        // --- NEW LOGIC: Check Day of Week ---
+        if (repetition == "DAILY" && daysOfWeek != null && daysOfWeek.isNotEmpty()) {
+            val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
+            if (!daysOfWeek.contains(today)) {
+                Log.d(tag, "Weight Alarm woke up, but today ($today) is not in selected days $daysOfWeek. Skipping.")
+                return
+            }
+        }
+        // ------------------------------------
+
         if (repetition == "ONCE" && !firestoreId.isNullOrEmpty()) {
             val userId = Firebase.auth.currentUser?.uid
             if (userId != null) {
@@ -47,14 +61,13 @@ class WeightReminderReceiver : BroadcastReceiver() {
 
         createNotificationChannel(context)
 
-        // FIX: Use standard Intent logic
         val deepLinkIntent = Intent(
             Intent.ACTION_VIEW,
             "dietapp://weight_tracker?openWeightLog=true".toUri(),
             context,
             MainActivity::class.java
         ).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(

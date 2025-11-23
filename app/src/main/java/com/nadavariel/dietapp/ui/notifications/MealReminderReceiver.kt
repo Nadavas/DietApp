@@ -15,6 +15,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
+import java.util.Calendar
 
 class MealReminderReceiver : BroadcastReceiver() {
 
@@ -33,9 +34,22 @@ class MealReminderReceiver : BroadcastReceiver() {
         val repetition = intent?.getStringExtra(NOTIFICATION_REPETITION_EXTRA) ?: "DAILY"
         val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
 
+        // NEW: Get the allowed days
+        val daysOfWeek = intent?.getIntegerArrayListExtra("DAYS_OF_WEEK")
+
         if (notificationId == 0) return
 
-        // Logic to turn off "ONCE" reminders
+        // --- NEW LOGIC: Check Day of Week ---
+        // If it's a DAILY alarm, we must check if today is one of the selected days.
+        if (repetition == "DAILY" && daysOfWeek != null && daysOfWeek.isNotEmpty()) {
+            val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) // 1=Sun, 2=Mon...
+            if (!daysOfWeek.contains(today)) {
+                Log.d(tag, "Alarm woke up, but today ($today) is not in selected days $daysOfWeek. Skipping.")
+                return
+            }
+        }
+        // ------------------------------------
+
         if (repetition == "ONCE" && !firestoreId.isNullOrEmpty()) {
             val userId = Firebase.auth.currentUser?.uid
             if (userId != null) {
@@ -50,15 +64,13 @@ class MealReminderReceiver : BroadcastReceiver() {
 
         createNotificationChannel(context)
 
-        // FIX: Use standard Intent logic instead of TaskStackBuilder
         val addMealIntent = Intent(
             Intent.ACTION_VIEW,
             "dietapp://add_meal".toUri(),
             context,
             MainActivity::class.java
         ).apply {
-            // These flags help ensure we don't create multiple instances of the app
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(

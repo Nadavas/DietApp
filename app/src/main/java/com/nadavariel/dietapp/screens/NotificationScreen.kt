@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.TimePicker
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -13,13 +12,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +32,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,9 +55,17 @@ fun NotificationScreen(
 ) {
     val allNotifications by notificationViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
 
+    val sortedNotifications = remember(allNotifications) {
+        val oneTime = allNotifications.filter { it.repetition == "ONCE" }
+            .sortedWith(compareBy({ it.hour }, { it.minute }))
+        val recurring = allNotifications.filter { it.repetition == "DAILY" }
+            .sortedWith(compareBy({ it.hour }, { it.minute }))
+
+        oneTime + recurring
+    }
+
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
-    // NEW: State to track deletion
     var preferenceToDelete by remember { mutableStateOf<NotificationPreference?>(null) }
 
     val context = LocalContext.current
@@ -152,7 +166,7 @@ fun NotificationScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(allNotifications, key = { it.id }) { pref ->
+                    items(sortedNotifications, key = { it.id }) { pref ->
                         NotificationCard(
                             preference = pref,
                             onToggle = { enabled ->
@@ -163,11 +177,12 @@ fun NotificationScreen(
                                 showAddDialog = true
                             },
                             onDelete = {
-                                // Open confirmation dialog instead of deleting directly
                                 preferenceToDelete = pref
                             }
                         )
                     }
+
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
@@ -181,7 +196,6 @@ fun NotificationScreen(
         )
     }
 
-    // NEW: Delete Confirmation Dialog
     if (preferenceToDelete != null) {
         StyledAlertDialog(
             onDismissRequest = { preferenceToDelete = null },
@@ -212,8 +226,26 @@ fun NotificationCard(
     }
 
     val timeText = String.format("%02d:%02d", preference.hour, preference.minute)
-    val typeText = if (preference.type == "WEIGHT") "Weight Log" else "Meal Log"
-    val repeatText = if (preference.repetition == "DAILY") "Daily" else "Once"
+
+    val isMeal = preference.type == "MEAL"
+    val iconVector = if (isMeal) Icons.Rounded.Restaurant else Icons.Rounded.FitnessCenter
+    val themeColor = if (isMeal) Color(0xFF9C27B0) else Color(0xFFD32F2F)
+
+    val isRecurring = preference.repetition == "DAILY"
+
+    // Helper to format selected days
+    val repeatText = remember(preference.daysOfWeek) {
+        when {
+            !isRecurring -> ""
+            preference.daysOfWeek.size == 7 -> "Every day"
+            preference.daysOfWeek.containsAll(listOf(2,3,4,5,6)) && preference.daysOfWeek.size == 5 -> "Weekdays"
+            preference.daysOfWeek.containsAll(listOf(1,7)) && preference.daysOfWeek.size == 2 -> "Weekends"
+            else -> {
+                val days = mapOf(1 to "Sun", 2 to "Mon", 3 to "Tue", 4 to "Wed", 5 to "Thu", 6 to "Fri", 7 to "Sat")
+                preference.daysOfWeek.sorted().joinToString(", ") { days[it] ?: "" }
+            }
+        }
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -230,42 +262,61 @@ fun NotificationCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f)),
+                        .background(themeColor.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.AccessTime,
+                        imageVector = iconVector,
                         contentDescription = null,
-                        tint = AppTheme.colors.primaryGreen
+                        tint = themeColor
                     )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column {
-                    Text(
-                        text = timeText,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary
-                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = typeText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = AppTheme.colors.textSecondary
+                            text = timeText,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = AppTheme.colors.textPrimary
                         )
+
+                        if (isRecurring) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.Repeat,
+                                contentDescription = "Recurring",
+                                tint = AppTheme.colors.primaryGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    // FIX: Show both Days AND Message stacked
+                    if (isRecurring) {
                         Text(
-                            text = " • $repeatText",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = AppTheme.colors.textSecondary
+                            text = repeatText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = AppTheme.colors.primaryGreen, // Green for schedule
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+
+                    Text(
+                        text = preference.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
@@ -298,6 +349,7 @@ fun NotificationCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditNotificationDialog(
     viewModel: NotificationViewModel,
@@ -305,17 +357,25 @@ fun AddEditNotificationDialog(
     onDismiss: () -> Unit
 ) {
     val isEdit = preferenceToEdit != null
-    val defaultMealMessage = "Time to log your next meal!"
+    val defaultMealMessage = "Time to log your meal!"
     val defaultWeightMessage = "Time to log your weight!"
 
     val initialHour = if (isEdit) preferenceToEdit.hour else Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val initialMinute = if (isEdit) preferenceToEdit.minute else Calendar.getInstance().get(Calendar.MINUTE)
 
-    var hour by remember { mutableIntStateOf(initialHour) }
-    var minute by remember { mutableIntStateOf(initialMinute) }
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = true
+    )
+
     var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") }
     var type by remember { mutableStateOf(preferenceToEdit?.type ?: "MEAL") }
     var message by remember { mutableStateOf(preferenceToEdit?.message ?: defaultMealMessage) }
+
+    var selectedDays by remember {
+        mutableStateOf(preferenceToEdit?.daysOfWeek ?: listOf(1,2,3,4,5,6,7))
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -327,24 +387,27 @@ fun AddEditNotificationDialog(
         },
         containerColor = Color.White,
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                AndroidView(
-                    modifier = Modifier.fillMaxWidth(),
-                    factory = { context ->
-                        TimePicker(context).apply {
-                            setIs24HourView(true)
-                            this.hour = initialHour
-                            this.minute = initialMinute
-                            setOnTimeChangedListener { _, h, m ->
-                                hour = h
-                                minute = m
-                            }
-                        }
-                    },
-                    update = { view ->
-                        if (view.hour != hour) view.hour = hour
-                        if (view.minute != minute) view.minute = minute
-                    }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                TimePicker(
+                    state = timePickerState,
+                    colors = TimePickerDefaults.colors(
+                        clockDialSelectedContentColor = Color.White,
+                        clockDialUnselectedContentColor = AppTheme.colors.textPrimary,
+                        selectorColor = AppTheme.colors.primaryGreen,
+                        containerColor = Color.White,
+                        periodSelectorBorderColor = AppTheme.colors.primaryGreen,
+                        periodSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                        periodSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                        periodSelectorUnselectedContainerColor = Color.Transparent,
+                        periodSelectorUnselectedContentColor = AppTheme.colors.textSecondary,
+                        timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                        timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                        timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                        timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -391,12 +454,19 @@ fun AddEditNotificationDialog(
                     FilterChip(
                         selected = repetition == "DAILY",
                         onClick = { repetition = "DAILY" },
-                        label = { Text("Every Day") },
+                        label = { Text("Recurring") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
                             selectedLabelColor = AppTheme.colors.primaryGreen
                         )
                     )
+                }
+
+                if (repetition == "DAILY") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    DaySelector(selectedDays = selectedDays) { newDays ->
+                        selectedDays = newDays
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -418,12 +488,13 @@ fun AddEditNotificationDialog(
             Button(
                 onClick = {
                     val finalPref = (preferenceToEdit ?: NotificationPreference()).copy(
-                        hour = hour,
-                        minute = minute,
+                        hour = timePickerState.hour,
+                        minute = timePickerState.minute,
                         repetition = repetition,
                         message = message,
                         isEnabled = true,
-                        type = type
+                        type = type,
+                        daysOfWeek = selectedDays
                     )
                     viewModel.saveNotification(finalPref)
                     onDismiss()
@@ -442,4 +513,47 @@ fun AddEditNotificationDialog(
             }
         }
     )
+}
+
+@Composable
+fun DaySelector(
+    selectedDays: List<Int>,
+    onSelectionChange: (List<Int>) -> Unit
+) {
+    val days = listOf("S", "M", "T", "W", "T", "F", "S")
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        days.forEachIndexed { index, label ->
+            val dayValue = index + 1
+            val isSelected = selectedDays.contains(dayValue)
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) AppTheme.colors.primaryGreen else Color.LightGray.copy(alpha = 0.3f))
+                    .clickable {
+                        val newList = if (isSelected) {
+                            selectedDays - dayValue
+                        } else {
+                            selectedDays + dayValue
+                        }
+                        if (newList.isNotEmpty()) {
+                            onSelectionChange(newList)
+                        }
+                    }
+            ) {
+                Text(
+                    text = label,
+                    color = if (isSelected) Color.White else AppTheme.colors.textSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
 }

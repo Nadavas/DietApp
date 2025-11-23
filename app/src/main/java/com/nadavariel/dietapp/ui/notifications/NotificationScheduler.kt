@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.nadavariel.dietapp.model.NotificationPreference
+import java.util.ArrayList
 
 class NotificationScheduler(private val context: Context) {
 
@@ -19,17 +20,16 @@ class NotificationScheduler(private val context: Context) {
     ): PendingIntent {
 
         val intent = Intent(context, receiverClass).apply {
-            // Pass the Firestore Document ID so the receiver can update the DB
+            // Pass the Firestore Document ID
             putExtra("NOTIFICATION_FIRESTORE_ID", preference.id)
+            // NEW: Pass the selected days so the receiver can check them
+            putIntegerArrayListExtra("DAYS_OF_WEEK", ArrayList(preference.daysOfWeek))
 
-            // Check the type to set the correct extras
             if (preference.type == "WEIGHT") {
                 putExtra(WeightReminderReceiver.WEIGHT_NOTIF_ID_EXTRA, preference.uniqueId)
                 putExtra(WeightReminderReceiver.WEIGHT_MESSAGE_EXTRA, preference.message)
-                // NEW: Pass repetition so WeightReceiver knows if it's ONCE
                 putExtra(WeightReminderReceiver.WEIGHT_REPETITION_EXTRA, preference.repetition)
             } else {
-                // Default to MEAL
                 putExtra(MealReminderReceiver.NOTIFICATION_ID_EXTRA, preference.uniqueId)
                 putExtra(MealReminderReceiver.NOTIFICATION_MESSAGE_EXTRA, preference.message)
                 putExtra(MealReminderReceiver.NOTIFICATION_REPETITION_EXTRA, preference.repetition)
@@ -58,6 +58,8 @@ class NotificationScheduler(private val context: Context) {
         Log.i(tag, "Scheduling ${receiverClass.simpleName} for ID: ${preference.uniqueId}. Next trigger: $readableTime")
 
         if (preference.repetition == "DAILY") {
+            // Schedule to repeat every 24 hours.
+            // The Receiver will check if "Today" is a valid day before showing the notification.
             alarmManager.setInexactRepeating(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
