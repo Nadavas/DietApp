@@ -6,7 +6,6 @@ import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,12 +37,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -55,6 +52,7 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.NotificationViewModel
 import java.util.Calendar
+import androidx.core.net.toUri
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,13 +63,9 @@ fun NotificationScreen(
 ) {
     val allNotifications by notificationViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
 
+    // UPDATED: Sort strictly by time (Hour -> Minute), ignoring repetition type
     val sortedNotifications = remember(allNotifications) {
-        val oneTime = allNotifications.filter { it.repetition == "ONCE" }
-            .sortedWith(compareBy({ it.hour }, { it.minute }))
-        val recurring = allNotifications.filter { it.repetition == "DAILY" }
-            .sortedWith(compareBy({ it.hour }, { it.minute }))
-
-        oneTime + recurring
+        allNotifications.sortedWith(compareBy({ it.hour }, { it.minute }))
     }
 
     var showAddDialog by remember { mutableStateOf(false) }
@@ -99,7 +93,7 @@ fun NotificationScreen(
         onResult = { isGranted -> hasNotificationPermission = isGranted }
     )
 
-    // --- NEW: Exact Alarm Permission Logic (Android 12+) ---
+    // --- Exact Alarm Permission Logic (Android 12+) ---
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     var hasExactAlarmPermission by remember {
         mutableStateOf(
@@ -111,18 +105,16 @@ fun NotificationScreen(
         )
     }
 
-    // --- NEW: Lifecycle Observer to refresh permissions on Resume ---
-    val lifecycleOwner = LocalLifecycleOwner.current
+    // --- Lifecycle Observer to refresh permissions on Resume ---
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // Refresh Notification Permission
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     hasNotificationPermission = ContextCompat.checkSelfPermission(
                         context, Manifest.permission.POST_NOTIFICATIONS
                     ) == PackageManager.PERMISSION_GRANTED
                 }
-                // Refresh Exact Alarm Permission
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     hasExactAlarmPermission = alarmManager.canScheduleExactAlarms()
                 }
@@ -196,7 +188,7 @@ fun NotificationScreen(
                 }
             }
 
-            // --- NEW: Exact Alarm Warning Card ---
+            // --- Exact Alarm Warning Card ---
             if (!hasExactAlarmPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Card(
                     modifier = Modifier
@@ -204,13 +196,13 @@ fun NotificationScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .clickable {
                             val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                data = Uri.parse("package:${context.packageName}")
+                                data = "package:${context.packageName}".toUri()
                             }
                             context.startActivity(intent)
                         },
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFF3E0), // Light Orange
-                        contentColor = Color(0xFFE65100)  // Dark Orange
+                        containerColor = Color(0xFFFFF3E0),
+                        contentColor = Color(0xFFE65100)
                     ),
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
@@ -235,7 +227,6 @@ fun NotificationScreen(
                     }
                 }
             }
-            // -------------------------------------
 
             if (allNotifications.isEmpty()) {
                 Box(
@@ -321,7 +312,6 @@ fun NotificationCard(
 
     val isRecurring = preference.repetition == "DAILY"
 
-    // Helper to format selected days
     val repeatText = remember(preference.daysOfWeek) {
         when {
             !isRecurring -> ""
@@ -456,7 +446,6 @@ fun AddEditNotificationDialog(
         is24Hour = true
     )
 
-    // NEW: State to toggle between Clock Dial and Keyboard Input
     var showTimeInput by remember { mutableStateOf(false) }
 
     var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") }
@@ -481,7 +470,6 @@ fun AddEditNotificationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                // NEW: Toggle Logic for TimePicker vs TimeInput
                 if (showTimeInput) {
                     TimeInput(
                         state = timePickerState,
@@ -513,7 +501,6 @@ fun AddEditNotificationDialog(
                     )
                 }
 
-                // NEW: Toggle Button
                 IconButton(onClick = { showTimeInput = !showTimeInput }) {
                     Icon(
                         imageVector = if (showTimeInput) Icons.Rounded.AccessTime else Icons.Filled.Keyboard,

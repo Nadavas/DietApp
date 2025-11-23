@@ -8,7 +8,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 import com.google.firebase.auth.ktx.auth
@@ -17,11 +16,8 @@ import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
 import java.util.Calendar
-import java.util.Date
 
 class MealReminderReceiver : BroadcastReceiver() {
-
-    private val tag = "ALARM_DEBUG"
 
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "meal_reminder_channel"
@@ -31,8 +27,6 @@ class MealReminderReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        Log.d(tag, ">>> MealReceiver: onReceive TRIGGERED! <<<")
-
         val notificationId = intent?.getIntExtra(NOTIFICATION_ID_EXTRA, 0) ?: 0
         val message = intent?.getStringExtra(NOTIFICATION_MESSAGE_EXTRA) ?: "Time to log your meal!"
         val repetition = intent?.getStringExtra(NOTIFICATION_REPETITION_EXTRA) ?: "DAILY"
@@ -41,28 +35,18 @@ class MealReminderReceiver : BroadcastReceiver() {
         val hour = intent?.getIntExtra("HOUR", -1) ?: -1
         val minute = intent?.getIntExtra("MINUTE", -1) ?: -1
 
-        Log.d(tag, "MealReceiver: ID=$notificationId, Repetition=$repetition, Hour=$hour, Min=$minute")
-
-        if (notificationId == 0) {
-            Log.e(tag, "MealReceiver: Invalid ID (0). Aborting.")
-            return
-        }
+        if (notificationId == 0) return
 
         // --- RESCHEDULE LOGIC ---
         if (repetition == "DAILY" && hour != -1 && minute != -1 && intent != null) {
             scheduleNextOccurrence(context, notificationId, intent, hour, minute)
-        } else {
-            Log.d(tag, "MealReceiver: Not rescheduling (Once or missing data).")
         }
 
         // --- Check Day of Week ---
         if (repetition == "DAILY" && daysOfWeek != null && daysOfWeek.isNotEmpty()) {
             val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
             if (!daysOfWeek.contains(today)) {
-                Log.d(tag, "MealReceiver: SKIPPING. Today ($today) is not in $daysOfWeek.")
                 return
-            } else {
-                Log.d(tag, "MealReceiver: Day OK. Today ($today) is in $daysOfWeek.")
             }
         }
 
@@ -74,7 +58,6 @@ class MealReminderReceiver : BroadcastReceiver() {
                     .collection("notifications")
                     .document(firestoreId)
                     .update("isEnabled", false)
-                    .addOnFailureListener { Log.e(tag, "MealReceiver: Failed to disable in Firestore", it) }
             }
         }
 
@@ -107,7 +90,6 @@ class MealReminderReceiver : BroadcastReceiver() {
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, notification)
-        Log.d(tag, "MealReceiver: Notification POSTED to Manager.")
     }
 
     private fun scheduleNextOccurrence(context: Context, notificationId: Int, oldIntent: Intent, hour: Int, minute: Int) {
@@ -132,8 +114,6 @@ class MealReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        Log.d(tag, "MealReceiver: Rescheduling Next for: ${nextAlarm.time}")
-
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextAlarm.timeInMillis, pendingIntent)
@@ -141,7 +121,7 @@ class MealReminderReceiver : BroadcastReceiver() {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextAlarm.timeInMillis, pendingIntent)
             }
         } catch (e: SecurityException) {
-            Log.e(tag, "MealReceiver: Error rescheduling", e)
+            e.printStackTrace()
         }
     }
 
