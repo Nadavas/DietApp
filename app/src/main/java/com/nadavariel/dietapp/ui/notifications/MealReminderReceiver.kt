@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.ui.notifications
 
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -16,6 +17,7 @@ import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
 import java.util.Calendar
+import java.util.Date
 
 class MealReminderReceiver : BroadcastReceiver() {
 
@@ -29,21 +31,38 @@ class MealReminderReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
+        Log.d(tag, ">>> MealReceiver: onReceive TRIGGERED! <<<")
+
         val notificationId = intent?.getIntExtra(NOTIFICATION_ID_EXTRA, 0) ?: 0
         val message = intent?.getStringExtra(NOTIFICATION_MESSAGE_EXTRA) ?: "Time to log your meal!"
         val repetition = intent?.getStringExtra(NOTIFICATION_REPETITION_EXTRA) ?: "DAILY"
         val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
-
         val daysOfWeek = intent?.getIntegerArrayListExtra("DAYS_OF_WEEK")
+        val hour = intent?.getIntExtra("HOUR", -1) ?: -1
+        val minute = intent?.getIntExtra("MINUTE", -1) ?: -1
 
-        if (notificationId == 0) return
+        Log.d(tag, "MealReceiver: ID=$notificationId, Repetition=$repetition, Hour=$hour, Min=$minute")
 
-        // Check Day of Week
+        if (notificationId == 0) {
+            Log.e(tag, "MealReceiver: Invalid ID (0). Aborting.")
+            return
+        }
+
+        // --- RESCHEDULE LOGIC ---
+        if (repetition == "DAILY" && hour != -1 && minute != -1 && intent != null) {
+            scheduleNextOccurrence(context, notificationId, intent, hour, minute)
+        } else {
+            Log.d(tag, "MealReceiver: Not rescheduling (Once or missing data).")
+        }
+
+        // --- Check Day of Week ---
         if (repetition == "DAILY" && daysOfWeek != null && daysOfWeek.isNotEmpty()) {
             val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
             if (!daysOfWeek.contains(today)) {
-                Log.d(tag, "Today ($today) is not in selected days $daysOfWeek. Skipping.")
+                Log.d(tag, "MealReceiver: SKIPPING. Today ($today) is not in $daysOfWeek.")
                 return
+            } else {
+                Log.d(tag, "MealReceiver: Day OK. Today ($today) is in $daysOfWeek.")
             }
         }
 
@@ -55,7 +74,7 @@ class MealReminderReceiver : BroadcastReceiver() {
                     .collection("notifications")
                     .document(firestoreId)
                     .update("isEnabled", false)
-                    .addOnFailureListener { Log.e(tag, "Failed to disable reminder: ${it.message}") }
+                    .addOnFailureListener { Log.e(tag, "MealReceiver: Failed to disable in Firestore", it) }
             }
         }
 
@@ -67,7 +86,6 @@ class MealReminderReceiver : BroadcastReceiver() {
             context,
             MainActivity::class.java
         ).apply {
-            // CLEAR_TOP ensures deep link is handled if app is already open
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
@@ -89,6 +107,42 @@ class MealReminderReceiver : BroadcastReceiver() {
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, notification)
+        Log.d(tag, "MealReceiver: Notification POSTED to Manager.")
+    }
+
+    private fun scheduleNextOccurrence(context: Context, notificationId: Int, oldIntent: Intent, hour: Int, minute: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val nextAlarm = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        val nextIntent = Intent(context, MealReminderReceiver::class.java).apply {
+            if (oldIntent.extras != null) putExtras(oldIntent.extras!!)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId,
+            nextIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        Log.d(tag, "MealReceiver: Rescheduling Next for: ${nextAlarm.time}")
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextAlarm.timeInMillis, pendingIntent)
+            } else {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextAlarm.timeInMillis, pendingIntent)
+            }
+        } catch (e: SecurityException) {
+            Log.e(tag, "MealReceiver: Error rescheduling", e)
+        }
     }
 
     private fun createNotificationChannel(context: Context) {

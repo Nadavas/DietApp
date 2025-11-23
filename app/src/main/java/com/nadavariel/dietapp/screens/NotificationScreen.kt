@@ -2,8 +2,13 @@ package com.nadavariel.dietapp.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -20,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FitnessCenter
@@ -32,12 +38,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -70,6 +79,8 @@ fun NotificationScreen(
     var preferenceToDelete by remember { mutableStateOf<NotificationPreference?>(null) }
 
     val context = LocalContext.current
+
+    // --- Notification Permission Logic ---
     var hasNotificationPermission by remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             mutableStateOf(
@@ -87,6 +98,41 @@ fun NotificationScreen(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted -> hasNotificationPermission = isGranted }
     )
+
+    // --- NEW: Exact Alarm Permission Logic (Android 12+) ---
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    var hasExactAlarmPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                alarmManager.canScheduleExactAlarms()
+            } else {
+                true
+            }
+        )
+    }
+
+    // --- NEW: Lifecycle Observer to refresh permissions on Resume ---
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Refresh Notification Permission
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    hasNotificationPermission = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                }
+                // Refresh Exact Alarm Permission
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    hasExactAlarmPermission = alarmManager.canScheduleExactAlarms()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(key1 = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
@@ -149,6 +195,47 @@ fun NotificationScreen(
                     )
                 }
             }
+
+            // --- NEW: Exact Alarm Warning Card ---
+            if (!hasExactAlarmPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable {
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            context.startActivity(intent)
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFF3E0), // Light Orange
+                        contentColor = Color(0xFFE65100)  // Dark Orange
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Warning, contentDescription = "Warning")
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Exact Alarms Disabled",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "Tap here to allow 'Alarms & reminders' so notifications arrive on time.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+            // -------------------------------------
 
             if (allNotifications.isEmpty()) {
                 Box(
