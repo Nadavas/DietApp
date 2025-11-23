@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FitnessCenter
@@ -299,12 +300,11 @@ fun NotificationCard(
                         }
                     }
 
-                    // FIX: Show both Days AND Message stacked
                     if (isRecurring) {
                         Text(
                             text = repeatText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = AppTheme.colors.primaryGreen, // Green for schedule
+                            color = AppTheme.colors.primaryGreen,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -369,6 +369,9 @@ fun AddEditNotificationDialog(
         is24Hour = true
     )
 
+    // NEW: State to toggle between Clock Dial and Keyboard Input
+    var showTimeInput by remember { mutableStateOf(false) }
+
     var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") }
     var type by remember { mutableStateOf(preferenceToEdit?.type ?: "MEAL") }
     var message by remember { mutableStateOf(preferenceToEdit?.message ?: defaultMealMessage) }
@@ -391,24 +394,46 @@ fun AddEditNotificationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                TimePicker(
-                    state = timePickerState,
-                    colors = TimePickerDefaults.colors(
-                        clockDialSelectedContentColor = Color.White,
-                        clockDialUnselectedContentColor = AppTheme.colors.textPrimary,
-                        selectorColor = AppTheme.colors.primaryGreen,
-                        containerColor = Color.White,
-                        periodSelectorBorderColor = AppTheme.colors.primaryGreen,
-                        periodSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
-                        periodSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
-                        periodSelectorUnselectedContainerColor = Color.Transparent,
-                        periodSelectorUnselectedContentColor = AppTheme.colors.textSecondary,
-                        timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
-                        timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
-                        timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
-                        timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                // NEW: Toggle Logic for TimePicker vs TimeInput
+                if (showTimeInput) {
+                    TimeInput(
+                        state = timePickerState,
+                        colors = TimePickerDefaults.colors(
+                            timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                            timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                            timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                        )
                     )
-                )
+                } else {
+                    TimePicker(
+                        state = timePickerState,
+                        colors = TimePickerDefaults.colors(
+                            clockDialSelectedContentColor = Color.White,
+                            clockDialUnselectedContentColor = AppTheme.colors.textPrimary,
+                            selectorColor = AppTheme.colors.primaryGreen,
+                            containerColor = Color.White,
+                            periodSelectorBorderColor = AppTheme.colors.primaryGreen,
+                            periodSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            periodSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                            periodSelectorUnselectedContainerColor = Color.Transparent,
+                            periodSelectorUnselectedContentColor = AppTheme.colors.textSecondary,
+                            timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                            timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                            timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                        )
+                    )
+                }
+
+                // NEW: Toggle Button
+                IconButton(onClick = { showTimeInput = !showTimeInput }) {
+                    Icon(
+                        imageVector = if (showTimeInput) Icons.Rounded.AccessTime else Icons.Filled.Keyboard,
+                        contentDescription = "Toggle Input Mode",
+                        tint = AppTheme.colors.primaryGreen
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

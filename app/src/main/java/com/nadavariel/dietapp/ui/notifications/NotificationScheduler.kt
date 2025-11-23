@@ -20,9 +20,7 @@ class NotificationScheduler(private val context: Context) {
     ): PendingIntent {
 
         val intent = Intent(context, receiverClass).apply {
-            // Pass the Firestore Document ID
             putExtra("NOTIFICATION_FIRESTORE_ID", preference.id)
-            // NEW: Pass the selected days so the receiver can check them
             putIntegerArrayListExtra("DAYS_OF_WEEK", ArrayList(preference.daysOfWeek))
 
             if (preference.type == "WEIGHT") {
@@ -52,28 +50,31 @@ class NotificationScheduler(private val context: Context) {
 
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val pendingIntent = getPendingIntent(preference, flags, receiverClass)
-        val triggerTime = preference.getNextScheduledCalendar().timeInMillis
 
-        val readableTime = preference.getNextScheduledCalendar().time.toString()
-        Log.i(tag, "Scheduling ${receiverClass.simpleName} for ID: ${preference.uniqueId}. Next trigger: $readableTime")
+        // Ensure trigger time is in the future
+        var triggerTime = preference.getNextScheduledCalendar().timeInMillis
+        if (triggerTime <= System.currentTimeMillis()) {
+            triggerTime += AlarmManager.INTERVAL_DAY
+        }
+
+        Log.i(tag, "Scheduling ${receiverClass.simpleName} for ID: ${preference.uniqueId}. Trigger: $triggerTime")
 
         if (preference.repetition == "DAILY") {
-            // Schedule to repeat every 24 hours.
-            // The Receiver will check if "Today" is a valid day before showing the notification.
-            alarmManager.setInexactRepeating(
+            // Changed to setRepeating for better accuracy than setInexactRepeating
+            alarmManager.setRepeating(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
                 AlarmManager.INTERVAL_DAY,
                 pendingIntent
             )
-            Log.d(tag, "Scheduled DAILY (inexact) alarm.")
-        } else { // "ONCE"
+            Log.d(tag, "Scheduled DAILY alarm.")
+        } else {
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
                 pendingIntent
             )
-            Log.d(tag, "Scheduled ONCE (non-exact, Doze-safe) alarm.")
+            Log.d(tag, "Scheduled ONCE alarm.")
         }
     }
 
