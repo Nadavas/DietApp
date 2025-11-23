@@ -5,6 +5,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,11 +21,10 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentDataType.Companion.Date
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -48,6 +49,9 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.sin
+import java.util.Locale
+import java.text.SimpleDateFormat
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -176,6 +180,7 @@ fun ThreadsScreen(
                 CommunityHomeScreen(
                     paddingValues = paddingValues,
                     hottestThreads = hottestThreads,
+                    allThreads = threads, // Pass all threads for the "Latest" feed
                     allTopics = allTopics,
                     navController = navController,
                     threadViewModel = threadViewModel,
@@ -201,6 +206,7 @@ fun ThreadsScreen(
 fun CommunityHomeScreen(
     paddingValues: PaddingValues,
     hottestThreads: List<Thread>,
+    allThreads: List<Thread>, // Added parameter
     allTopics: List<Topic>,
     navController: NavController,
     threadViewModel: ThreadViewModel,
@@ -222,7 +228,13 @@ fun CommunityHomeScreen(
             }
         }
 
-        // Hottest Thread Section with flame animation
+        // --- NEW: Daily Challenge Card ---
+        // Fills the top space with something engaging
+        item {
+            DailyChallengeCard()
+        }
+
+        // Hottest Thread Section (Carousel)
         if (hottestThreads.isNotEmpty()) {
             item {
                 Column {
@@ -232,7 +244,6 @@ fun CommunityHomeScreen(
                         iconColor = Color(0xFFFF6B6B)
                     )
 
-                    // Cycling hottest thread with animation
                     var currentIndex by remember { mutableIntStateOf(0) }
 
                     LaunchedEffect(key1 = hottestThreads.size) {
@@ -268,7 +279,6 @@ fun CommunityHomeScreen(
                         }
                     }
 
-                    // Enhanced animated pagination dots
                     if (hottestThreads.size > 1) {
                         Row(
                             modifier = Modifier
@@ -306,14 +316,6 @@ fun CommunityHomeScreen(
             }
         }
 
-        // Quick Stats Card
-        item {
-            QuickStatsCard(
-                totalThreads = hottestThreads.size + allTopics.size * 3,
-                activeUsers = 247
-            )
-        }
-
         // Topics Section with animated header
         item {
             AnimatedSectionHeader(
@@ -345,32 +347,110 @@ fun CommunityHomeScreen(
             }
         }
 
-        // Recent Activity Section
+        // --- NEW: Latest Discussions Section ---
+        // Replaces Recent Activity with actual thread content
         item {
+            Spacer(Modifier.height(8.dp))
             AnimatedSectionHeader(
-                icon = Icons.Outlined.Schedule,
-                text = "Recent Activity",
-                iconColor = Color(0xFF9C27B0)
+                icon = Icons.Outlined.Forum,
+                text = "Latest Discussions",
+                iconColor = Color(0xFF673AB7)
             )
         }
 
-        // Activity items with staggered entrance
-        items(3) { index ->
-            var visible by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                delay(index * 150L)
-                visible = true
+        if (allThreads.isEmpty()) {
+            item {
+                Text(
+                    "No discussions yet. Be the first!",
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    textAlign = TextAlign.Center,
+                    color = AppTheme.colors.lightGreyText
+                )
             }
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(400)) + slideInHorizontally(tween(400)) { it }
-            ) {
-                RecentActivityItem(index)
+        } else {
+            // Sort by latest (assuming larger ID or you have a timestamp,
+            // relying on default order for now but you should sort by date in VM)
+            val latestThreads = allThreads.take(10)
+
+            items(latestThreads) { thread ->
+                val topic = allTopics.find { it.key == thread.topic }
+                if (topic != null) {
+                    CleanThreadCard(thread, topic, navController, threadViewModel)
+                }
             }
         }
 
         // Bottom spacing
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item { Spacer(modifier = Modifier.height(32.dp)) }
+    }
+}
+
+// --- NEW COMPOSABLE: Daily Challenge ---
+@Composable
+fun DailyChallengeCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Box(
+            modifier = Modifier.background(
+                Brush.horizontalGradient(
+                    colors = listOf(Color(0xFF2196F3), Color(0xFF21CBF3))
+                )
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.LocalDrink,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "DAILY CHALLENGE",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White.copy(alpha = 0.8f),
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Hydration Hero",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        "Drink 8 glasses of water today. 2,431 users participating!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                Button(
+                    onClick = { /* Join challenge logic */ },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF2196F3)
+                    ),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text("JOIN", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 
@@ -378,7 +458,7 @@ fun CommunityHomeScreen(
 fun FloatingParticles() {
     val infiniteTransition = rememberInfiniteTransition(label = "particles")
 
-    // FIX: Animate all values outside the Canvas block
+    // Fix: Using list to store animated values
     val particleOffsets = List(8) { i ->
         infiniteTransition.animateFloat(
             initialValue = 0f,
@@ -400,7 +480,7 @@ fun FloatingParticles() {
                 radius = 4f + (i % 3) * 2f,
                 center = Offset(
                     x = size.width * (i / 8f),
-                    y = (offset.value % size.height) // Use .value here
+                    y = (offset.value % size.height)
                 )
             )
         }
@@ -439,134 +519,6 @@ fun AnimatedSectionHeader(icon: ImageVector, text: String, iconColor: Color) {
             fontWeight = FontWeight.ExtraBold,
             color = AppTheme.colors.darkGreyText
         )
-    }
-}
-
-@Composable
-fun QuickStatsCard(totalThreads: Int, activeUsers: Int) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceAround
-        ) {
-            AnimatedStatItem(
-                icon = Icons.Outlined.Forum,
-                value = totalThreads,
-                label = "Threads",
-                color = Color(0xFF2196F3)
-            )
-            HorizontalDivider(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(60.dp),
-                color = AppTheme.colors.lightGreyText.copy(alpha = 0.2f)
-            )
-            AnimatedStatItem(
-                icon = Icons.Outlined.People,
-                value = activeUsers,
-                label = "Active Users",
-                color = Color(0xFFFF9800)
-            )
-        }
-    }
-}
-
-@Composable
-fun AnimatedStatItem(icon: ImageVector, value: Int, label: String, color: Color) {
-    val animatedValue by animateIntAsState(
-        targetValue = value,
-        animationSpec = tween(1500, easing = FastOutSlowInEasing),
-        label = "statValue"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Text(
-            text = "$animatedValue",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppTheme.colors.lightGreyText
-        )
-    }
-}
-
-@Composable
-fun RecentActivityItem(index: Int) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = AppTheme.colors.primaryGreen,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "User ${index + 1} commented",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AppTheme.colors.darkGreyText
-                )
-                Text(
-                    "${index + 2}m ago",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = AppTheme.colors.lightGreyText
-                )
-            }
-            Icon(
-                Icons.Outlined.ChatBubbleOutline,
-                contentDescription = null,
-                tint = AppTheme.colors.lightGreyText,
-                modifier = Modifier.size(20.dp)
-            )
-        }
     }
 }
 
@@ -612,7 +564,7 @@ fun DynamicHottestThreadCard(
                     .fillMaxSize()
                     .alpha(shimmerAlpha)
             ) {
-                
+
                 repeat(10) { i ->
                     drawCircle(
                         color = topic.gradient.first().copy(alpha = 0.1f),
@@ -749,12 +701,12 @@ fun EnhancedTopicCard(topic: Topic, onTopicSelected: (Topic) -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
+                .padding(16.dp), // Reduced padding slightly to fit longer text
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Animated icon container
                 val infiniteTransition = rememberInfiniteTransition(label = "iconBounce")
@@ -770,7 +722,7 @@ fun EnhancedTopicCard(topic: Topic, onTopicSelected: (Topic) -> Unit) {
 
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(60.dp)
                         .offset(y = offsetY.dp)
                         .clip(CircleShape)
                         .background(Brush.linearGradient(topic.gradient.map { it.copy(alpha = 0.2f) })),
@@ -779,17 +731,20 @@ fun EnhancedTopicCard(topic: Topic, onTopicSelected: (Topic) -> Unit) {
                     Icon(
                         imageVector = topic.icon,
                         contentDescription = topic.displayName,
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(30.dp),
                         tint = topic.gradient.first()
                     )
                 }
 
                 Text(
                     text = topic.displayName,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp, // Slightly smaller to accommodate "Gears & Tech"
                     fontWeight = FontWeight.Bold,
                     color = AppTheme.colors.darkGreyText,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 2, // Allow wrapping for long names
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
                 )
                 Text(
                     text = topic.subtitle,
@@ -905,12 +860,10 @@ fun CleanThreadCard(
                 .padding(20.dp)
         ) {
             // Topic indicator strip
-            // ** This part was missing from your composable,
-            // but I'm adding it for consistency **
             Box(
                 modifier = Modifier
                     .height(4.dp)
-                    .fillMaxWidth(0.3f) // Make it a small indicator
+                    .fillMaxWidth(0.3f)
                     .clip(RoundedCornerShape(2.dp))
                     .background(Brush.horizontalGradient(topic.gradient))
             )
@@ -943,7 +896,7 @@ fun CleanThreadCard(
                         color = AppTheme.colors.darkGreyText
                     )
                     Text(
-                        text = "2h ago", // This is hardcoded, consider passing real data
+                        text = getRelativeTime(thread.timestamp),
                         style = MaterialTheme.typography.bodySmall,
                         color = AppTheme.colors.lightGreyText
                     )
@@ -1005,8 +958,6 @@ fun CleanThreadCard(
 
 @Composable
 fun ThreadStatItem(icon: ImageVector, text: String, color: Color) {
-    // This is the aligned version, using the same style as AnimatedStatChip
-    // but without the infinite animation.
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -1019,7 +970,7 @@ fun ThreadStatItem(icon: ImageVector, text: String, color: Color) {
             imageVector = icon,
             contentDescription = text,
             tint = color,
-            modifier = Modifier.size(18.dp) // Aligned with AnimatedStatChip
+            modifier = Modifier.size(18.dp)
         )
         Text(
             text,
@@ -1027,5 +978,18 @@ fun ThreadStatItem(icon: ImageVector, text: String, color: Color) {
             fontWeight = FontWeight.Bold,
             color = color
         )
+    }
+}
+
+fun getRelativeTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now" // Less than 1 minute
+        diff < 3600_000 -> "${diff / 60_000}m ago" // Minutes
+        diff < 86400_000 -> "${diff / 3600_000}h ago" // Hours
+        diff < 604800_000 -> "${diff / 86400_000}d ago" // Days
+        else -> SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(timestamp)) // Date
     }
 }

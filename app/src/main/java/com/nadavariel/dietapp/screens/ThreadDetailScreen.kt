@@ -15,14 +15,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -34,8 +34,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
 import com.nadavariel.dietapp.model.Comment
-import com.nadavariel.dietapp.model.communityTopics // Import communityTopics
-import com.nadavariel.dietapp.model.Thread // Import your Thread model
+import com.nadavariel.dietapp.model.Thread
+import com.nadavariel.dietapp.model.communityTopics
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import java.text.SimpleDateFormat
@@ -59,11 +60,11 @@ fun ThreadDetailScreen(
     var showLikesDialog by remember { mutableStateOf(false) }
     var likedUsers by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // Find the topic based on the thread's topic key to get its gradient and icon
     val topic = remember(selectedThread) {
         communityTopics.find { it.key == selectedThread?.topic }
     }
-    val gradient = topic?.gradient ?: listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+    // Use AppTheme colors by default, fallback to topic gradient for accents
+    val accentColor = topic?.gradient?.first() ?: AppTheme.colors.primaryGreen
 
     LaunchedEffect(threadId) {
         threadViewModel.fetchThreadById(threadId)
@@ -71,39 +72,49 @@ fun ThreadDetailScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose {
-            threadViewModel.clearSelectedThreadAndListeners()
-        }
+        onDispose { threadViewModel.clearSelectedThreadAndListeners() }
     }
 
     Scaffold(
-        containerColor = Color.Transparent, // Make container transparent to see the background
+        containerColor = AppTheme.colors.screenBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    if (topic != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(topic.icon, contentDescription = null, tint = gradient.first(), modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = topic.displayName,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
+            // "Hub" style header
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = AppTheme.colors.textPrimary
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent, // Make TopAppBar transparent
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+                    if (topic != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            topic.icon,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = topic.displayName,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppTheme.colors.textPrimary
+                        )
+                    }
+                }
+            }
         },
         bottomBar = {
             CommentInputField(
@@ -122,44 +133,38 @@ fun ThreadDetailScreen(
                         newCommentText = ""
                     }
                 },
-                gradient = gradient
+                accentColor = accentColor
             )
         }
     ) { paddingValues ->
-        // The main content area is now a Box to layer the background and content
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply padding here to the container
+                .padding(paddingValues)
         ) {
-            // 1. Themed Background (Drawn first, so it's in the back)
+            // 1. Subtle Themed Background Pattern
             if (topic != null) {
-                ThemedBackground(icon = topic.icon, color = gradient.first())
-            } else {
-                // Fallback for when topic is loading
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)))
+                ThemedBackground(icon = topic.icon, color = accentColor)
             }
 
-            // 2. Your Content (Drawn on top of the background)
+            // 2. Content
             if (selectedThread == null) {
-                // Loading state
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = AppTheme.colors.primaryGreen)
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(), // It fills the Box
-                    contentPadding = PaddingValues(bottom = 80.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Main thread content
+                    // Main Thread Card
                     item {
                         ThreadContentView(
                             thread = selectedThread!!,
                             likeCount = likeCount,
                             hasUserLiked = hasUserLiked,
-                            gradient = gradient,
+                            accentColor = accentColor,
                             onLikeClicked = {
                                 if (currentUser != null) {
                                     val authorName = currentUser.displayName?.takeIf { it.isNotBlank() }
@@ -177,16 +182,15 @@ fun ThreadDetailScreen(
                         )
                     }
 
-                    // Comments section
                     item {
-                        CommentsHeaderSection(commentsCount = comments.size, color = gradient.first())
+                        CommentsHeaderSection(commentsCount = comments.size)
                     }
 
                     if (comments.isEmpty()) {
                         item { EmptyCommentsState() }
                     } else {
                         items(comments, key = { it.id }) { comment ->
-                            CommentItemView(comment = comment, gradient = gradient)
+                            CommentItemView(comment = comment, accentColor = accentColor)
                         }
                     }
                 }
@@ -194,41 +198,36 @@ fun ThreadDetailScreen(
         }
     }
 
-    // Dialog to show users who liked the thread
     if (showLikesDialog) {
         LikesDialog(
             likedUsers = likedUsers,
             onDismiss = { showLikesDialog = false },
-            gradient = gradient
+            accentColor = accentColor
         )
     }
 }
 
 @Composable
 fun ThemedBackground(icon: ImageVector, color: Color) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-    ) {
-        // This creates a grid of icons to form a wallpaper-like pattern
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(80.dp)
+            verticalArrangement = Arrangement.spacedBy(60.dp)
         ) {
-            repeat(10) { rowIndex ->
+            repeat(15) { rowIndex ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    repeat(5) { colIndex ->
+                    repeat(6) { colIndex ->
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = color.copy(alpha = 0.05f), // Very low alpha for subtlety
+                            // Extremely subtle alpha to blend with screenBackground
+                            tint = color.copy(alpha = 0.04f),
                             modifier = Modifier
-                                .size(80.dp)
-                                .rotate(if ((rowIndex + colIndex) % 2 == 0) -15f else 15f) // Rotate icons slightly
+                                .size(40.dp)
+                                .rotate(if ((rowIndex + colIndex) % 2 == 0) -15f else 15f)
                         )
                     }
                 }
@@ -242,107 +241,129 @@ fun ThreadContentView(
     thread: Thread,
     likeCount: Int,
     hasUserLiked: Boolean,
-    gradient: List<Color>,
+    accentColor: Color,
     onLikeClicked: () -> Unit,
     onLikesCountClicked: () -> Unit
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    // White Card Container (Hub Style)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        // Author Info
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Brush.linearGradient(gradient), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = thread.authorName.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Column {
-                Text(
-                    text = thread.authorName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = dateFormatter.format(Date(thread.timestamp)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Thread Header
-        Text(
-            text = thread.header,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        // Thread Content
-        Text(
-            text = thread.paragraph,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            lineHeight = 24.sp
-        )
-
-        // Likes section
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Animated Like Button
-            val likeColor by animateColorAsState(
-                targetValue = if (hasUserLiked) gradient.first() else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(300),
-                label = ""
-            )
-            IconButton(onClick = onLikeClicked) {
-                AnimatedContent(
-                    targetState = hasUserLiked,
-                    transitionSpec = { scaleIn(spring(0.8f)) togetherWith scaleOut(animationSpec = tween(200)) },
-                    label = "like_icon"
-                ) { liked ->
+            // Author Info
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(accentColor.copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = likeColor,
+                        Icons.Default.Person, // Or use letter
+                        contentDescription = null,
+                        tint = accentColor,
                         modifier = Modifier.size(24.dp)
                     )
                 }
-            }
-            // Like count text
-            AnimatedContent(
-                targetState = likeCount,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "like_count"
-            ) { count ->
-                Text(
-                    text = "$count",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable(
-                        enabled = count > 0,
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = onLikesCountClicked
+                Column {
+                    Text(
+                        text = thread.authorName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
                     )
-                )
+                    Text(
+                        text = dateFormatter.format(Date(thread.timestamp)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
+            }
+
+            HorizontalDivider(color = AppTheme.colors.textSecondary.copy(alpha = 0.1f))
+
+            // Thread Header
+            Text(
+                text = thread.header,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = AppTheme.colors.textPrimary,
+            )
+
+            // Thread Content
+            Text(
+                text = thread.paragraph,
+                style = MaterialTheme.typography.bodyLarge,
+                color = AppTheme.colors.textSecondary,
+                lineHeight = 24.sp
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Likes Button (Styled as a chip)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    onClick = onLikeClicked,
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (hasUserLiked) accentColor.copy(alpha = 0.1f) else Color.Transparent,
+                    border = if (hasUserLiked) null else androidx.compose.foundation.BorderStroke(1.dp, AppTheme.colors.textSecondary.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        AnimatedContent(
+                            targetState = hasUserLiked,
+                            transitionSpec = { scaleIn(spring(0.8f)) togetherWith scaleOut(animationSpec = tween(200)) },
+                            label = "like_icon"
+                        ) { liked ->
+                            Icon(
+                                imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Like",
+                                tint = if (liked) accentColor else AppTheme.colors.textSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        AnimatedContent(
+                            targetState = likeCount,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "like_count"
+                        ) { count ->
+                            Text(
+                                text = if (count == 0) "Like" else "$count",
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (hasUserLiked) accentColor else AppTheme.colors.textSecondary,
+                            )
+                        }
+                    }
+                }
+
+                if (likeCount > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "View likes",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AppTheme.colors.textSecondary,
+                        modifier = Modifier
+                            .clickable(onClick = onLikesCountClicked)
+                            .padding(8.dp)
+                    )
+                }
             }
         }
     }
@@ -353,29 +374,27 @@ fun CommentInputField(
     value: String,
     onValueChange: (String) -> Unit,
     onSendClick: () -> Unit,
-    gradient: List<Color>
+    accentColor: Color
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = Color.White
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            TextField(
+            OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Add a thoughtful comment...") },
-                shape = CircleShape,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
+                placeholder = { Text("Add a comment...", color = AppTheme.colors.textSecondary.copy(alpha = 0.6f)) },
+                shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = AppTheme.colors.textSecondary.copy(alpha = 0.3f),
                 ),
                 maxLines = 4
             )
@@ -387,7 +406,7 @@ fun CommentInputField(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        brush = Brush.linearGradient(if (isEnabled) gradient else listOf(Color.Gray, Color.Gray)),
+                        color = if (isEnabled) accentColor else AppTheme.colors.textSecondary.copy(alpha = 0.3f),
                         shape = CircleShape
                     )
             ) {
@@ -402,77 +421,82 @@ fun CommentInputField(
 }
 
 @Composable
-fun CommentsHeaderSection(commentsCount: Int, color: Color) {
+fun CommentsHeaderSection(commentsCount: Int) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             Icons.Outlined.ChatBubbleOutline,
             contentDescription = null,
-            tint = color
+            tint = AppTheme.colors.textPrimary,
+            modifier = Modifier.size(20.dp)
         )
         Text(
             text = if (commentsCount == 0) "Comments" else "$commentsCount Comments",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = AppTheme.colors.textPrimary
         )
     }
 }
 
 @Composable
-fun CommentItemView(comment: Comment, gradient: List<Color>) {
+fun CommentItemView(comment: Comment, accentColor: Color) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        // Author Avatar
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(Brush.linearGradient(gradient), CircleShape),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = comment.authorName.firstOrNull()?.uppercase() ?: "?",
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
-
-        // Comment Content
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Author Avatar
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(accentColor.copy(alpha = 0.15f), CircleShape),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = comment.authorName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = dateFormatter.format(comment.createdAt.toDate()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = comment.authorName.firstOrNull()?.uppercase() ?: "?",
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor,
+                    fontSize = 14.sp
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = comment.text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
+            // Comment Content
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = comment.authorName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
+                    )
+                    Text(
+                        text = dateFormatter.format(comment.createdAt.toDate()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = comment.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppTheme.colors.darkGreyText
+                )
+            }
         }
     }
 }
@@ -493,12 +517,17 @@ fun EmptyCommentsState() {
                 Icons.Outlined.ChatBubbleOutline,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                tint = AppTheme.colors.textSecondary.copy(alpha = 0.3f)
             )
             Text(
-                "Be the first to comment",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                "No comments yet",
+                fontWeight = FontWeight.SemiBold,
+                color = AppTheme.colors.textSecondary.copy(alpha = 0.6f)
+            )
+            Text(
+                "Be the first to join the conversation!",
+                style = MaterialTheme.typography.bodySmall,
+                color = AppTheme.colors.textSecondary.copy(alpha = 0.5f)
             )
         }
     }
@@ -508,12 +537,12 @@ fun EmptyCommentsState() {
 fun LikesDialog(
     likedUsers: List<String>,
     onDismiss: () -> Unit,
-    gradient: List<Color>
+    accentColor: Color
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close", color = gradient.first()) }
+            TextButton(onClick = onDismiss) { Text("Close", color = accentColor) }
         },
         title = { Text("Liked by", fontWeight = FontWeight.Bold) },
         text = {
@@ -526,12 +555,12 @@ fun LikesDialog(
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .background(Brush.linearGradient(gradient), CircleShape),
+                                    .background(accentColor.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = name.firstOrNull()?.uppercase() ?: "?",
-                                    color = Color.White,
+                                    color = accentColor,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -542,6 +571,6 @@ fun LikesDialog(
             }
         },
         shape = RoundedCornerShape(24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = Color.White
     )
 }
