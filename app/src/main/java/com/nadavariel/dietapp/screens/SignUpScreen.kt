@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -167,7 +170,8 @@ fun SignUpScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 24.dp),
+                    .verticalScroll(rememberScrollState()) // FIX: Added scroll state
+                    .padding(horizontal = 4.dp, vertical = 4.dp), // FIX: Added vertical padding
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -363,7 +367,9 @@ fun SignUpScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Continue with Google",
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            maxLines = 1, // FIX: Prevent wrapping
+                            overflow = TextOverflow.Ellipsis // FIX: Handle overflow gracefully
                         )
                     }
                 }
