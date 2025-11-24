@@ -1,6 +1,7 @@
 package com.nadavariel.dietapp.ui.questions
 
-import android.app.DatePickerDialog
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nadavariel.dietapp.model.InputType
@@ -20,7 +20,9 @@ import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
 import java.util.*
 import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.Color
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 internal fun QuestionInput(
     question: Question,
@@ -142,34 +144,28 @@ private fun OptionCardItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
-    val context = LocalContext.current
-    val cal = Calendar.getInstance()
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    // Parse existing answer if available
-    if (!currentAnswer.isNullOrBlank()) {
-        try {
-            val parts = currentAnswer.split("-").map { it.toInt() }
-            cal.set(parts[0], parts[1] - 1, parts[2])
-        } catch (_: Exception) { /* Ignore */ }
+    // Parse existing answer if available for display
+    // Expected format: YYYY-MM-DD
+    val cal = remember(currentAnswer) {
+        Calendar.getInstance().apply {
+            if (!currentAnswer.isNullOrBlank()) {
+                try {
+                    val parts = currentAnswer.split("-").map { it.toInt() }
+                    set(parts[0], parts[1] - 1, parts[2])
+                } catch (_: Exception) { /* Ignore */ }
+            }
+        }
     }
 
-    // UI REFRESH: Styled as a Card
     val hasAnswer = !currentAnswer.isNullOrBlank()
+
     Card(
-        onClick = {
-            DatePickerDialog(
-                context,
-                { _, year, month, day ->
-                    val isoDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day)
-                    onSave(isoDate)
-                },
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH),
-                cal.get(Calendar.DAY_OF_MONTH)
-            ).show()
-        },
+        onClick = { showDatePicker = true },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
@@ -187,10 +183,60 @@ internal fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
                 modifier = Modifier.padding(end = 12.dp)
             )
             Text(
-                if (hasAnswer) currentAnswer else "Select Date of Birth",
+                text = if (hasAnswer) currentAnswer else "Select Date of Birth",
                 color = if (hasAnswer) AppTheme.colors.primaryGreen else AppTheme.colors.darkGreyText,
                 fontWeight = if (hasAnswer) FontWeight.Bold else FontWeight.Normal,
                 style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = cal.timeInMillis
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedCal = Calendar.getInstance().apply { timeInMillis = millis }
+                            val isoDate = String.format(
+                                Locale.US,
+                                "%04d-%02d-%02d",
+                                selectedCal.get(Calendar.YEAR),
+                                selectedCal.get(Calendar.MONTH) + 1,
+                                selectedCal.get(Calendar.DAY_OF_MONTH)
+                            )
+                            onSave(isoDate)
+                        }
+                        showDatePicker = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color.White)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = AppTheme.colors.primaryGreen,
+                    todayContentColor = AppTheme.colors.primaryGreen
+                )
             )
         }
     }

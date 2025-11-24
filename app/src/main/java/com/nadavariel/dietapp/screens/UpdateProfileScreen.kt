@@ -1,7 +1,7 @@
 package com.nadavariel.dietapp.screens
 
-import android.app.DatePickerDialog
-import android.widget.DatePicker
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -46,6 +45,7 @@ import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+@RequiresApi(Build.VERSION_CODES.O) // Added for Instant/LocalDate conversions if needed
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateProfileScreen(
@@ -55,7 +55,6 @@ fun UpdateProfileScreen(
     onBack: () -> Unit,
     isNewUser: Boolean = false
 ) {
-    val context = LocalContext.current
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val goals by goalsViewModel.goals.collectAsStateWithLifecycle()
 
@@ -69,7 +68,9 @@ fun UpdateProfileScreen(
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
     var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
     var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
+
     var showAvatarDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) } // State for DatePicker
     var isGenderDropdownExpanded by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
@@ -224,18 +225,6 @@ fun UpdateProfileScreen(
                                 )
                             }
                         }
-
-//                        OutlinedButton(
-//                            onClick = { showAvatarDialog = true },
-//                            shape = RoundedCornerShape(12.dp),
-//                            colors = ButtonDefaults.outlinedButtonColors(
-//                                contentColor = AppTheme.colors.primaryGreen
-//                            )
-//                        ) {
-//                            Icon(Icons.Default.Face, contentDescription = null, modifier = Modifier.size(18.dp))
-//                            Spacer(Modifier.width(8.dp))
-//                            Text("Change Avatar", fontWeight = FontWeight.SemiBold)
-//                        }
                     }
                 }
 
@@ -260,25 +249,11 @@ fun UpdateProfileScreen(
                         icon = Icons.Default.Cake,
                         readOnly = true,
                         trailingIcon = {
-                            IconButton(onClick = {
-                                val initialCalendar = Calendar.getInstance().apply {
-                                    time = dateOfBirthInput ?: Date()
-                                }
-                                DatePickerDialog(
-                                    context,
-                                    { _: DatePicker, year: Int, month: Int, day: Int ->
-                                        dateOfBirthInput = Calendar.getInstance().apply {
-                                            set(year, month, day)
-                                        }.time
-                                    },
-                                    initialCalendar.get(Calendar.YEAR),
-                                    initialCalendar.get(Calendar.MONTH),
-                                    initialCalendar.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }) {
+                            IconButton(onClick = { showDatePicker = true }) {
                                 Icon(Icons.Default.DateRange, "Select Date")
                             }
-                        }
+                        },
+                        modifier = Modifier.clickable { showDatePicker = true } // Make whole field clickable
                     )
 
                     ExposedDropdownMenuBox(
@@ -390,6 +365,49 @@ fun UpdateProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+
+    // --- Material 3 Date Picker Dialog ---
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = dateOfBirthInput?.time ?: System.currentTimeMillis()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            dateOfBirthInput = Date(millis)
+                        }
+                        showDatePicker = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color.White)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = AppTheme.colors.primaryGreen,
+                    todayContentColor = AppTheme.colors.primaryGreen
+                )
+            )
         }
     }
 
@@ -538,7 +556,7 @@ private fun ModernOutlinedTextField(
         },
         trailingIcon = trailingIcon,
         readOnly = readOnly,
-        modifier = modifier
+        modifier = modifier // If clickable is passed here, it works
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
@@ -548,7 +566,9 @@ private fun ModernOutlinedTextField(
             focusedLeadingIconColor = AppTheme.colors.primaryGreen
         ),
         keyboardOptions = keyboardOptions,
-        singleLine = true
+        singleLine = true,
+        // Ensure readOnly fields (like date picker) don't show keyboard but handle clicks
+        enabled = true
     )
 }
 

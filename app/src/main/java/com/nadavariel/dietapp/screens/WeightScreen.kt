@@ -1,10 +1,8 @@
 package com.nadavariel.dietapp.screens
 
 import android.annotation.SuppressLint
-import android.app.DatePickerDialog
 import android.graphics.Paint
 import android.os.Build
-import android.widget.DatePicker
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -17,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.Delete
@@ -30,7 +29,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -163,7 +161,7 @@ fun WeightScreen(
                                         )
                                     }
                                     Icon(
-                                        imageVector = Icons.Default.TrendingUp,
+                                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                         contentDescription = null,
                                         tint = AppTheme.colors.primaryGreen,
                                         modifier = Modifier.size(24.dp)
@@ -1156,26 +1154,9 @@ fun LogWeightDialog(
         )
     }
     var isError by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
     val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-            selectedDate = Calendar.getInstance().apply {
-                set(year, month, dayOfMonth)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-            }
-        },
-        selectedDate.get(Calendar.YEAR),
-        selectedDate.get(Calendar.MONTH),
-        selectedDate.get(Calendar.DAY_OF_MONTH)
-    ).apply {
-        datePicker.maxDate = System.currentTimeMillis()
-    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1222,7 +1203,7 @@ fun LogWeightDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = { datePickerDialog.show() })
+                        .clickable(onClick = { showDatePicker = true })
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1253,9 +1234,7 @@ fun LogWeightDialog(
                     val weight = weightInput.toFloatOrNull()
                     if (weight != null && weight > 0) {
                         if (isEditMode) {
-                            if (entryToEdit != null) {
-                                onUpdate(entryToEdit.id, weight, selectedDate)
-                            }
+                            onUpdate(entryToEdit.id, weight, selectedDate)
                         } else {
                             onSave(weight, selectedDate)
                         }
@@ -1282,4 +1261,51 @@ fun LogWeightDialog(
             }
         }
     )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.timeInMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val newDate = Calendar.getInstance().apply { timeInMillis = millis }
+                            // Prevent future dates
+                            selectedDate = if (newDate.after(Calendar.getInstance())) {
+                                Calendar.getInstance()
+                            } else {
+                                newDate
+                            }
+                        }
+                        showDatePicker = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color.White)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = AppTheme.colors.primaryGreen,
+                    todayContentColor = AppTheme.colors.primaryGreen
+                )
+            )
+        }
+    }
 }
