@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -210,7 +211,7 @@ fun AddEditMealScreen(
 
     LaunchedEffect(mealToEdit) {
         if (isEditMode) {
-            mealToEdit?.let {
+            mealToEdit.let {
                 foodName = it.foodName
                 caloriesText = it.calories.toString()
                 servingAmountText = it.servingAmount.orEmpty()
@@ -349,7 +350,7 @@ fun AddEditMealScreen(
                             val mealTimestamp = Timestamp(selectedDateTimeState.time)
 
                             foodLogViewModel.updateMeal(
-                                mealToEdit!!.id,
+                                mealToEdit.id,
                                 newFoodName = foodName,
                                 newCalories = calValue,
                                 newServingAmount = servingAmountText,
@@ -631,13 +632,36 @@ fun AddEditMealScreen(
                                             color = AppTheme.colors.textSecondary
                                         )
 
-                                        ThemedOutlinedTextField(
+                                        // State to track focus
+                                        var isFocused by remember { mutableStateOf(false) }
+
+                                        OutlinedTextField(
                                             value = foodName,
                                             onValueChange = { foodName = it },
-                                            label = "E.g., Grilled chicken with rice",
-                                            modifier = Modifier.fillMaxWidth(),
-                                            leadingIcon = Icons.Default.AutoAwesome,
-                                            minLines = 3
+                                            label = { Text("E.g., Grilled chicken with rice") },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .onFocusChanged { isFocused = it.isFocused }, // Update state
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Default.AutoAwesome,
+                                                    contentDescription = null,
+                                                    // Teal when focused, Grey when not
+                                                    tint = if (isFocused) AppTheme.colors.accentTeal else AppTheme.colors.textSecondary.copy(alpha = 0.5f)
+                                                )
+                                            },
+                                            minLines = 3,
+                                            shape = RoundedCornerShape(12.dp),
+                                            keyboardOptions = KeyboardOptions(
+                                                capitalization = KeyboardCapitalization.Sentences,
+                                                imeAction = ImeAction.Done
+                                            ),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = AppTheme.colors.accentTeal,
+                                                focusedLabelColor = AppTheme.colors.accentTeal,
+                                                cursorColor = AppTheme.colors.accentTeal,
+                                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                            )
                                         )
 
                                         val aiButtonEnabled = foodName.isNotBlank() &&
