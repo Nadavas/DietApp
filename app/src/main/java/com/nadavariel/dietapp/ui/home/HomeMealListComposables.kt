@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.Meal
@@ -568,9 +569,27 @@ fun NutritionDetailsTable(meal: Meal) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            NutritionDetailItem("Protein", meal.protein, "g", AppTheme.colors.primaryGreen)
-            NutritionDetailItem("Carbs", meal.carbohydrates, "g", Color(0xFF00BFA5))
-            NutritionDetailItem("Fat", meal.fat, "g", Color(0xFFFF6E40))
+            NutritionDetailItem(
+                label = "Protein",
+                value = meal.protein,
+                unit = "g",
+                color = AppTheme.colors.primaryGreen,
+                modifier = Modifier.weight(1f)
+            )
+            NutritionDetailItem(
+                label = "Carbs",
+                value = meal.carbohydrates,
+                unit = "g",
+                color = Color(0xFF00BFA5),
+                modifier = Modifier.weight(1f)
+            )
+            NutritionDetailItem(
+                label = "Fat",
+                value = meal.fat,
+                unit = "g",
+                color = Color(0xFFFF6E40),
+                modifier = Modifier.weight(1f)
+            )
         }
 
         // Expandable micronutrients
@@ -623,21 +642,43 @@ fun NutritionDetailsTable(meal: Meal) {
                     modifier = Modifier.padding(bottom = 12.dp),
                     fontSize = 13.sp
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+
+                // 3 Rows of 3 items logic
+                val microNutrients = listOf(
+                    Triple("Fiber", meal.fiber, "g"),
+                    Triple("Sugar", meal.sugar, "g"),
+                    Triple("Sodium", meal.sodium, "mg"),
+                    Triple("Potassium", meal.potassium, "mg"),
+                    Triple("Calcium", meal.calcium, "mg"),
+                    Triple("Iron", meal.iron, "mg"),
+                    Triple("Vitamin C", meal.vitaminC, "mg"),
+                    Triple("Vitamin A", meal.vitaminA, "mcg"),
+                    Triple("Vitamin B12", meal.vitaminB12, "mcg")
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    NutritionDetailItem("Fiber", meal.fiber, "g")
-                    NutritionDetailItem("Sugar", meal.sugar, "g")
-                    NutritionDetailItem("Sodium", meal.sodium, "mg")
-                    NutritionDetailItem("Potassium", meal.potassium, "mg")
-                    NutritionDetailItem("Calcium", meal.calcium, "mg")
-                    NutritionDetailItem("Iron", meal.iron, "mg")
-                    NutritionDetailItem("Vit C", meal.vitaminC, "mg")
-                    // START: Added for Vitamin A and B12
-                    NutritionDetailItem("Vit A", meal.vitaminA, "mcg")
-                    NutritionDetailItem("Vit B12", meal.vitaminB12, "mcg")
-                    // END: Added for Vitamin A and B12
+                    microNutrients.chunked(3).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp), // Reduced vertical padding
+                            // spacedBy(0.dp) ensures we use the full width via weights, effectively minimizing padding between columns
+                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+                        ) {
+                            rowItems.forEach { (label, value, unit) ->
+                                NutritionDetailItem(
+                                    label = label,
+                                    value = value,
+                                    unit = unit,
+                                    // weight(1f) ensures every column is exactly 1/3 of the width, creating perfect alignment
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -650,26 +691,31 @@ fun NutritionDetailItem(
     label: String,
     value: Double?,
     unit: String,
-    color: Color = AppTheme.colors.textPrimary
+    color: Color = AppTheme.colors.textPrimary,
+    modifier: Modifier = Modifier
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(70.dp)
+        modifier = modifier // Modifier passed here handles the width/weight
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = AppTheme.colors.textSecondary,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Visible
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = value?.let { "${String.format("%.1f", it)}$unit" } ?: "–",
+            text = value?.let { "${String.format("%.1f", it)} $unit" } ?: "–",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = color,
-            fontSize = 15.sp
+            fontSize = 15.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Visible
         )
     }
 }

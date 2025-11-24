@@ -186,51 +186,69 @@ fun MacronutrientsSection(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MicronutrientsSection(
     fiberText: String, onFiberChange: (String) -> Unit, sugarText: String, onSugarChange: (String) -> Unit,
     sodiumText: String, onSodiumChange: (String) -> Unit, potassiumText: String, onPotassiumChange: (String) -> Unit,
     calciumText: String, onCalciumChange: (String) -> Unit, ironText: String, onIronChange: (String) -> Unit,
     vitaminCText: String, onVitaminCChange: (String) -> Unit,
-    // START: Added for Vitamin A and B12
     vitaminAText: String, onVitaminAChange: (String) -> Unit,
     vitaminB12Text: String, onVitaminB12Change: (String) -> Unit
-    // END: Added for Vitamin A and B12
 ) {
+    // Helper data class to manage the list simply
+    data class NutrientData(val label: String, val value: String, val onChange: (String) -> Unit)
+
+    val micros = listOf(
+        NutrientData("Fiber (g)", fiberText, onFiberChange),
+        NutrientData("Sugar (g)", sugarText, onSugarChange),
+        NutrientData("Sodium (mg)", sodiumText, onSodiumChange),
+        NutrientData("Potassium (mg)", potassiumText, onPotassiumChange),
+        NutrientData("Calcium (mg)", calciumText, onCalciumChange),
+        NutrientData("Iron (mg)", ironText, onIronChange),
+        NutrientData("Vitamin C (mg)", vitaminCText, onVitaminCChange),
+        NutrientData("Vitamin A (mcg)", vitaminAText, onVitaminAChange),
+        NutrientData("Vitamin B12 (mcg)", vitaminB12Text, onVitaminB12Change)
+    )
+
     Column {
         SectionHeader(title = "Micronutrients & Fiber")
         FormCard {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                NutrientTextField(label = "Fiber (g)", value = fiberText, onValueChange = onFiberChange)
-                NutrientTextField(label = "Sugar (g)", value = sugarText, onValueChange = onSugarChange)
-                NutrientTextField(label = "Sodium (mg)", value = sodiumText, onValueChange = onSodiumChange)
-                NutrientTextField(label = "Potassium (mg)", value = potassiumText, onValueChange = onPotassiumChange)
-                NutrientTextField(label = "Calcium (mg)", value = calciumText, onValueChange = onCalciumChange)
-                NutrientTextField(label = "Iron (mg)", value = ironText, onValueChange = onIronChange)
-                NutrientTextField(label = "Vit C (mg)", value = vitaminCText, onValueChange = onVitaminCChange)
-                // START: Added for Vitamin A and B12
-                NutrientTextField(label = "Vit A (mcg)", value = vitaminAText, onValueChange = onVitaminAChange)
-                NutrientTextField(label = "Vit B12 (mcg)", value = vitaminB12Text, onValueChange = onVitaminB12Change)
-                // END: Added for Vitamin A and B12
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                micros.chunked(2).forEach { rowItems ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowItems.forEach { item ->
+                            NutrientTextField(
+                                label = item.label,
+                                value = item.value,
+                                onValueChange = item.onChange,
+                                modifier = Modifier.weight(1f) // Equal width for all
+                            )
+                        }
+                        // If the last row has only 1 item, add a spacer to keep the grid structure
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NutrientTextField(label: String, value: String, onValueChange: (String) -> Unit) {
+private fun NutrientTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     ThemedOutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = label,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         singleLine = true,
-        modifier = Modifier.widthIn(min = 120.dp)
+        modifier = modifier // Modifier passed here controls width (weight)
     )
 }
 
