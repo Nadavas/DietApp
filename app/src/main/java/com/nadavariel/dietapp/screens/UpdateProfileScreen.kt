@@ -225,17 +225,17 @@ fun UpdateProfileScreen(
                             }
                         }
 
-                        OutlinedButton(
-                            onClick = { showAvatarDialog = true },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = AppTheme.colors.primaryGreen
-                            )
-                        ) {
-                            Icon(Icons.Default.Face, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Change Avatar", fontWeight = FontWeight.SemiBold)
-                        }
+//                        OutlinedButton(
+//                            onClick = { showAvatarDialog = true },
+//                            shape = RoundedCornerShape(12.dp),
+//                            colors = ButtonDefaults.outlinedButtonColors(
+//                                contentColor = AppTheme.colors.primaryGreen
+//                            )
+//                        ) {
+//                            Icon(Icons.Default.Face, contentDescription = null, modifier = Modifier.size(18.dp))
+//                            Spacer(Modifier.width(8.dp))
+//                            Text("Change Avatar", fontWeight = FontWeight.SemiBold)
+//                        }
                     }
                 }
 
