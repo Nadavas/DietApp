@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -178,22 +179,41 @@ fun SignUpScreen(
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                // Avatar Selection - FIX: Removed the outer Box with the border
-                Image(
-                    painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
-                    contentDescription = "User Avatar",
-                    contentScale = ContentScale.Crop,
+                // Avatar Selection with Edit Overlay
+                Box(
                     modifier = Modifier
                         .size(120.dp)
-                        .clip(CircleShape)
                         .clickable { showAvatarDialog = true }
-                )
+                ) {
+                    Image(
+                        painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
+                        contentDescription = "User Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
+                    )
 
-                TextButton(onClick = { showAvatarDialog = true }) {
-                    Text("Change Avatar", color = AppTheme.colors.primaryGreen)
+                    // Edit Icon Overlay
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(AppTheme.colors.primaryGreen),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 OutlinedTextField(
                     value = name,

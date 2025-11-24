@@ -188,21 +188,26 @@ fun UpdateProfileScreen(
                             color = AppTheme.colors.textPrimary
                         )
 
+                        // FIXED: Removed clip(CircleShape) from the parent Box
                         Box(
                             modifier = Modifier
                                 .size(120.dp)
-                                .clip(CircleShape)
-                                .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
                                 .clickable { showAvatarDialog = true }
                         ) {
+                            // Moved clip(CircleShape) to the Image modifier
                             Image(
                                 painter = painterResource(
                                     id = AvatarConstants.getAvatarResId(selectedAvatarId)
                                 ),
                                 contentDescription = "User Avatar",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
                             )
+
+                            // Edit button now overlays correctly without being clipped
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
