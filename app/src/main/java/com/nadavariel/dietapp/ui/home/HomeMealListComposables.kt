@@ -19,14 +19,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
-import androidx.compose.material3.CardDefaults.shape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,20 +41,20 @@ import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.ui.AppTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.max
 
-// --- START OF CHANGES ---
-
+@OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CalorieSummaryCard(
     totalCalories: Int,
     goalCalories: Int,
-    // Date Picker parameters added
     currentWeekStartDate: LocalDate,
     selectedDate: LocalDate,
     onPreviousWeek: () -> Unit,
@@ -73,18 +72,20 @@ fun CalorieSummaryCard(
 
     val circleColor = AppTheme.colors.primaryGreen
 
+    // State for the Calendar Dialog
+    var showDatePicker by remember { mutableStateOf(false) }
+
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        // Changed outer Row to a Column
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // This is the original Row for calorie info
+            // Calorie Info Section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -95,7 +96,6 @@ fun CalorieSummaryCard(
                     modifier = Modifier.size(110.dp)
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        // Background circle
                         drawArc(
                             color = Color(0xFFF0F0F0),
                             startAngle = -90f,
@@ -103,7 +103,6 @@ fun CalorieSummaryCard(
                             useCenter = false,
                             style = Stroke(width = 24f, cap = StrokeCap.Round)
                         )
-                        // Progress circle
                         drawArc(
                             color = circleColor,
                             startAngle = -90f,
@@ -149,7 +148,7 @@ fun CalorieSummaryCard(
                 }
             }
 
-            // --- Date Picker UI Added Below ---
+            // --- Date Navigation Section ---
 
             Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider(
@@ -157,7 +156,6 @@ fun CalorieSummaryCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Logic from DatePickerSection
             val weekDays = remember(currentWeekStartDate) {
                 (0..6).map { currentWeekStartDate.plusDays(it.toLong()) }
             }
@@ -183,13 +181,30 @@ fun CalorieSummaryCard(
                         tint = AppTheme.colors.primaryGreen
                     )
                 }
+
+                // Clickable Month/Year Text
                 val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
-                Text(
-                    text = selectedDate.format(formatter),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary
-                )
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showDatePicker = true }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedDate.format(formatter),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Select Date",
+                        tint = AppTheme.colors.textPrimary
+                    )
+                }
+
                 IconButton(
                     onClick = onNextWeek,
                     modifier = Modifier
@@ -245,9 +260,53 @@ fun CalorieSummaryCard(
             }
         }
     }
-}
 
-// --- END OF CHANGES ---
+    // --- Date Picker Dialog ---
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val newDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                            onDateSelected(newDate)
+                        }
+                        showDatePicker = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = Color.White,
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = AppTheme.colors.primaryGreen,
+                    todayContentColor = AppTheme.colors.primaryGreen
+                )
+            )
+        }
+    }
+}
 
 @Composable
 private fun CalorieStatRow(label: String, value: Int, color: Color) {
@@ -281,7 +340,6 @@ private fun CalorieStatRow(label: String, value: Int, color: Color) {
     }
 }
 
-// --- HELPER FUNCTION COPIED FROM HomeDatePicker.kt ---
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun DayOfWeekItem(
@@ -298,32 +356,34 @@ private fun DayOfWeekItem(
         isSelected -> Color.White
         else -> AppTheme.colors.textPrimary
     }
+    // Change shape to RoundedCorner
+    val shape = RoundedCornerShape(16.dp)
+
     val borderModifier = if (isToday && !isSelected) {
-        Modifier.border(2.dp, AppTheme.colors.primaryGreen.copy(alpha = 0.5f), shape) // Thicker border
+        Modifier.border(2.dp, AppTheme.colors.primaryGreen.copy(alpha = 0.5f), shape)
     } else Modifier
 
     Column(
         modifier = Modifier
-            .width(44.dp) // Use widthIn for flexibility
-            .height(54.dp)     // Set height
+            .width(44.dp) // Narrow enough to fit 7 days
+            .height(60.dp) // Tall enough to fit text
             .clip(shape)
             .background(backgroundColor)
             .then(borderModifier)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp), // Add horizontal padding for safety
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-            fontSize = 11.sp, // Legible small size
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             color = if (isSelected) contentColor else AppTheme.colors.textSecondary
         )
-        Spacer(modifier = Modifier.height(2.dp)) // More space
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = date.dayOfMonth.toString(),
-            fontSize = 16.sp, // Legible size
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = contentColor
         )
