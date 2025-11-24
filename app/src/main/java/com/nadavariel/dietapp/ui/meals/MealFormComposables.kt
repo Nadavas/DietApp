@@ -2,29 +2,27 @@
 
 package com.nadavariel.dietapp.ui.meals
 
-import android.R.style as AndroidRStyle
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
-import android.widget.DatePicker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -57,28 +55,6 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         )
     }
 }
-
-// --- NEW SUB-SECTION HEADER ---
-@Composable
-fun SubSectionHeader(title: String, modifier: Modifier = Modifier) {
-    Row(
-        // Centered horizontally, with 4.dp top/bottom padding
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center // <-- This centers the content
-    ) {
-        Text(
-            text = title.uppercase(Locale.ROOT),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.lightGreyText,
-            letterSpacing = 1.2.sp
-        )
-    }
-}
-// --- END OF NEW COMPOSABLE ---
 
 // --- An elegant white card container, matching the home screen cards ---
 @Composable
@@ -136,11 +112,32 @@ fun ServingAndCaloriesSection(
         SectionHeader(title = "Serving & Calories")
         FormCard {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemedOutlinedTextField(value = servingAmountText, onValueChange = onServingAmountChange, label = "Amount", modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-                ThemedOutlinedTextField(value = servingUnitText, onValueChange = onServingUnitChange, label = "Unit (e.g., g)", modifier = Modifier.weight(1.5f), singleLine = true)
+                ThemedOutlinedTextField(
+                    value = servingAmountText,
+                    onValueChange = onServingAmountChange,
+                    label = "Amount",
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                ThemedOutlinedTextField(
+                    value = servingUnitText,
+                    onValueChange = onServingUnitChange,
+                    label = "Unit (e.g. g, ml)",
+                    modifier = Modifier.weight(1.5f),
+                    singleLine = true
+                )
             }
             Spacer(Modifier.height(8.dp))
-            ThemedOutlinedTextField(value = caloriesText, onValueChange = { if (it.all(Char::isDigit)) onCaloriesChange(it) }, label = "Total Calories (kcal)*", leadingIcon = Icons.Outlined.LocalFireDepartment, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+            ThemedOutlinedTextField(
+                value = caloriesText,
+                onValueChange = { if (it.all(Char::isDigit)) onCaloriesChange(it) },
+                label = "Total Calories (kcal)*",
+                leadingIcon = Icons.Outlined.LocalFireDepartment,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
         }
     }
 }
@@ -156,9 +153,34 @@ fun MacronutrientsSection(
         FormCard {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val commonModifier = Modifier.weight(1f)
-                ThemedOutlinedTextField(value = proteinText, onValueChange = onProteinChange, label = "Protein (g)", leadingIcon = Icons.Outlined.FitnessCenter, modifier = commonModifier, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                ThemedOutlinedTextField(value = carbsText, onValueChange = onCarbsChange, label = "Carbs (g)", leadingIcon = Icons.Outlined.Bolt, modifier = commonModifier, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                ThemedOutlinedTextField(value = fatText, onValueChange = onFatChange, label = "Fat (g)", leadingIcon = Icons.Outlined.WaterDrop, modifier = commonModifier, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+                // Icons removed to provide space for text labels
+                ThemedOutlinedTextField(
+                    value = proteinText,
+                    onValueChange = onProteinChange,
+                    label = "Protein (g)",
+                    leadingIcon = null,
+                    modifier = commonModifier,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                ThemedOutlinedTextField(
+                    value = carbsText,
+                    onValueChange = onCarbsChange,
+                    label = "Carbs (g)",
+                    leadingIcon = null,
+                    modifier = commonModifier,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                ThemedOutlinedTextField(
+                    value = fatText,
+                    onValueChange = onFatChange,
+                    label = "Fat (g)",
+                    leadingIcon = null,
+                    modifier = commonModifier,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
             }
         }
     }
@@ -212,14 +234,17 @@ private fun NutrientTextField(label: String, value: String, onValueChange: (Stri
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateTimePickerSection(
     selectedDateTimeState: Calendar,
     onDateTimeUpdate: (Calendar) -> Unit
 ) {
-    val context = LocalContext.current
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     Column {
         SectionHeader(title = "Date & Time")
@@ -229,11 +254,7 @@ fun DateTimePickerSection(
                 label = "Date",
                 value = dateFormat.format(selectedDateTimeState.time)
             ) {
-                DatePickerDialog(context, { _: DatePicker, y, m, d ->
-                    val newCal = (selectedDateTimeState.clone() as Calendar).apply { set(y, m, d) }
-                    onDateTimeUpdate(newCal)
-                }, selectedDateTimeState.get(Calendar.YEAR), selectedDateTimeState.get(Calendar.MONTH), selectedDateTimeState.get(Calendar.DAY_OF_MONTH)
-                ).apply { datePicker.maxDate = System.currentTimeMillis() }.show()
+                showDatePicker = true
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             DateTimePickerRow(
@@ -241,12 +262,142 @@ fun DateTimePickerSection(
                 label = "Time",
                 value = timeFormat.format(selectedDateTimeState.time)
             ) {
-                TimePickerDialog(context, AndroidRStyle.Theme_Holo_Light_Dialog_NoActionBar, { _, h, m ->
-                    val newCal = (selectedDateTimeState.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }
-                    onDateTimeUpdate(if (newCal.after(Calendar.getInstance())) Calendar.getInstance() else newCal)
-                }, selectedDateTimeState.get(Calendar.HOUR_OF_DAY), selectedDateTimeState.get(Calendar.MINUTE), true).show()
+                showTimePicker = true
             }
         }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDateTimeState.timeInMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val newDate = Calendar.getInstance().apply { timeInMillis = millis }
+                        // Preserve original time
+                        val updatedCal = (selectedDateTimeState.clone() as Calendar).apply {
+                            set(Calendar.YEAR, newDate.get(Calendar.YEAR))
+                            set(Calendar.MONTH, newDate.get(Calendar.MONTH))
+                            set(Calendar.DAY_OF_MONTH, newDate.get(Calendar.DAY_OF_MONTH))
+                        }
+
+                        // Prevent future dates
+                        if (updatedCal.after(Calendar.getInstance())) {
+                            // Keep it to now if future
+                            onDateTimeUpdate(Calendar.getInstance())
+                        } else {
+                            onDateTimeUpdate(updatedCal)
+                        }
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = AppTheme.colors.primaryGreen)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = AppTheme.colors.textSecondary)
+                }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color.White)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = AppTheme.colors.primaryGreen,
+                    todayContentColor = AppTheme.colors.primaryGreen
+                )
+            )
+        }
+    }
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = selectedDateTimeState.get(Calendar.HOUR_OF_DAY),
+            initialMinute = selectedDateTimeState.get(Calendar.MINUTE),
+            is24Hour = true
+        )
+
+        var showTimeInput by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val updatedCal = (selectedDateTimeState.clone() as Calendar).apply {
+                        set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        set(Calendar.MINUTE, timePickerState.minute)
+                    }
+
+                    // Prevent future time
+                    if (updatedCal.after(Calendar.getInstance())) {
+                        // Keep it to now if future
+                        onDateTimeUpdate(Calendar.getInstance())
+                    } else {
+                        onDateTimeUpdate(updatedCal)
+                    }
+                    showTimePicker = false
+                }) {
+                    Text("OK", color = AppTheme.colors.primaryGreen)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Cancel", color = AppTheme.colors.textSecondary)
+                }
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    if (showTimeInput) {
+                        TimeInput(
+                            state = timePickerState,
+                            colors = TimePickerDefaults.colors(
+                                timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                                timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                                timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                                timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                            )
+                        )
+                    } else {
+                        TimePicker(
+                            state = timePickerState,
+                            colors = TimePickerDefaults.colors(
+                                clockDialSelectedContentColor = Color.White,
+                                clockDialUnselectedContentColor = AppTheme.colors.textPrimary,
+                                selectorColor = AppTheme.colors.primaryGreen,
+                                containerColor = Color.White,
+                                periodSelectorBorderColor = AppTheme.colors.primaryGreen,
+                                periodSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                                periodSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                                periodSelectorUnselectedContainerColor = Color.Transparent,
+                                periodSelectorUnselectedContentColor = AppTheme.colors.textSecondary,
+                                timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                                timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                                timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                                timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                            )
+                        )
+                    }
+
+                    IconButton(onClick = { showTimeInput = !showTimeInput }) {
+                        Icon(
+                            imageVector = if (showTimeInput) Icons.Rounded.AccessTime else Icons.Filled.Keyboard,
+                            contentDescription = "Toggle Input Mode",
+                            tint = AppTheme.colors.primaryGreen
+                        )
+                    }
+                }
+            },
+            containerColor = Color.White
+        )
     }
 }
 

@@ -573,14 +573,6 @@ class MainActivity : ComponentActivity() {
                                     mealToEdit = mealToEdit
                                 )
                             }
-
-                            composable(NavRoutes.ADD_MANUAL_MEAL) {
-                                AddManualMealScreen(
-                                    foodLogViewModel = foodLogViewModel,
-                                    navController = navController
-                                )
-                            }
-
                             composable(NavRoutes.THREADS) {
                                 ThreadsScreen(
                                     navController = navController,

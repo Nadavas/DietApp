@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -26,12 +27,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -283,7 +285,11 @@ fun AddEditMealScreen(
                                     label = "Meal Name",
                                     modifier = Modifier.fillMaxWidth(),
                                     leadingIcon = Icons.Default.EditNote,
-                                    minLines = 1
+                                    singleLine = true, // Force single line
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Sentences,
+                                        imeAction = ImeAction.Done
+                                    )
                                 )
                             }
                         }
@@ -547,23 +553,29 @@ fun AddEditMealScreen(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                                             ) {
-                                                OutlinedButton(
+                                                Button(
                                                     onClick = onTakePhoto,
-                                                    modifier = Modifier.weight(1f).height(48.dp),
-                                                    shape = RoundedCornerShape(12.dp)
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .height(56.dp),
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.warmOrange)
                                                 ) {
                                                     Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(20.dp))
                                                     Spacer(Modifier.width(6.dp))
-                                                    Text("Camera", fontSize = 14.sp)
+                                                    Text("Camera", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                                 }
-                                                OutlinedButton(
+                                                Button(
                                                     onClick = onUploadPhoto,
-                                                    modifier = Modifier.weight(1f).height(48.dp),
-                                                    shape = RoundedCornerShape(12.dp)
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .height(56.dp),
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.warmOrange)
                                                 ) {
                                                     Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(20.dp))
                                                     Spacer(Modifier.width(6.dp))
-                                                    Text("Upload", fontSize = 14.sp)
+                                                    Text("Upload", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                                 }
                                             }
                                         }
@@ -655,40 +667,99 @@ fun AddEditMealScreen(
                             }
                         }
                         AddMealMode.MANUAL -> {
+                            // Meal Name Section
                             item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(20.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Text(
-                                            text = "Enter nutrition manually",
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = AppTheme.colors.textPrimary
+                                Column {
+                                    SectionHeader(title = "Meal Details")
+                                    FormCard {
+                                        ThemedOutlinedTextField(
+                                            value = foodName,
+                                            onValueChange = { foodName = it },
+                                            label = "Meal Name*",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            leadingIcon = Icons.Default.EditNote,
+                                            singleLine = true, // Force single line
+                                            keyboardOptions = KeyboardOptions(
+                                                capitalization = KeyboardCapitalization.Sentences,
+                                                imeAction = ImeAction.Done
+                                            )
                                         )
-                                        Text(
-                                            text = "Log all nutritional information yourself for precise tracking",
-                                            fontSize = 13.sp,
-                                            color = AppTheme.colors.textSecondary
-                                        )
-
-                                        Button(
-                                            onClick = { navController.navigate(NavRoutes.ADD_MANUAL_MEAL) },
-                                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.statsGreen),
-                                            shape = RoundedCornerShape(16.dp)
-                                        ) {
-                                            Icon(Icons.Default.EditNote, contentDescription = null)
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("Continue to Manual Entry", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                        }
                                     }
+                                }
+                            }
+
+                            // Serving & Calories Section
+                            item {
+                                ServingAndCaloriesSection(
+                                    servingAmountText, { servingAmountText = it },
+                                    servingUnitText, { servingUnitText = it },
+                                    caloriesText, { caloriesText = it }
+                                )
+                            }
+
+                            // Macros Section
+                            item {
+                                MacronutrientsSection(
+                                    proteinText, { proteinText = it },
+                                    carbsText, { carbsText = it },
+                                    fatText, { fatText = it }
+                                )
+                            }
+
+                            // Micros Section
+                            item {
+                                MicronutrientsSection(
+                                    fiberText, { fiberText = it },
+                                    sugarText, { sugarText = it },
+                                    sodiumText, { sodiumText = it },
+                                    potassiumText, { potassiumText = it },
+                                    calciumText, { calciumText = it },
+                                    ironText, { ironText = it },
+                                    vitaminCText, { vitaminCText = it },
+                                    vitaminAText, { vitaminAText = it },
+                                    vitaminB12Text, { vitaminB12Text = it }
+                                )
+                            }
+
+                            // Direct Log Button
+                            item {
+                                val manualButtonEnabled = foodName.isNotBlank() &&
+                                        (caloriesText.toIntOrNull() ?: 0) > 0 &&
+                                        !isFutureTimeSelected
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Button(
+                                    onClick = {
+                                        val mealTimestamp = Timestamp(selectedDateTimeState.time)
+                                        foodLogViewModel.logMeal(
+                                            foodName = foodName,
+                                            calories = caloriesText.toIntOrNull() ?: 0,
+                                            servingAmount = servingAmountText,
+                                            servingUnit = servingUnitText,
+                                            mealTime = mealTimestamp,
+                                            protein = proteinText.toDoubleOrNull(),
+                                            carbohydrates = carbsText.toDoubleOrNull(),
+                                            fat = fatText.toDoubleOrNull(),
+                                            fiber = fiberText.toDoubleOrNull(),
+                                            sugar = sugarText.toDoubleOrNull(),
+                                            sodium = sodiumText.toDoubleOrNull(),
+                                            potassium = potassiumText.toDoubleOrNull(),
+                                            calcium = calciumText.toDoubleOrNull(),
+                                            iron = ironText.toDoubleOrNull(),
+                                            vitaminC = vitaminCText.toDoubleOrNull(),
+                                            vitaminA = vitaminAText.toDoubleOrNull(),
+                                            vitaminB12 = vitaminB12Text.toDoubleOrNull()
+                                        )
+                                        // Go back to Home
+                                        navController.popBackStack(NavRoutes.HOME, inclusive = false)
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    enabled = manualButtonEnabled,
+                                    colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primaryGreen),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Log Meal", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 }
                             }
                         }
