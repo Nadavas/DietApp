@@ -170,8 +170,9 @@ fun SignUpScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // FIX: Added scroll state
-                    .padding(horizontal = 4.dp, vertical = 4.dp), // FIX: Added vertical padding
+                    .verticalScroll(rememberScrollState())
+                    // FIX: Changed horizontal padding to 24.dp to match SignInScreen width.
+                    .padding(horizontal = 24.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -365,11 +366,10 @@ fun SignUpScreen(
                             tint = Color.Unspecified
                         )
                         Spacer(modifier = Modifier.width(12.dp))
+                        // FIX: Removed maxLines and overflow to match SignIn button behavior
                         Text(
                             text = "Continue with Google",
-                            fontSize = 16.sp,
-                            maxLines = 1, // FIX: Prevent wrapping
-                            overflow = TextOverflow.Ellipsis // FIX: Handle overflow gracefully
+                            fontSize = 16.sp
                         )
                     }
                 }
