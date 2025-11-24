@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.screens
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -8,18 +9,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Assessment
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingFlat
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import kotlin.math.abs
 
+@SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -48,7 +50,6 @@ fun HomeScreen(
     foodLogViewModel: FoodLogViewModel,
     goalViewModel: GoalsViewModel = viewModel(),
     navController: NavController
-    // REMOVED: openWeightLog parameter is no longer needed here
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
@@ -65,11 +66,12 @@ fun HomeScreen(
 
     val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan
 
-    // REMOVED: Weight dialog states (showLogWeightDialog, showManageWeightDialog, weightEntryToEdit)
-
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
     var mealWithActionsShownId by remember { mutableStateOf<String?>(null) }
+
+    // State for the nutrition summary dialog
+    var showDailyTotalsDialog by remember { mutableStateOf(false) }
 
     val totalCaloriesForSelectedDate = remember(mealsForSelectedDate) {
         mealsForSelectedDate.sumOf { it.calories }
@@ -86,15 +88,11 @@ fun HomeScreen(
         }
     }
 
-    // REMOVED: LaunchedEffect(openWeightLog) - Moved to WeightScreen logic
-
     val groupedMeals = remember(mealsForSelectedDate) {
         mealsForSelectedDate
             .groupBy { meal -> MealSection.getMealSection(meal.timestamp.toDate()) }
             .toSortedMap(compareBy { it.ordinal })
     }
-
-    // REMOVED: LogWeightDialog and ManageWeightHistoryDialog composables
 
     Box(
         modifier = Modifier
@@ -131,16 +129,16 @@ fun HomeScreen(
                         item { /* Placeholder */ }
                     }
 
-                    // --- SECTION 1: WEIGHT (Top Hierarchy) ---
+                    // --- SECTION 1: WEIGHT ---
                     item {
                         val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
                         val startWeight = userProfile.startingWeight
-                        val targetWeight by foodLogViewModel.targetWeight.collectAsState() // Add this line
+                        val targetWeight by foodLogViewModel.targetWeight.collectAsState()
 
                         WeightStatusCard(
                             currentWeight = currentWeight,
                             startWeight = startWeight,
-                            targetWeight = targetWeight, // Add this parameter
+                            targetWeight = targetWeight,
                             onClick = { navController.navigate(NavRoutes.WEIGHT_TRACKER) }
                         )
                     }
@@ -175,12 +173,32 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Today's Meals",
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppTheme.colors.textPrimary
-                            )
+                            // Left side: Title + Summary Button
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Today's Meals",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppTheme.colors.textPrimary
+                                )
+
+                                // FIXED: Only show button if there are meals
+                                if (mealsForSelectedDate.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { showDailyTotalsDialog = true },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Assessment,
+                                            contentDescription = "Calculate Daily Totals",
+                                            tint = AppTheme.colors.primaryGreen
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Right side: Meal count
                             if (mealsForSelectedDate.isNotEmpty()) {
                                 Text(
                                     text = "${mealsForSelectedDate.size} meals",
@@ -245,6 +263,76 @@ fun HomeScreen(
             }
         )
     }
+
+    // Daily Nutrition Summary Dialog
+    if (showDailyTotalsDialog) {
+        val totalProtein = mealsForSelectedDate.sumOf { it.protein ?: 0.0 }
+        val totalCarbs = mealsForSelectedDate.sumOf { it.carbohydrates ?: 0.0 }
+        val totalFat = mealsForSelectedDate.sumOf { it.fat ?: 0.0 }
+        val totalFiber = mealsForSelectedDate.sumOf { it.fiber ?: 0.0 }
+        val totalSugar = mealsForSelectedDate.sumOf { it.sugar ?: 0.0 }
+        val totalSodium = mealsForSelectedDate.sumOf { it.sodium ?: 0.0 }
+        val totalPotassium = mealsForSelectedDate.sumOf { it.potassium ?: 0.0 }
+        val totalCalcium = mealsForSelectedDate.sumOf { it.calcium ?: 0.0 }
+        val totalIron = mealsForSelectedDate.sumOf { it.iron ?: 0.0 }
+        val totalVitC = mealsForSelectedDate.sumOf { it.vitaminC ?: 0.0 }
+        val totalVitA = mealsForSelectedDate.sumOf { it.vitaminA ?: 0.0 }
+        val totalVitB12 = mealsForSelectedDate.sumOf { it.vitaminB12 ?: 0.0 }
+
+        AlertDialog(
+            onDismissRequest = { showDailyTotalsDialog = false },
+            title = {
+                Text("Daily Nutrition Summary", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    // Macronutrients
+                    NutritionRow("Protein", totalProtein, "g", AppTheme.colors.statsGreen)
+                    // FIXED: Switched colors for Carbs and Fat
+                    NutritionRow("Carbohydrates", totalCarbs, "g", AppTheme.colors.softBlue)
+                    NutritionRow("Fat", totalFat, "g", AppTheme.colors.warmOrange)
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = AppTheme.colors.textSecondary.copy(alpha = 0.2f))
+
+                    // Other Nutrients
+                    NutritionRow("Fiber", totalFiber, "g", AppTheme.colors.textPrimary)
+                    NutritionRow("Sugar", totalSugar, "g", AppTheme.colors.textPrimary)
+                    NutritionRow("Sodium", totalSodium, "mg", AppTheme.colors.textPrimary)
+                    NutritionRow("Potassium", totalPotassium, "mg", AppTheme.colors.textPrimary)
+                    NutritionRow("Calcium", totalCalcium, "mg", AppTheme.colors.textPrimary)
+                    NutritionRow("Iron", totalIron, "mg", AppTheme.colors.textPrimary)
+                    NutritionRow("Vitamin C", totalVitC, "mg", AppTheme.colors.textPrimary)
+                    NutritionRow("Vitamin A", totalVitA, "mcg", AppTheme.colors.textPrimary)
+                    NutritionRow("Vitamin B12", totalVitB12, "mcg", AppTheme.colors.textPrimary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDailyTotalsDialog = false }) {
+                    Text("Close", color = AppTheme.colors.primaryGreen)
+                }
+            },
+            containerColor = androidx.compose.ui.graphics.Color.White
+        )
+    }
+}
+
+@SuppressLint("DefaultLocale")
+@Composable
+private fun NutritionRow(label: String, value: Double, unit: String, color: androidx.compose.ui.graphics.Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = "$label:", color = AppTheme.colors.textPrimary)
+        Text(
+            text = String.format("%.1f %s", value, unit),
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
+    }
 }
 
 @Composable
@@ -273,7 +361,6 @@ fun WeightStatusCard(
     val progressText = if (isGaining) "gained" else "lost"
     val formattedProgress = "%.1f".format(abs(currentWeight - startWeight))
 
-    // Determine badge
     val badge = when {
         progressPercentage >= 75f -> "🥇"
         progressPercentage >= 50f -> "🥈"
@@ -302,7 +389,6 @@ fun WeightStatusCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left side - Progress info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "WEIGHT PROGRESS",
@@ -336,7 +422,6 @@ fun WeightStatusCard(
                 )
             }
 
-            // Right side - Badge or arrow
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
