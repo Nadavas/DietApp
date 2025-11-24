@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.*
+import androidx.compose.material3.CardDefaults.shape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -298,14 +299,14 @@ private fun DayOfWeekItem(
         else -> AppTheme.colors.textPrimary
     }
     val borderModifier = if (isToday && !isSelected) {
-        Modifier.border(2.dp, AppTheme.colors.primaryGreen.copy(alpha = 0.5f), CircleShape) // Thicker border
+        Modifier.border(2.dp, AppTheme.colors.primaryGreen.copy(alpha = 0.5f), shape) // Thicker border
     } else Modifier
 
     Column(
         modifier = Modifier
-            .widthIn(min = 44.dp) // Use widthIn for flexibility
-            .height(44.dp)     // Set height
-            .clip(CircleShape)
+            .width(44.dp) // Use widthIn for flexibility
+            .height(54.dp)     // Set height
+            .clip(shape)
             .background(backgroundColor)
             .then(borderModifier)
             .clickable(onClick = onClick)

@@ -309,7 +309,7 @@ fun AccountScreen(
             val showLoading = isLoadingProfile || (authViewModel.currentUser != null && userProfile.name.isBlank())
 
             if (showLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = AppTheme.colors.primaryGreen)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
