@@ -337,7 +337,7 @@ fun VitaminsDetailScreen(
                 title = "Vitamin A",
                 weeklyData = weeklyVitaminA,
                 target = goals.getOrNull(9)?.value?.toIntOrNull(), // Next goal index
-                label = "μg", // Common unit for Vit A
+                label = "mcg", // Common unit for Vit A
                 color = AppTheme.colors.warmOrange
             )
         }
@@ -347,7 +347,7 @@ fun VitaminsDetailScreen(
                 title = "Vitamin B12",
                 weeklyData = weeklyVitaminB12,
                 target = goals.getOrNull(10)?.value?.toIntOrNull(), // Next goal index
-                label = "μg", // Common unit for Vit B12
+                label = "mcg", // Common unit for Vit B12
                 color = AppTheme.colors.softBlue
             )
         }

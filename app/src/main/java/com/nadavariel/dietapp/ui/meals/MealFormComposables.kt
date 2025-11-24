@@ -192,8 +192,8 @@ fun MicronutrientsSection(
                 NutrientTextField(label = "Iron (mg)", value = ironText, onValueChange = onIronChange)
                 NutrientTextField(label = "Vit C (mg)", value = vitaminCText, onValueChange = onVitaminCChange)
                 // START: Added for Vitamin A and B12
-                NutrientTextField(label = "Vit A (μg)", value = vitaminAText, onValueChange = onVitaminAChange)
-                NutrientTextField(label = "Vit B12 (μg)", value = vitaminB12Text, onValueChange = onVitaminB12Change)
+                NutrientTextField(label = "Vit A (mcg)", value = vitaminAText, onValueChange = onVitaminAChange)
+                NutrientTextField(label = "Vit B12 (mcg)", value = vitaminB12Text, onValueChange = onVitaminB12Change)
                 // END: Added for Vitamin A and B12
             }
         }
