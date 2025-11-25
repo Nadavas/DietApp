@@ -353,44 +353,46 @@ fun WeightStatusCard(
     targetWeight: Float,
     onClick: () -> Unit
 ) {
-    // --- LOGIC FIX START ---
+    // 1. Math Logic (Same as WeightScreen)
     val totalGoalDiff = abs(targetWeight - startWeight)
-
-    // 1. Determine goal direction
     val isWeightLossGoal = targetWeight < startWeight
 
-    // 2. Calculate raw progress based on direction:
-    // If Loss Goal: Start - Current
-    // If Gain Goal: Current - Start
     val progressAmount = if (isWeightLossGoal) {
         startWeight - currentWeight
     } else {
         currentWeight - startWeight
     }
 
-    // 3. Percentage for UI (clamped to 0% if moving in wrong direction)
+    // Clamp percentage between 0-100
     val progressPercentage = if (totalGoalDiff > 0) {
         (progressAmount / totalGoalDiff * 100f).coerceIn(0f, 100f)
     } else 0f
 
-    // 4. Text Logic: Check ACTUAL change regardless of goal
+    // 2. Text & Status Logic
     val rawDiff = currentWeight - startWeight
     val actuallyGained = rawDiff > 0
     val progressText = if (actuallyGained) "gained" else "lost"
     val formattedProgress = "%.1f".format(abs(rawDiff))
-    // --- LOGIC FIX END ---
 
+    // Check for Setback (Moved wrong way) to highlight text
+    val isSetback = progressPercentage == 0f && abs(rawDiff) > 0.1f
+
+    // 3. Updated Badges (Matches WeightScreen)
     val badge = when {
+        progressPercentage >= 100f -> "🏆"
         progressPercentage >= 75f -> "🥇"
         progressPercentage >= 50f -> "🥈"
         progressPercentage >= 25f -> "🥉"
+        progressPercentage >= 10f -> "⚡" // Added "The Spark"
         else -> null
     }
 
     val badgeTitle = when {
-        progressPercentage >= 75f -> "Almost There!"
-        progressPercentage >= 50f -> "Halfway Hero"
+        progressPercentage >= 100f -> "Champion"
+        progressPercentage >= 75f -> "Almost There"
+        progressPercentage >= 50f -> "Halfway"
         progressPercentage >= 25f -> "First Steps"
+        progressPercentage >= 10f -> "The Spark"
         else -> null
     }
 
@@ -422,7 +424,8 @@ fun WeightStatusCard(
                         text = "${progressPercentage.toInt()}%",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            color = AppTheme.colors.primaryGreen
+                            // Use Orange if setback, Green if progress, otherwise default
+                            color = if (isSetback) AppTheme.colors.warmOrange else AppTheme.colors.primaryGreen
                         )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -435,11 +438,12 @@ fun WeightStatusCard(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // This will now correctly say "2.0 kg gained" even if your goal is weight loss
+                // Status text (Orange if setback)
                 Text(
-                    text = "$formattedProgress kg $progressText",
+                    text = if (isSetback) "⚠️ $formattedProgress kg $progressText" else "$formattedProgress kg $progressText",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = AppTheme.colors.textSecondary
+                    color = if (isSetback) AppTheme.colors.warmOrange else AppTheme.colors.textSecondary,
+                    fontWeight = if (isSetback) FontWeight.Medium else FontWeight.Normal
                 )
             }
 

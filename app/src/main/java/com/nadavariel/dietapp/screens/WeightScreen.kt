@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,37 +76,26 @@ fun WeightScreen(
         }
     }
 
-    // --- LOGIC FIX START ---
     val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
     val totalGoal = abs(targetWeight - userProfile.startingWeight)
-
-    // Determine goal direction
     val isWeightLossGoal = targetWeight < userProfile.startingWeight
 
-    // Calculate raw progress based on direction:
-    // If Loss Goal: Start - Current (Positive = Progress)
-    // If Gain Goal: Current - Start (Positive = Progress)
+    // Progress Logic
     val progressAmount = if (isWeightLossGoal) {
         userProfile.startingWeight - currentWeight
     } else {
         currentWeight - userProfile.startingWeight
     }
 
-    // Only calculate progress percentage if we moved in the RIGHT direction
-    // coerceIn(0f, 100f) ensures negative progress (moving wrong way) stays at 0%
     val progressPercentage = if (totalGoal > 0) {
         (progressAmount / totalGoal * 100f).coerceIn(0f, 100f)
     } else 0f
 
-    // Amount of progress used for "Next Milestone" calculations (clamped to 0 if negative)
-    val currentValidProgress = progressAmount.coerceAtLeast(0f)
-
     val isGainingGoal = targetWeight > userProfile.startingWeight
-    // --- LOGIC FIX END ---
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Header with progress
+            // Header
             PersonalizedHeader(
                 navController = navController,
                 userName = userProfile.name,
@@ -125,7 +115,7 @@ fun WeightScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Story Card - Your Journey
+                    // Story Card
                     item {
                         JourneyStoryCard(
                             startingWeight = userProfile.startingWeight,
@@ -137,25 +127,23 @@ fun WeightScreen(
                         )
                     }
 
-                    // Next Milestone Card
+                    // Next Milestone Card (Updated Logic)
                     item {
                         NextMilestoneCard(
-                            progressPercentage = progressPercentage,
-                            currentProgress = currentValidProgress,
-                            totalGoal = totalGoal
-                        )
-                    }
-
-                    // Trophy Section with motivation
-                    item {
-                        MotivationalTrophySection(
-                            progressPercentage = progressPercentage,
                             currentWeight = currentWeight,
+                            startingWeight = userProfile.startingWeight,
                             targetWeight = targetWeight
                         )
                     }
 
-                    // Progress Chart Card
+                    // Trophy Section (Redesigned & Expanded)
+                    item {
+                        MotivationalTrophySection(
+                            progressPercentage = progressPercentage
+                        )
+                    }
+
+                    // Chart
                     item {
                         Card(
                             colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
@@ -201,7 +189,7 @@ fun WeightScreen(
                         }
                     }
 
-                    // Action Buttons
+                    // Buttons
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -226,14 +214,13 @@ fun WeightScreen(
                             )
                         }
                     }
-
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
     }
 
-    // Dialogs
+    // Dialogs (Log & History)
     if (showLogDialog) {
         LogWeightDialog(
             entryToEdit = entryToEdit,
@@ -347,17 +334,11 @@ private fun JourneyStoryCard(
     isGainingGoal: Boolean,
     daysTracking: Int
 ) {
-    // Calculate ACTUAL change regardless of goal
     val rawDiff = currentWeight - startingWeight
     val weightChangeAbs = abs(rawDiff)
     val weightRemaining = abs(targetWeight - currentWeight)
-
-    // Did we actually gain or lose?
     val actuallyGained = rawDiff > 0
     val actionWord = if (actuallyGained) "gained" else "lost"
-
-    // Check if moving in wrong direction (Setback)
-    // If progress is 0 but we have tracked days and the weight changed significantly
     val isSetback = progressPercentage == 0f && daysTracking > 0 && weightChangeAbs > 0.1f
 
     val storyText = when {
@@ -461,7 +442,6 @@ private fun JourneyStoryCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Animated Progress Bar
                 AnimatedJourneyProgressBar(progressPercentage = progressPercentage)
 
                 if (daysTracking > 0) {
@@ -505,17 +485,7 @@ private fun JourneyStatBubble(
                 .size(if (isHighlight) 70.dp else 60.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isHighlight) {
-                        Brush.radialGradient(
-                            listOf(
-                                color.copy(alpha = 0.3f),
-                                color.copy(alpha = 0.1f)
-                            )
-                        )
-                    } else {
-                        // FIX: Wrap the Color in SolidColor so both branches return a Brush
-                        SolidColor(color.copy(alpha = 0.1f))
-                    }
+                    SolidColor(color.copy(alpha = 0.1f))
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -576,38 +546,55 @@ private fun AnimatedJourneyProgressBar(progressPercentage: Float) {
 @SuppressLint("DefaultLocale")
 @Composable
 private fun NextMilestoneCard(
-    progressPercentage: Float,
-    currentProgress: Float,
-    totalGoal: Float
+    currentWeight: Float,
+    startingWeight: Float,
+    targetWeight: Float
 ) {
-    // If progress is 0 or negative (wrong direction), next milestone is 25%
-    val effectiveProgressPercent = progressPercentage.coerceAtLeast(0f)
+    val totalGoalDiff = abs(targetWeight - startingWeight)
+    val isWeightLoss = startingWeight > targetWeight
 
-    val nextMilestone = when {
-        effectiveProgressPercent < 25f -> 25f
-        effectiveProgressPercent < 50f -> 50f
-        effectiveProgressPercent < 75f -> 75f
-        effectiveProgressPercent < 100f -> 100f
-        else -> null
+    // Calculate raw progress percent (can be negative if setback)
+    val rawDiff = if (isWeightLoss) startingWeight - currentWeight else currentWeight - startingWeight
+    val rawPercent = (rawDiff / totalGoalDiff * 100f)
+
+    // Determine the NEXT milestone.
+    val nextMilestoneThreshold = when {
+        rawPercent < 10f -> 10f
+        rawPercent < 25f -> 25f
+        rawPercent < 50f -> 50f
+        rawPercent < 75f -> 75f
+        rawPercent < 100f -> 100f
+        else -> null // Goal complete
     }
 
-    if (nextMilestone != null) {
-        // Calculate raw amount needed to hit milestone from START
-        val amountNeededForMilestone = (nextMilestone / 100f * totalGoal)
-        // Subtract what we have already achieved (currentProgress is 0 if we went backward)
-        val remainingToMilestone = amountNeededForMilestone - currentProgress
+    if (nextMilestoneThreshold != null) {
+        // Calculate the specific WEIGHT we need to hit for this milestone
+        // Start - (Total * %) for loss
+        // Start + (Total * %) for gain
+        val weightAtMilestone = if (isWeightLoss) {
+            startingWeight - (totalGoalDiff * (nextMilestoneThreshold / 100f))
+        } else {
+            startingWeight + (totalGoalDiff * (nextMilestoneThreshold / 100f))
+        }
 
-        val badge = when (nextMilestone) {
+        // True distance: current vs milestone target
+        // This naturally handles setbacks. If I am 5kg away from start in wrong direction,
+        // and milestone is 2kg from start in right direction, distance is 7kg.
+        val distanceToMilestone = abs(currentWeight - weightAtMilestone)
+
+        val badge = when (nextMilestoneThreshold) {
+            10f -> "⚡"
             25f -> "🥉"
             50f -> "🥈"
             75f -> "🥇"
             else -> "🏆"
         }
-        val milestoneName = when (nextMilestone) {
+        val milestoneName = when (nextMilestoneThreshold) {
+            10f -> "The Spark"
             25f -> "First Steps"
             50f -> "Halfway Hero"
             75f -> "Almost There"
-            else -> "Goal Complete"
+            else -> "Champion"
         }
 
         Card(
@@ -629,10 +616,7 @@ private fun NextMilestoneCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = badge,
-                        fontSize = 32.sp
-                    )
+                    Text(text = badge, fontSize = 32.sp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
@@ -642,13 +626,12 @@ private fun NextMilestoneCard(
                             color = AppTheme.colors.textPrimary
                         )
                         Text(
-                            text = "${String.format("%.1f", remainingToMilestone)} kg to unlock",
+                            text = "${String.format("%.1f", distanceToMilestone)} kg to unlock",
                             fontSize = 12.sp,
                             color = AppTheme.colors.textSecondary
                         )
                     }
                 }
-
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
@@ -662,14 +645,15 @@ private fun NextMilestoneCard(
 
 @Composable
 private fun MotivationalTrophySection(
-    progressPercentage: Float,
-    currentWeight: Float,
-    targetWeight: Float
+    progressPercentage: Float
 ) {
+    // EXPANDED ACHIEVEMENTS LIST (5 Badges now)
     val badges = listOf(
-        BadgeData(25f, "First Steps", "🥉", AppTheme.colors.warmOrange, "You're on your way!"),
-        BadgeData(50f, "Halfway Hero", "🥈", AppTheme.colors.softBlue, "Keep pushing forward!"),
-        BadgeData(75f, "Almost There", "🥇", AppTheme.colors.primaryGreen, "The finish line awaits!")
+        BadgeData(10f, "The Spark", "⚡", AppTheme.colors.warmOrange),
+        BadgeData(25f, "First Steps", "🥉", AppTheme.colors.softBlue),
+        BadgeData(50f, "Halfway", "🥈", AppTheme.colors.softBlue),
+        BadgeData(75f, "Almost There", "🥇", AppTheme.colors.primaryGreen),
+        BadgeData(100f, "Champion", "🏆", AppTheme.colors.primaryGreen)
     )
 
     Card(
@@ -681,23 +665,25 @@ private fun MotivationalTrophySection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(vertical = 16.dp) // Reduced vertical padding
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
-                        text = "Achievement Gallery",
-                        fontSize = 18.sp,
+                        text = "Achievements",
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppTheme.colors.textPrimary
                     )
                     Text(
                         text = "Unlock badges as you progress",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         color = AppTheme.colors.textSecondary
                     )
                 }
@@ -705,18 +691,20 @@ private fun MotivationalTrophySection(
                     imageVector = Icons.Default.EmojiEvents,
                     contentDescription = null,
                     tint = AppTheme.colors.warmOrange,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
+            // COMPACT REDESIGN: Using LazyRow for horizontal scrolling
+            LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                badges.forEach { badge ->
-                    MotivationalBadgeItem(
+                items(badges) { badge ->
+                    MotivationalBadgeItemCompact(
                         badge = badge,
                         isUnlocked = progressPercentage >= badge.threshold
                     )
@@ -730,71 +718,54 @@ private data class BadgeData(
     val threshold: Float,
     val title: String,
     val emoji: String,
-    val color: Color,
-    val motivation: String
+    val color: Color
 )
 
 @Composable
-private fun MotivationalBadgeItem(badge: BadgeData, isUnlocked: Boolean) {
+private fun MotivationalBadgeItemCompact(badge: BadgeData, isUnlocked: Boolean) {
     val scale by animateFloatAsState(
         targetValue = if (isUnlocked) 1f else 0.9f,
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 200f)
     )
 
-    val rotation by rememberInfiniteTransition().animateFloat(
-        initialValue = if (isUnlocked) -5f else 0f,
-        targetValue = if (isUnlocked) 5f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.width(70.dp) // Fixed width for consistent spacing
     ) {
         Box(
             modifier = Modifier
-                .size(90.dp)
+                .size(60.dp) // Smaller size (was 90.dp)
                 .scale(scale)
-                .graphicsLayer { rotationZ = if (isUnlocked) rotation else 0f }
                 .clip(CircleShape)
                 .background(
                     if (isUnlocked)
                         Brush.radialGradient(
-                            listOf(
-                                badge.color.copy(alpha = 0.4f),
-                                badge.color.copy(alpha = 0.1f)
-                            )
+                            listOf(badge.color.copy(alpha = 0.4f), badge.color.copy(alpha = 0.1f))
                         )
                     else
                         Brush.radialGradient(
-                            listOf(
-                                Color.Gray.copy(alpha = 0.2f),
-                                Color.Gray.copy(alpha = 0.05f)
-                            )
+                            listOf(Color.Gray.copy(alpha = 0.2f), Color.Gray.copy(alpha = 0.05f))
                         )
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = badge.emoji,
-                    fontSize = 44.sp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = if (isUnlocked) 1f else 0.3f
-                    }
-                )
-                if (isUnlocked) {
+            Text(
+                text = badge.emoji,
+                fontSize = 28.sp, // Smaller emoji
+                modifier = Modifier.graphicsLayer { alpha = if (isUnlocked) 1f else 0.3f }
+            )
+            if (isUnlocked) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
                     Text(
                         text = "✓",
-                        fontSize = 16.sp,
+                        fontSize = 12.sp,
                         color = badge.color,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(8.dp)
                     )
                 }
             }
@@ -802,37 +773,19 @@ private fun MotivationalBadgeItem(badge: BadgeData, isUnlocked: Boolean) {
 
         Text(
             text = "${badge.threshold.toInt()}%",
-            fontSize = 15.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = if (isUnlocked) badge.color else AppTheme.colors.textSecondary
         )
-
         Text(
             text = badge.title,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
             color = AppTheme.colors.textPrimary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.width(90.dp)
+            maxLines = 1,
+            lineHeight = 12.sp
         )
-
-        if (isUnlocked) {
-            Text(
-                text = badge.motivation,
-                fontSize = 10.sp,
-                color = badge.color,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.width(90.dp)
-            )
-        } else {
-            Text(
-                text = "Locked",
-                fontSize = 10.sp,
-                color = AppTheme.colors.textSecondary.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center
-            )
-        }
     }
 }
 
