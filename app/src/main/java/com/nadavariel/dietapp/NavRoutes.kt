@@ -29,6 +29,7 @@ object NavRoutes {
     const val STATS_VITAMINS = "stats/vitamins"
     const val ADD_MANUAL_MEAL = "add_manual_meal"
     const val WEIGHT_TRACKER = "weight_tracker"
+    const val ALL_ACHIEVEMENTS = "all_achievements"
 
     fun threadDetail(threadId: String) = "thread_detail/$threadId"
 

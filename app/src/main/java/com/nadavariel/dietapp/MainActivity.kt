@@ -585,6 +585,22 @@ class MainActivity : ComponentActivity() {
                                     threadViewModel = threadViewModel
                                 )
                             }
+
+                            composable(NavRoutes.ALL_ACHIEVEMENTS) {
+                                // Collect the flows.
+                                // Since FoodLogViewModel emits Map<LocalDate, ...>, these match the new signature in AllAchievementsScreen.
+                                val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsStateWithLifecycle()
+                                val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsStateWithLifecycle()
+                                val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsStateWithLifecycle()
+
+                                AllAchievementsScreen(
+                                    navController = navController,
+                                    weeklyCalories = weeklyCalories,
+                                    weeklyProtein = weeklyProtein.mapValues { it.value.toFloat() },
+                                    weeklyMacroPercentages = weeklyMacroPercentages
+                                )
+                            }
+
                             composable(
                                 route = NavRoutes.THREAD_DETAIL_WITH_ARG,
                                 arguments = listOf(navArgument("threadId") { type = NavType.StringType })
