@@ -1,8 +1,5 @@
 package com.nadavariel.dietapp.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -90,7 +87,7 @@ fun MyProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp)
-                            .padding(top = 16.dp, bottom = 32.dp)
+                            .padding(top = 0.dp, bottom = 16.dp)
                     ) {
                         IconButton(
                             onClick = { navController.popBackStack() },
@@ -104,8 +101,6 @@ fun MyProfileScreen(
                                 modifier = Modifier.size(28.dp)
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Avatar and Name
                         Column(
