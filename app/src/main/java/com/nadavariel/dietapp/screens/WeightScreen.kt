@@ -8,10 +8,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -647,7 +649,6 @@ private fun NextMilestoneCard(
 private fun MotivationalTrophySection(
     progressPercentage: Float
 ) {
-    // EXPANDED ACHIEVEMENTS LIST (5 Badges now)
     val badges = listOf(
         BadgeData(10f, "The Spark", "⚡", AppTheme.colors.warmOrange),
         BadgeData(25f, "First Steps", "🥉", AppTheme.colors.softBlue),
@@ -655,6 +656,22 @@ private fun MotivationalTrophySection(
         BadgeData(75f, "Almost There", "🥇", AppTheme.colors.primaryGreen),
         BadgeData(100f, "Champion", "🏆", AppTheme.colors.primaryGreen)
     )
+
+    // Start in the middle of the infinite list so it feels truly cyclic
+    // We calculate the offset to ensure we start exactly at the beginning of the list sequence
+    val startIndex = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2 % badges.size)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+
+    // Auto-scrolling Logic
+    LaunchedEffect(Unit) {
+        while (true) {
+            // Scroll by 1.5 pixels
+            listState.scrollBy(1.5f)
+            // Wait 20ms (approx 50fps) - adjust this delay to control speed
+            // Higher delay = Slower speed
+            kotlinx.coroutines.delay(20)
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -665,7 +682,7 @@ private fun MotivationalTrophySection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp) // Reduced vertical padding
+                .padding(vertical = 16.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -697,13 +714,17 @@ private fun MotivationalTrophySection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // COMPACT REDESIGN: Using LazyRow for horizontal scrolling
             LazyRow(
+                state = listState,
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                userScrollEnabled = true // User can still swipe if they want
             ) {
-                items(badges) { badge ->
+                // Creates an effectively infinite list
+                items(Int.MAX_VALUE) { index ->
+                    // Use modulo to cycle through the 5 badges
+                    val badge = badges[index % badges.size]
                     MotivationalBadgeItemCompact(
                         badge = badge,
                         isUnlocked = progressPercentage >= badge.threshold
