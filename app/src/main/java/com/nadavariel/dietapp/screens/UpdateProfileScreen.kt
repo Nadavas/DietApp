@@ -45,7 +45,7 @@ import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-@RequiresApi(Build.VERSION_CODES.O) // Added for Instant/LocalDate conversions if needed
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateProfileScreen(
@@ -70,7 +70,7 @@ fun UpdateProfileScreen(
     var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
 
     var showAvatarDialog by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) } // State for DatePicker
+    var showDatePicker by remember { mutableStateOf(false) }
     var isGenderDropdownExpanded by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
@@ -115,7 +115,7 @@ fun UpdateProfileScreen(
             .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Header
+            // Modern Header (Matched to Edit Meal Screen design)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -124,7 +124,7 @@ fun UpdateProfileScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {
@@ -143,18 +143,21 @@ fun UpdateProfileScreen(
                             tint = AppTheme.colors.textPrimary
                         )
                     }
-                    Column(modifier = Modifier.weight(1f)) {
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column {
                         Text(
                             text = if (isNewUser) "Create Your Profile" else "Edit Profile",
-                            fontSize = 28.sp,
+                            fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
                             color = AppTheme.colors.textPrimary
                         )
                         Text(
                             text = if (isNewUser) "Let's get to know you!" else "Update your details",
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             color = AppTheme.colors.textSecondary,
-                            modifier = Modifier.padding(top = 2.dp)
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
@@ -189,13 +192,11 @@ fun UpdateProfileScreen(
                             color = AppTheme.colors.textPrimary
                         )
 
-                        // FIXED: Removed clip(CircleShape) from the parent Box
                         Box(
                             modifier = Modifier
                                 .size(120.dp)
                                 .clickable { showAvatarDialog = true }
                         ) {
-                            // Moved clip(CircleShape) to the Image modifier
                             Image(
                                 painter = painterResource(
                                     id = AvatarConstants.getAvatarResId(selectedAvatarId)
@@ -208,7 +209,6 @@ fun UpdateProfileScreen(
                                     .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
                             )
 
-                            // Edit button now overlays correctly without being clipped
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
@@ -253,7 +253,7 @@ fun UpdateProfileScreen(
                                 Icon(Icons.Default.DateRange, "Select Date")
                             }
                         },
-                        modifier = Modifier.clickable { showDatePicker = true } // Make whole field clickable
+                        modifier = Modifier.clickable { showDatePicker = true }
                     )
 
                     ExposedDropdownMenuBox(
@@ -556,7 +556,7 @@ private fun ModernOutlinedTextField(
         },
         trailingIcon = trailingIcon,
         readOnly = readOnly,
-        modifier = modifier // If clickable is passed here, it works
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
@@ -567,7 +567,6 @@ private fun ModernOutlinedTextField(
         ),
         keyboardOptions = keyboardOptions,
         singleLine = true,
-        // Ensure readOnly fields (like date picker) don't show keyboard but handle clicks
         enabled = true
     )
 }

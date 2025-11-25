@@ -23,11 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext // <-- 1. IMPORT ADDED
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
@@ -38,6 +39,35 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.util.AvatarConstants
+
+// --- NEW HEADER COMPOSABLE ---
+@Composable
+private fun ModernAccountHeader() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 20.dp)
+        ) {
+            Text(
+                text = "Your Account",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppTheme.colors.textPrimary
+            )
+            Text(
+                text = "Manage profile and preferences",
+                fontSize = 14.sp,
+                color = AppTheme.colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
 
 @Composable
 fun AccountHeaderInfo(
@@ -254,7 +284,7 @@ fun AccountScreen(
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
-    val context = LocalContext.current // <-- 2. GET CONTEXT
+    val context = LocalContext.current
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
@@ -282,30 +312,16 @@ fun AccountScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "My Account",
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.darkGreyText
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.screenBackground
-                )
-            )
-        },
-        containerColor = AppTheme.colors.screenBackground
-    ) { paddingValues ->
-        // --- START OF FIX: Add loading wrapper ---
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // This combined check prevents the flash of default content
+    // Using a standard Column instead of Scaffold so the ModernHeader flows with content
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppTheme.colors.screenBackground)
+    ) {
+        // Modern Header is placed directly at the top
+        ModernAccountHeader()
+
+        Box(modifier = Modifier.weight(1f)) {
             val showLoading = isLoadingProfile || (authViewModel.currentUser != null && userProfile.name.isBlank())
 
             if (showLoading) {
@@ -373,7 +389,7 @@ fun AccountScreen(
                     item {
                         MenuRow(
                             title = "Notifications",
-                            subtitle = "Meal reminder notifications",
+                            subtitle = "Manage meal & weight reminders",
                             leadingIcon = { Icon(Icons.Filled.Notifications, "Notifications", modifier = Modifier.size(24.dp)) },
                             onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
                         )
@@ -423,7 +439,6 @@ fun AccountScreen(
                 }
             }
         }
-        // --- END OF FIX ---
     }
 
     if (showDeleteConfirmationDialog) {
@@ -478,9 +493,7 @@ fun AccountScreen(
             dismissButtonText = "Cancel",
             onConfirm = {
                 showSignOutDialog = false
-                // --- 3. PASS CONTEXT TO SIGN OUT ---
                 authViewModel.signOut(context)
-                // --- END OF FIX ---
             }
         )
     }

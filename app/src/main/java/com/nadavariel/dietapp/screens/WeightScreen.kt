@@ -304,7 +304,7 @@ private fun PersonalizedHeader(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Your Journey",
-                        fontSize = 28.sp,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppTheme.colors.textPrimary
                     )
@@ -316,7 +316,7 @@ private fun PersonalizedHeader(
                             progressPercentage > 0f -> "Every journey begins with a single step! 🌟"
                             else -> "Your transformation starts today! 🚀"
                         },
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         color = AppTheme.colors.primaryGreen,
                         fontWeight = FontWeight.Medium
                     )

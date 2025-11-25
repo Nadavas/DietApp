@@ -251,28 +251,51 @@ fun AddEditMealScreen(
     ) {
         // We split UI based on whether we are Editing (Full Form) or Adding (New Hub Flow)
         if (isEditMode) {
-            // ================= EDIT MODE (Original Form Layout) =================
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Edit Meal", fontWeight = FontWeight.Bold) },
-                        navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = AppTheme.colors.screenBackground,
-                            titleContentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                },
-                containerColor = AppTheme.colors.screenBackground
-            ) { paddingValues ->
+            // ================= EDIT MODE (Original Form Layout - Refreshed Header) =================
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Modern Header with Back Button INLINE
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    shadowElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Back Button
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = AppTheme.colors.textPrimary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Title & Subtitle
+                        Column {
+                            Text(
+                                text = "Edit Meal",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppTheme.colors.textPrimary
+                            )
+                            Text(
+                                text = "Update nutrition details",
+                                fontSize = 14.sp,
+                                color = AppTheme.colors.textSecondary
+                            )
+                        }
+                    }
+                }
+
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
+                        .fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
