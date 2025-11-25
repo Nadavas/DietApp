@@ -75,11 +75,33 @@ fun WeightScreen(
         }
     }
 
+    // --- LOGIC FIX START ---
     val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
     val totalGoal = abs(targetWeight - userProfile.startingWeight)
-    val currentProgress = abs(currentWeight - userProfile.startingWeight)
-    val progressPercentage = if (totalGoal > 0) (currentProgress / totalGoal * 100f).coerceIn(0f, 100f) else 0f
-    val isGaining = targetWeight > userProfile.startingWeight
+
+    // Determine goal direction
+    val isWeightLossGoal = targetWeight < userProfile.startingWeight
+
+    // Calculate raw progress based on direction:
+    // If Loss Goal: Start - Current (Positive = Progress)
+    // If Gain Goal: Current - Start (Positive = Progress)
+    val progressAmount = if (isWeightLossGoal) {
+        userProfile.startingWeight - currentWeight
+    } else {
+        currentWeight - userProfile.startingWeight
+    }
+
+    // Only calculate progress percentage if we moved in the RIGHT direction
+    // coerceIn(0f, 100f) ensures negative progress (moving wrong way) stays at 0%
+    val progressPercentage = if (totalGoal > 0) {
+        (progressAmount / totalGoal * 100f).coerceIn(0f, 100f)
+    } else 0f
+
+    // Amount of progress used for "Next Milestone" calculations (clamped to 0 if negative)
+    val currentValidProgress = progressAmount.coerceAtLeast(0f)
+
+    val isGainingGoal = targetWeight > userProfile.startingWeight
+    // --- LOGIC FIX END ---
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -110,7 +132,7 @@ fun WeightScreen(
                             currentWeight = currentWeight,
                             targetWeight = targetWeight,
                             progressPercentage = progressPercentage,
-                            isGaining = isGaining,
+                            isGainingGoal = isGainingGoal,
                             daysTracking = weightHistory.size
                         )
                     }
@@ -119,9 +141,8 @@ fun WeightScreen(
                     item {
                         NextMilestoneCard(
                             progressPercentage = progressPercentage,
-                            currentProgress = currentProgress,
-                            totalGoal = totalGoal,
-                            isGaining = isGaining
+                            currentProgress = currentValidProgress,
+                            totalGoal = totalGoal
                         )
                     }
 
@@ -323,18 +344,29 @@ private fun JourneyStoryCard(
     currentWeight: Float,
     targetWeight: Float,
     progressPercentage: Float,
-    isGaining: Boolean,
+    isGainingGoal: Boolean,
     daysTracking: Int
 ) {
-    val weightChange = abs(currentWeight - startingWeight)
+    // Calculate ACTUAL change regardless of goal
+    val rawDiff = currentWeight - startingWeight
+    val weightChangeAbs = abs(rawDiff)
     val weightRemaining = abs(targetWeight - currentWeight)
 
+    // Did we actually gain or lose?
+    val actuallyGained = rawDiff > 0
+    val actionWord = if (actuallyGained) "gained" else "lost"
+
+    // Check if moving in wrong direction (Setback)
+    // If progress is 0 but we have tracked days and the weight changed significantly
+    val isSetback = progressPercentage == 0f && daysTracking > 0 && weightChangeAbs > 0.1f
+
     val storyText = when {
-        progressPercentage >= 100f -> "🎊 Incredible! You've reached your goal! You ${if (isGaining) "gained" else "lost"} ${String.format("%.1f", weightChange)} kg!"
+        progressPercentage >= 100f -> "🎊 Incredible! You've reached your goal! You $actionWord ${String.format("%.1f", weightChangeAbs)} kg!"
         progressPercentage >= 75f -> "🔥 You're in the final stretch! Only ${String.format("%.1f", weightRemaining)} kg to go!"
-        progressPercentage >= 50f -> "💪 Amazing progress! You've ${if (isGaining) "gained" else "lost"} ${String.format("%.1f", weightChange)} kg and you're halfway there!"
-        progressPercentage >= 25f -> "✨ Great start! You've ${if (isGaining) "gained" else "lost"} ${String.format("%.1f", weightChange)} kg. Keep the momentum!"
-        progressPercentage > 0f -> "🌱 Your journey has begun! ${String.format("%.1f", weightChange)} kg ${if (isGaining) "gained" else "lost"}. Stay consistent!"
+        progressPercentage >= 50f -> "💪 Amazing progress! You've $actionWord ${String.format("%.1f", weightChangeAbs)} kg and you're halfway there!"
+        progressPercentage >= 25f -> "✨ Great start! You've $actionWord ${String.format("%.1f", weightChangeAbs)} kg. Keep the momentum!"
+        isSetback -> "⚠️ You've moved ${String.format("%.1f", weightChangeAbs)} kg away from your goal. Don't give up, get back on track!"
+        progressPercentage > 0f -> "🌱 Your journey has begun! ${String.format("%.1f", weightChangeAbs)} kg $actionWord. Stay consistent!"
         else -> "🚀 Ready to start your transformation? Log your first weight to begin!"
     }
 
@@ -389,7 +421,7 @@ private fun JourneyStoryCard(
                         modifier = Modifier
                             .size(60.dp)
                             .clip(CircleShape)
-                            .background(AppTheme.colors.primaryGreen),
+                            .background(if (isSetback) AppTheme.colors.warmOrange else AppTheme.colors.primaryGreen),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -416,7 +448,7 @@ private fun JourneyStoryCard(
                     JourneyStatBubble(
                         value = String.format("%.1f", currentWeight),
                         label = "Current",
-                        color = AppTheme.colors.primaryGreen,
+                        color = if (isSetback) AppTheme.colors.warmOrange else AppTheme.colors.primaryGreen,
                         isHighlight = true
                     )
 
@@ -546,19 +578,25 @@ private fun AnimatedJourneyProgressBar(progressPercentage: Float) {
 private fun NextMilestoneCard(
     progressPercentage: Float,
     currentProgress: Float,
-    totalGoal: Float,
-    isGaining: Boolean
+    totalGoal: Float
 ) {
+    // If progress is 0 or negative (wrong direction), next milestone is 25%
+    val effectiveProgressPercent = progressPercentage.coerceAtLeast(0f)
+
     val nextMilestone = when {
-        progressPercentage < 25f -> 25f
-        progressPercentage < 50f -> 50f
-        progressPercentage < 75f -> 75f
-        progressPercentage < 100f -> 100f
+        effectiveProgressPercent < 25f -> 25f
+        effectiveProgressPercent < 50f -> 50f
+        effectiveProgressPercent < 75f -> 75f
+        effectiveProgressPercent < 100f -> 100f
         else -> null
     }
 
     if (nextMilestone != null) {
-        val progressToNextMilestone = (nextMilestone / 100f * totalGoal) - currentProgress
+        // Calculate raw amount needed to hit milestone from START
+        val amountNeededForMilestone = (nextMilestone / 100f * totalGoal)
+        // Subtract what we have already achieved (currentProgress is 0 if we went backward)
+        val remainingToMilestone = amountNeededForMilestone - currentProgress
+
         val badge = when (nextMilestone) {
             25f -> "🥉"
             50f -> "🥈"
@@ -604,7 +642,7 @@ private fun NextMilestoneCard(
                             color = AppTheme.colors.textPrimary
                         )
                         Text(
-                            text = "${String.format("%.1f", progressToNextMilestone)} kg to unlock",
+                            text = "${String.format("%.1f", remainingToMilestone)} kg to unlock",
                             fontSize = 12.sp,
                             color = AppTheme.colors.textSecondary
                         )
@@ -1234,7 +1272,9 @@ fun LogWeightDialog(
                     val weight = weightInput.toFloatOrNull()
                     if (weight != null && weight > 0) {
                         if (isEditMode) {
-                            onUpdate(entryToEdit.id, weight, selectedDate)
+                            if (entryToEdit != null) {
+                                onUpdate(entryToEdit.id, weight, selectedDate)
+                            }
                         } else {
                             onSave(weight, selectedDate)
                         }

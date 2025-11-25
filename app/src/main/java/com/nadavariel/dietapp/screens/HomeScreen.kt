@@ -353,13 +353,32 @@ fun WeightStatusCard(
     targetWeight: Float,
     onClick: () -> Unit
 ) {
-    val totalGoal = abs(targetWeight - startWeight)
-    val currentProgress = abs(currentWeight - startWeight)
-    val progressPercentage = if (totalGoal > 0) (currentProgress / totalGoal * 100f).coerceIn(0f, 100f) else 0f
+    // --- LOGIC FIX START ---
+    val totalGoalDiff = abs(targetWeight - startWeight)
 
-    val isGaining = targetWeight > startWeight
-    val progressText = if (isGaining) "gained" else "lost"
-    val formattedProgress = "%.1f".format(abs(currentWeight - startWeight))
+    // 1. Determine goal direction
+    val isWeightLossGoal = targetWeight < startWeight
+
+    // 2. Calculate raw progress based on direction:
+    // If Loss Goal: Start - Current
+    // If Gain Goal: Current - Start
+    val progressAmount = if (isWeightLossGoal) {
+        startWeight - currentWeight
+    } else {
+        currentWeight - startWeight
+    }
+
+    // 3. Percentage for UI (clamped to 0% if moving in wrong direction)
+    val progressPercentage = if (totalGoalDiff > 0) {
+        (progressAmount / totalGoalDiff * 100f).coerceIn(0f, 100f)
+    } else 0f
+
+    // 4. Text Logic: Check ACTUAL change regardless of goal
+    val rawDiff = currentWeight - startWeight
+    val actuallyGained = rawDiff > 0
+    val progressText = if (actuallyGained) "gained" else "lost"
+    val formattedProgress = "%.1f".format(abs(rawDiff))
+    // --- LOGIC FIX END ---
 
     val badge = when {
         progressPercentage >= 75f -> "🥇"
@@ -415,6 +434,8 @@ fun WeightStatusCard(
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
+
+                // This will now correctly say "2.0 kg gained" even if your goal is weight loss
                 Text(
                     text = "$formattedProgress kg $progressText",
                     style = MaterialTheme.typography.bodyMedium,
