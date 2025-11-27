@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -346,7 +347,7 @@ fun DietPlanScreen(
                 // Disclaimer - Subtle and informative (This was already correct)
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = AppTheme.colors.disclaimer // Very light yellow
+                        containerColor = AppTheme.colors.foodsToLimit.copy(alpha = 0.1f)
                     ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -359,7 +360,7 @@ fun DietPlanScreen(
                         Icon(
                             Icons.Default.Info,
                             contentDescription = null,
-                            tint = AppTheme.colors.disclaimerIcon,
+                            tint = AppTheme.colors.softRed,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
@@ -693,7 +694,7 @@ fun ProteinRecommendationCard(weightKg: Int) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.FitnessCenter,
+                        Icons.Rounded.Spa,
                         contentDescription = null,
                         tint = AppTheme.colors.primaryGreen,
                         modifier = Modifier.size(26.dp)
