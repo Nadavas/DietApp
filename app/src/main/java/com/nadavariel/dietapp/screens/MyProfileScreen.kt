@@ -294,7 +294,7 @@ fun MyProfileScreen(
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
-                        onClick = { navController.navigate(NavRoutes.UPDATE_PROFILE) },
+                        onClick = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

@@ -48,7 +48,7 @@ import java.util.*
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdateProfileScreen(
+fun EditProfileScreen(
     authViewModel: AuthViewModel,
     goalsViewModel: GoalsViewModel,
     navController: NavController,
@@ -88,7 +88,7 @@ fun UpdateProfileScreen(
 
         if (isNewUser) {
             navController.navigate(NavRoutes.HOME) {
-                popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
+                popUpTo(NavRoutes.EDIT_PROFILE_BASE) { inclusive = true }
                 launchSingleTop = true
             }
         } else {
@@ -127,7 +127,7 @@ fun UpdateProfileScreen(
                     IconButton(onClick = {
                         if (isNewUser) {
                             navController.navigate(NavRoutes.HOME) {
-                                popUpTo(NavRoutes.UPDATE_PROFILE_BASE) { inclusive = true }
+                                popUpTo(NavRoutes.EDIT_PROFILE_BASE) { inclusive = true }
                                 launchSingleTop = true
                             }
                         } else {

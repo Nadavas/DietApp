@@ -523,14 +523,14 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(
-                                route = NavRoutes.UPDATE_PROFILE,
+                                route = NavRoutes.EDIT_PROFILE,
                                 arguments = listOf(navArgument(NavRoutes.IS_NEW_USER_ARG) {
                                     type = NavType.StringType; defaultValue = "false"; nullable = true
                                 })
                             ) { backStackEntry ->
                                 val isNewUserString = backStackEntry.arguments?.getString(NavRoutes.IS_NEW_USER_ARG)
                                 val isNewUser = isNewUserString?.toBooleanStrictOrNull() == true
-                                UpdateProfileScreen(
+                                EditProfileScreen(
                                     authViewModel = authViewModel,
                                     goalsViewModel = goalsViewModel,
                                     navController = navController,
