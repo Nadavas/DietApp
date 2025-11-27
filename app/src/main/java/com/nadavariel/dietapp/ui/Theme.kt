@@ -83,7 +83,7 @@ private val LightAppColors = AppColors(
     personalizedTrainingBackground = Color(0xFFFFF3E0),
     disclaimer = Color(0xFFFFF8E1),
     disclaimerIcon = Color(0xFFFFA726),
-    lightActivity = Color(0xFF66BB6A),
+    lightActivity = Color(0xFFFBC02D),
     activeLifestyle = Color(0xFF42A5F5)
 )
 

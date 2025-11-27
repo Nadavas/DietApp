@@ -209,8 +209,8 @@ fun DietPlanScreen(
                 // --- NEW CARD: Goal Strategy ---
                 CollapsibleCard(
                     icon = Icons.Default.Flag,
-                    iconBackgroundColor = AppTheme.colors.goalStrategyBackground,
-                    iconTint = AppTheme.colors.primaryGreen,
+                    iconBackgroundColor = AppTheme.colors.exampleMealPlanTint.copy(alpha = 0.1f),
+                    iconTint = AppTheme.colors.exampleMealPlanTint,
                     title = "Your Goal Strategy"
                 ) {
                     Spacer(Modifier.height(16.dp))
@@ -245,7 +245,7 @@ fun DietPlanScreen(
                         label = "Protein",
                         value = plan.concretePlan.targets.proteinGrams,
                         unit = "g",
-                        color = AppTheme.colors.healthOverviewTint, // Blue
+                        color = AppTheme.colors.primaryGreen,
                         progress = 0.75f
                     )
                     EnhancedMacroCard(
@@ -254,7 +254,7 @@ fun DietPlanScreen(
                         label = "Carbs",
                         value = plan.concretePlan.targets.carbsGrams,
                         unit = "g",
-                        color = AppTheme.colors.orange,
+                        color = AppTheme.colors.activeLifestyle,
                         progress = 0.85f
                     )
                     EnhancedMacroCard(
@@ -263,7 +263,7 @@ fun DietPlanScreen(
                         label = "Fat",
                         value = plan.concretePlan.targets.fatGrams,
                         unit = "g",
-                        color = AppTheme.colors.purple,
+                        color = AppTheme.colors.disclaimerIcon,
                         progress = 0.65f
                     )
                 }
@@ -311,8 +311,8 @@ fun DietPlanScreen(
                 // --- NEW CARD: Example Meal Plan ---
                 CollapsibleCard(
                     icon = Icons.Default.Restaurant,
-                    iconBackgroundColor = AppTheme.colors.exampleMealPlanBackground,
-                    iconTint = AppTheme.colors.exampleMealPlanTint,
+                    iconBackgroundColor = AppTheme.colors.accentTeal.copy(alpha = 0.1f),
+                    iconTint = AppTheme.colors.accentTeal,
                     title = "Example Meal Plan"
                 ) {
                     Spacer(Modifier.height(16.dp))
@@ -530,8 +530,8 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    AppTheme.colors.primaryGreen.copy(alpha = 0.3f),
-                                    AppTheme.colors.primaryGreen.copy(alpha = 0.1f)
+                                    AppTheme.colors.warmOrange.copy(alpha = 0.3f),
+                                    AppTheme.colors.warmOrange.copy(alpha = 0.1f)
                                 )
                             )
                         ),
@@ -541,7 +541,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         Icons.Default.LocalFireDepartment,
                         contentDescription = null,
                         modifier = Modifier.size(44.dp),
-                        tint = AppTheme.colors.primaryGreen
+                        tint = AppTheme.colors.disclaimerIcon
                     )
                 }
 
@@ -564,7 +564,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         text = animatedCalories.toInt().toString(),
                         style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = AppTheme.colors.primaryGreen
+                        color = AppTheme.colors.disclaimerIcon
                     )
                     Text(
                         text = " kcal",
@@ -689,13 +689,13 @@ fun ProteinRecommendationCard(weightKg: Int) {
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(AppTheme.colors.healthOverviewBackground), // Light blue
+                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.MonitorWeight,
+                        Icons.Default.FitnessCenter,
                         contentDescription = null,
-                        tint = AppTheme.colors.healthOverviewTint,
+                        tint = AppTheme.colors.primaryGreen,
                         modifier = Modifier.size(26.dp)
                     )
                 }
