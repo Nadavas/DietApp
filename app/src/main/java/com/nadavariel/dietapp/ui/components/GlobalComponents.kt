@@ -15,33 +15,37 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions // <-- NEW IMPORT
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField // <-- NEW IMPORT
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue // <-- NEW IMPORT
-import androidx.compose.runtime.mutableStateOf // <-- NEW IMPORT
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue // <-- NEW IMPORT
-import androidx.compose.runtime.mutableStateListOf // <-- NEW IMPORT
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType // <-- NEW IMPORT
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
+import com.nadavariel.dietapp.ui.AppTheme
 
 @Composable
 fun HoveringNotificationCard(
@@ -107,7 +111,7 @@ fun GeminiConfirmationDialog(
     onAccept: (List<FoodNutritionalInfo>) -> Unit,
     onCancel: () -> Unit
 ) {
-    // --- 1. SET UP INTERNAL STATE FOR EDITING ---
+    // --- SET UP INTERNAL STATE FOR EDITING ---
     var isEditing by remember { mutableStateOf(false) }
     val editableFoodList = remember { mutableStateListOf(*foodInfoList.toTypedArray()) }
 
@@ -119,11 +123,12 @@ fun GeminiConfirmationDialog(
 
     AlertDialog(
         onDismissRequest = { /* Do nothing (blocking) */ },
+        containerColor = Color.White, // Force white background
         title = {
             Text(
-                "Confirm Meal Components (${editableFoodList.size})",
+                "Meal Breakdown (${editableFoodList.size})",
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = AppTheme.colors.textPrimary
             )
         },
         text = {
@@ -138,11 +143,11 @@ fun GeminiConfirmationDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 250.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // --- 2. RENDER BASED ON isEditing STATE ---
+                    // --- RENDER BASED ON isEditing STATE ---
                     itemsIndexed(editableFoodList, key = { index, item -> item.foodName ?: index }) { index, foodInfo ->
                         if (isEditing) {
                             // --- EDITING VIEW ---
@@ -175,30 +180,39 @@ fun GeminiConfirmationDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Total Calories to Log: $totalCalories kcal",
+                    text = "Total: $totalCalories kcal",
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    fontSize = 18.sp,
+                    color = AppTheme.colors.primaryGreen
                 )
             }
         },
-        // --- 3. UPDATE BUTTON LOGIC ---
         confirmButton = {
-            Button(onClick = { onAccept(editableFoodList.toList()) }) {
-                Text("Accept")
+            Button(
+                onClick = { onAccept(editableFoodList.toList()) },
+                colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primaryGreen),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Log Meal", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            Row {
-                OutlinedButton(onClick = onCancel) {
-                    Text("Cancel")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = onCancel,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Discard")
                 }
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(onClick = { isEditing = !isEditing }) {
-                    Text(if (isEditing) "Save" else "Edit")
+                Spacer(Modifier.width(4.dp))
+                TextButton(
+                    onClick = { isEditing = !isEditing },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
+                ) {
+                    Text(if (isEditing) "Done" else "Edit")
                 }
             }
         }
-        // --- END OF FIX ---
     )
 }
 
