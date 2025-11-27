@@ -77,12 +77,16 @@ fun StatisticsScreen(
                     )
                 }
 
-                // Hero Stats
                 item {
-                    HeroStatsRow(
-                        caloriesAvg = if (weeklyCalories.isNotEmpty()) weeklyCalories.values.average().toInt() else 0,
-                        proteinAvg = if (weeklyProtein.isNotEmpty()) weeklyProtein.values.average().toInt() else 0,
-                        macroBalance = weeklyMacroPercentages
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                item {
+                    Text(
+                        text = "Your Nutritional Breakdown",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textPrimary
                     )
                 }
 
@@ -355,101 +359,6 @@ private fun ModernHeader() {
                 color = AppTheme.colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun HeroStatsRow(
-    caloriesAvg: Int,
-    proteinAvg: Int,
-    macroBalance: Map<String, Float>
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            HeroStatItem(
-                label = "Avg Calories",
-                value = "$caloriesAvg",
-                unit = "kcal",
-                color = AppTheme.colors.warmOrange
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(60.dp)
-                    .background(AppTheme.colors.statsBackground)
-            )
-
-            HeroStatItem(
-                label = "Avg Protein",
-                value = "$proteinAvg",
-                unit = "g",
-                color = AppTheme.colors.statsGreen
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(60.dp)
-                    .background(AppTheme.colors.statsBackground)
-            )
-
-            HeroStatItem(
-                label = "Balance",
-                value = if (macroBalance.values.any { it > 0 }) "✓" else "-",
-                unit = "",
-                color = AppTheme.colors.accentTeal
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeroStatItem(
-    label: String,
-    value: String,
-    unit: String,
-    color: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = AppTheme.colors.textSecondary,
-            fontWeight = FontWeight.Medium
-        )
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            if (unit.isNotEmpty()) {
-                Text(
-                    text = unit,
-                    fontSize = 12.sp,
-                    color = AppTheme.colors.textSecondary,
-                    modifier = Modifier.padding(bottom = 3.dp)
-                )
-            }
         }
     }
 }
