@@ -7,7 +7,6 @@ object NavRoutes {
     const val HOME = "home"
     const val ACCOUNT = "account"
     const val MY_PROFILE = "my_profile"
-    const val SETTINGS = "settings"
     const val CHANGE_PASSWORD = "change_password"
     const val QUESTIONS = "questions"
     const val THREADS = "threads"
@@ -27,7 +26,6 @@ object NavRoutes {
     const val STATS_CARBS = "stats/carbs"
     const val STATS_MINERALS = "stats/minerals"
     const val STATS_VITAMINS = "stats/vitamins"
-    const val ADD_MANUAL_MEAL = "add_manual_meal"
     const val WEIGHT_TRACKER = "weight_tracker"
     const val ALL_ACHIEVEMENTS = "all_achievements"
 

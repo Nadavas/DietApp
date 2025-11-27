@@ -12,9 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
@@ -218,14 +218,42 @@ private fun SectionDivider(text: String) {
 
 @Composable
 fun AccountActionButtons(
+    onChangePasswordClick: () -> Unit, // Added callback
     onSignOutClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    showChangePassword: Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (showChangePassword) {
+            // Change Password Button
+            OutlinedButton(
+                onClick = onChangePasswordClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = AppTheme.colors.darkGreyText
+                ),
+                border = BorderStroke(1.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.3f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LockReset,
+                    contentDescription = "Change Password",
+                    tint = AppTheme.colors.softBlue // Different color to distinguish
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Change Password",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
         OutlinedButton(
             onClick = onSignOutClick,
             modifier = Modifier
@@ -285,6 +313,10 @@ fun AccountScreen(
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // Checks if the user signed in via Email/Password (providerId is "password")
+    val isEmailUser = remember(currentUser) {
+        currentUser?.providerData?.any { it.providerId == "password" } == true
+    }
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
@@ -343,7 +375,7 @@ fun AccountScreen(
                     }
 
                     item {
-                        SectionDivider("SETTINGS")
+                        SectionDivider("PREFERENCES")
                     }
 
                     item {
@@ -396,22 +428,15 @@ fun AccountScreen(
                     }
 
                     item {
-                        MenuRow(
-                            title = "Settings",
-                            subtitle = "App preferences",
-                            leadingIcon = { Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.size(24.dp)) },
-                            onClick = { navController.navigate(NavRoutes.SETTINGS) }
-                        )
-                    }
-
-                    item {
                         SectionDivider("ACCOUNT ACTIONS")
                     }
 
                     item {
                         AccountActionButtons(
+                            onChangePasswordClick = { navController.navigate(NavRoutes.CHANGE_PASSWORD) },
                             onSignOutClick = { showSignOutDialog = true },
-                            onDeleteClick = { showDeleteConfirmationDialog = true }
+                            onDeleteClick = { showDeleteConfirmationDialog = true },
+                            showChangePassword = isEmailUser
                         )
                     }
 

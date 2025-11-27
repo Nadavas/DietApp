@@ -484,12 +484,6 @@ class MainActivity : ComponentActivity() {
                                     navController = navController
                                 )
                             }
-                            composable(NavRoutes.SETTINGS) {
-                                SettingsScreen(
-                                    navController = navController,
-                                    authViewModel = authViewModel
-                                )
-                            }
                             composable(NavRoutes.NOTIFICATIONS) {
                                 NotificationScreen(
                                     navController = navController,
