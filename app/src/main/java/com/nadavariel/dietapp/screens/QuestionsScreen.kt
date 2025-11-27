@@ -77,7 +77,7 @@ fun QuestionsScreen(
                                 if (quizCurrentIndex > 0) {
                                     quizCurrentIndex--
                                 } else {
-                                    navController.popBackStack()
+                                    screenState = ScreenState.LANDING
                                 }
                             }
                             else -> {
