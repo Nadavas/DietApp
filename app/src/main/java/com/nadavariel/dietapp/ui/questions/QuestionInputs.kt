@@ -203,12 +203,17 @@ internal fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
                             val selectedCal = Calendar.getInstance().apply { timeInMillis = millis }
+                            val now = Calendar.getInstance()
+
+                            // Logic: If future date, use Today. Else use selected.
+                            val finalCal = if (selectedCal.after(now)) now else selectedCal
+
                             val isoDate = String.format(
                                 Locale.US,
                                 "%04d-%02d-%02d",
-                                selectedCal.get(Calendar.YEAR),
-                                selectedCal.get(Calendar.MONTH) + 1,
-                                selectedCal.get(Calendar.DAY_OF_MONTH)
+                                finalCal.get(Calendar.YEAR),
+                                finalCal.get(Calendar.MONTH) + 1,
+                                finalCal.get(Calendar.DAY_OF_MONTH)
                             )
                             onSave(isoDate)
                         }
