@@ -135,7 +135,13 @@ fun NotificationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reminders", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "Reminders",
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.darkGreyText
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")

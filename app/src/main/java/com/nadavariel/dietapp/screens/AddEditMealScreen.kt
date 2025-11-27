@@ -254,44 +254,27 @@ fun AddEditMealScreen(
             // ================= EDIT MODE (Original Form Layout - Refreshed Header) =================
             Column(modifier = Modifier.fillMaxSize()) {
                 // Modern Header with Back Button INLINE
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color.White,
-                    shadowElevation = 2.dp
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Back Button
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Edit Meal",
+                            fontWeight = FontWeight.Bold,
+                            color = AppTheme.colors.darkGreyText
+                        )
+                    },
+                    navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = AppTheme.colors.textPrimary
+                                tint = AppTheme.colors.darkGreyText
                             )
                         }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Title & Subtitle
-                        Column {
-                            Text(
-                                text = "Edit Meal",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppTheme.colors.textPrimary
-                            )
-                            Text(
-                                text = "Update nutrition details",
-                                fontSize = 14.sp,
-                                color = AppTheme.colors.textSecondary
-                            )
-                        }
-                    }
-                }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = AppTheme.colors.screenBackground
+                    )
+                )
 
                 LazyColumn(
                     modifier = Modifier

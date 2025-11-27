@@ -115,18 +115,15 @@ fun UpdateProfileScreen(
             .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Header (Matched to Edit Meal Screen design)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = if (isNewUser) "Create Your Profile" else "Edit Profile",
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.darkGreyText
+                    )
+                },
+                navigationIcon = {
                     IconButton(onClick = {
                         if (isNewUser) {
                             navController.navigate(NavRoutes.HOME) {
@@ -140,28 +137,14 @@ fun UpdateProfileScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = AppTheme.colors.textPrimary
+                            tint = AppTheme.colors.darkGreyText
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column {
-                        Text(
-                            text = if (isNewUser) "Create Your Profile" else "Edit Profile",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppTheme.colors.textPrimary
-                        )
-                        Text(
-                            text = if (isNewUser) "Let's get to know you!" else "Update your details",
-                            fontSize = 14.sp,
-                            color = AppTheme.colors.textSecondary,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = AppTheme.colors.screenBackground
+                )
+            )
 
             Column(
                 modifier = Modifier
