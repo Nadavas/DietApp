@@ -1025,12 +1025,35 @@ fun EnhancedWeightLineChart(
             return yAxisPadding + (index * xSpacing)
         }
 
-        drawContext.canvas.nativeCanvas.drawText(
-            String.format("%.1f", yMax),
-            yAxisPadding - with(density) { 6.dp.toPx() },
-            getY(yMax) + with(density) { 4.dp.toPx() },
-            yAxisTextPaint
-        )
+        // --- ADD THIS BLOCK ---
+        val currentWeight = allPointsWithStart.lastOrNull()?.first ?: startingWeight
+
+        // Define the specific Y-axis values you want to display
+        val yValuesToShow = listOf(startingWeight, targetWeight, currentWeight)
+            .filter { it > 0 } // Remove invalid values
+            .distinct()        // Remove exact duplicates
+            .sortedDescending() // Sort to process from top to bottom
+
+        // To prevent text overlap, we track where we drew the last label
+        val drawnYPositions = mutableListOf<Float>()
+        val minTextSeparation = with(density) { 14.sp.toPx() } // Minimum spacing between labels
+
+        yValuesToShow.forEach { weight ->
+            val yPos = getY(weight)
+            // Only draw if it doesn't overlap with a previously drawn label
+            val isOverlapping = drawnYPositions.any { abs(it - yPos) < minTextSeparation }
+
+            if (!isOverlapping) {
+                drawContext.canvas.nativeCanvas.drawText(
+                    String.format("%.1f", weight),
+                    yAxisPadding - with(density) { 6.dp.toPx() },
+                    yPos + with(density) { 4.dp.toPx() }, // Approximate vertical centering
+                    yAxisTextPaint
+                )
+                drawnYPositions.add(yPos)
+            }
+        }
+        // ----------------------
 
         if (targetWeight > 0) {
             val targetY = getY(targetWeight)
@@ -1246,9 +1269,7 @@ fun LogWeightDialog(
                     val weight = weightInput.toFloatOrNull()
                     if (weight != null && weight > 0) {
                         if (isEditMode) {
-                            if (entryToEdit != null) {
-                                onUpdate(entryToEdit.id, weight, selectedDate)
-                            }
+                            onUpdate(entryToEdit.id, weight, selectedDate)
                         } else {
                             onSave(weight, selectedDate)
                         }
