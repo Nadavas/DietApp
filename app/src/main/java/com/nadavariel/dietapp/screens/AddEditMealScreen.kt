@@ -915,7 +915,7 @@ private fun ModeSelectionCard(
             ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) color.copy(alpha = 0.12f) else Color.White
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (isSelected) 6.dp else 2.dp

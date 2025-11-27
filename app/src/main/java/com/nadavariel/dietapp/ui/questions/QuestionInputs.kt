@@ -109,7 +109,7 @@ private fun OptionCardItem(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-    val containerColor = if (isSelected) AppTheme.colors.primaryGreen.copy(alpha = 0.05f) else AppTheme.colors.cardBackground
+    val containerColor = AppTheme.colors.cardBackground
 
     Card(
         onClick = onClick,
@@ -384,7 +384,7 @@ private fun ExerciseChip(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-    val containerColor = if (isSelected) AppTheme.colors.primaryGreen.copy(alpha = 0.05f) else AppTheme.colors.cardBackground
+    val containerColor = AppTheme.colors.cardBackground
     val contentColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.darkGreyText
 
     // Simple keyword to icon mapping

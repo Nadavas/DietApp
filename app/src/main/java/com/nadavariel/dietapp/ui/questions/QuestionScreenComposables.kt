@@ -1,5 +1,7 @@
 package com.nadavariel.dietapp.ui.questions
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -188,6 +190,7 @@ private fun QuestionItemCard(question: String, answer: String?, onClick: () -> U
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 internal fun QuizModeContent(
     modifier: Modifier = Modifier,
