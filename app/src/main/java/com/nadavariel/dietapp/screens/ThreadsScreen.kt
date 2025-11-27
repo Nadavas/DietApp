@@ -49,6 +49,11 @@ import kotlin.math.sin
 import java.util.Locale
 import java.text.SimpleDateFormat
 import java.util.Date
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import com.nadavariel.dietapp.viewmodel.NewsViewModel
+import com.nadavariel.dietapp.model.NewsArticle
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -203,12 +208,21 @@ fun ThreadsScreen(
 fun CommunityHomeScreen(
     paddingValues: PaddingValues,
     hottestThreads: List<Thread>,
-    allThreads: List<Thread>, // Added parameter
+    allThreads: List<Thread>,
     allTopics: List<Topic>,
     navController: NavController,
     threadViewModel: ThreadViewModel,
+    newsViewModel: NewsViewModel = viewModel(),
     onTopicSelected: (Topic) -> Unit
 ) {
+    // FIX 1: Get the current context for the Intent
+    val context = LocalContext.current
+
+    // FIX 2: Collect the state from the ViewModel
+    // This resolves 'articles' and 'isLoadingNews' errors
+    val articles by newsViewModel.articles.collectAsState()
+    val isLoadingNews by newsViewModel.isLoading.collectAsState()
+
     LazyColumn(
         modifier = Modifier.padding(paddingValues),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -225,8 +239,7 @@ fun CommunityHomeScreen(
             }
         }
 
-        // --- NEW: Daily Challenge Card ---
-        // Fills the top space with something engaging
+        // Daily Challenge Card
         item {
             DailyChallengeCard()
         }
@@ -344,36 +357,103 @@ fun CommunityHomeScreen(
             }
         }
 
-        // --- NEW: Latest Discussions Section ---
-        // Replaces Recent Activity with actual thread content
+        // Nutrition News Section Header
         item {
             Spacer(Modifier.height(8.dp))
-            AnimatedSectionHeader(
-                icon = Icons.Outlined.Forum,
-                text = "Latest Discussions",
-                iconColor = Color(0xFF673AB7)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AnimatedSectionHeader(
+                    icon = Icons.Outlined.Article,
+                    text = "Nutrition News",
+                    iconColor = Color(0xFFFF9800)
+                )
+
+                // Refresh button
+                IconButton(
+                    onClick = { newsViewModel.refresh() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    val rotation by rememberInfiniteTransition(label = "refresh").animateFloat(
+                        initialValue = 0f,
+                        targetValue = if (isLoadingNews) 360f else 0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = "refreshRotation"
+                    )
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        contentDescription = "Refresh",
+                        tint = AppTheme.colors.lightGreyText,
+                        modifier = Modifier.rotate(rotation)
+                    )
+                }
+            }
         }
 
-        if (allThreads.isEmpty()) {
+        // News Content Logic
+        if (isLoadingNews) {
             item {
-                Text(
-                    "No discussions yet. Be the first!",
-                    modifier = Modifier.fillMaxWidth().padding(20.dp),
-                    textAlign = TextAlign.Center,
-                    color = AppTheme.colors.lightGreyText
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = AppTheme.colors.primaryGreen,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+        } else if (articles.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Article,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = AppTheme.colors.lightGreyText.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            "No articles available",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = AppTheme.colors.lightGreyText,
+                            textAlign = TextAlign.Center
+                        )
+                        TextButton(onClick = { newsViewModel.refresh() }) {
+                            Text("Tap to retry")
+                        }
+                    }
+                }
             }
         } else {
-            // Sort by latest (assuming larger ID or you have a timestamp,
-            // relying on default order for now but you should sort by date in VM)
-            val latestThreads = allThreads.take(10)
-
-            items(latestThreads) { thread ->
-                val topic = allTopics.find { it.key == thread.topic }
-                if (topic != null) {
-                    CleanThreadCard(thread, topic, navController, threadViewModel)
-                }
+            // FIX 3: articles is now a List<NewsArticle>, so items() works correctly
+            items(articles) { article ->
+                NewsArticleCard(
+                    article = article,
+                    onClick = {
+                        // FIX 4: context and article.url are now resolved
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
+                        context.startActivity(intent)
+                    }
+                )
             }
         }
 
@@ -949,6 +1029,115 @@ fun CleanThreadCard(
                     topic.gradient.last()
                 )
             }
+        }
+    }
+}
+
+// --- NEW COMPOSABLE: News Article Card ---
+@Composable
+fun NewsArticleCard(
+    article: NewsArticle,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Left accent bar
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(80.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFFFF9800),
+                                Color(0xFFFFB74D)
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Source and date
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFFF9800).copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = article.source,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFFF9800),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        )
+                    }
+                    Text(
+                        text = "•",
+                        color = AppTheme.colors.lightGreyText.copy(alpha = 0.5f),
+                        fontSize = 10.sp
+                    )
+                    Text(
+                        text = getRelativeTime(article.publishedDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.lightGreyText,
+                        fontSize = 10.sp
+                    )
+                }
+
+                // Title
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.darkGreyText,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 20.sp
+                )
+
+                // Description preview
+                if (article.description.isNotEmpty()) {
+                    Text(
+                        text = article.description.take(100) + if (article.description.length > 100) "..." else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.lightGreyText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 16.sp,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            // External link indicator
+            Icon(
+                Icons.Outlined.OpenInNew,
+                contentDescription = "Open article",
+                tint = Color(0xFFFF9800).copy(alpha = 0.6f),
+                modifier = Modifier
+                    .size(20.dp)
+                    .align(Alignment.CenterVertically)
+            )
         }
     }
 }
