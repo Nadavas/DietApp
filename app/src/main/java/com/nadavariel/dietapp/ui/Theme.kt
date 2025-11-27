@@ -50,6 +50,8 @@ data class AppColors(
     val lightActivity: Color,
     val activeLifestyle: Color,
     val softRed: Color,
+    val accentGreen: Color,
+    val axisText: Color,
 )
 
 // --- 2. CREATE THE SINGLE (LIGHT) PALETTE ---
@@ -86,7 +88,9 @@ private val LightAppColors = AppColors(
     disclaimerIcon = Color(0xFFFFA726),
     lightActivity = Color(0xFFFBC02D),
     activeLifestyle = Color(0xFF42A5F5),
-    softRed = Color(0xFFEF5350)
+    softRed = Color(0xFFEF5350),
+    accentGreen = Color(0xFF81C784),
+    axisText = Color(0xFF616161),
 )
 
 // --- 3. CREATE THE COMPOSITION LOCAL ---

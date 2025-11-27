@@ -287,8 +287,8 @@ fun MineralsDetailScreen(
         item {
             InsightCard(
                 insights = listOf(
-                    "Minerals support bone health, muscle function, and metabolism",
-                    "Balance sodium and potassium for healthy blood pressure"
+                    "Potassium supports heart health while limiting sodium benefits blood pressure",
+                    "Calcium strengthens bones, and iron fuels your daily energy levels"
                 )
             )
         }
@@ -511,7 +511,7 @@ private fun DetailStatCard(
                             text = "$percentage%",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (percentage >= 80) AppTheme.colors.statsGreen else AppTheme.colors.warmOrange,
+                            color = color,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -527,7 +527,9 @@ private fun DetailStatCard(
                 BeautifulBarChart(
                     weeklyData = weeklyData,
                     target = target,
-                    label = label
+                    label = label,
+                    barColor = color,
+                    goalColor = color
                 )
             }
         }

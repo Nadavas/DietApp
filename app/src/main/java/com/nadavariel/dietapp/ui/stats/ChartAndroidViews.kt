@@ -31,25 +31,24 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
-import androidx.core.graphics.toColorInt
-
-// Consistent Color Definitions
-private val HealthyGreenCompose = androidx.compose.ui.graphics.Color(0xFF4CAF50)
-private val AccentGreenCompose = androidx.compose.ui.graphics.Color(0xFF81C784)
-private val GridLineColor = "#EEEEEE".toColorInt()
-private val AxisTextColor = "#616161".toColorInt()
-private val TargetLineColor = "#FF6E40".toColorInt() // Warm orange for target
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BeautifulBarChart(
     weeklyData: Map<LocalDate, Int>,
     target: Int?,
-    label: String
+    label: String,
+    barColor: androidx.compose.ui.graphics.Color = AppTheme.colors.primaryGreen,
+    goalColor: androidx.compose.ui.graphics.Color = AppTheme.colors.warmOrange
 ) {
-    val primaryColor = HealthyGreenCompose.toArgb()
-    val accentColor = AccentGreenCompose.toArgb()
+    // 2. CHANGED: Use the passed barColor
+    val primaryColor = barColor.toArgb()
+    // 3. CHANGED: Derive accent color (for "Today") from barColor
+    val accentColor = barColor.copy(alpha = 0.7f).toArgb()
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val gridLineColor = AppTheme.colors.lightGreyText.copy(alpha = 0.3f).toArgb()
+    val targetLineColor = goalColor.toArgb()
+    val axisTextColor = AppTheme.colors.axisText.toArgb()
 
     val sortedDates = weeklyData.keys.sorted()
     val dayLabels = sortedDates.map { it.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
@@ -83,7 +82,7 @@ fun BeautifulBarChart(
                     setDrawGridLines(false)
                     setDrawAxisLine(false)
                     granularity = 1f
-                    textColor = AxisTextColor
+                    textColor = axisTextColor
                     textSize = 11f
                     typeface = Typeface.DEFAULT_BOLD
                     valueFormatter = object : ValueFormatter() {
@@ -96,12 +95,13 @@ fun BeautifulBarChart(
 
                 axisLeft.apply {
                     setDrawGridLines(true)
-                    enableGridDashedLine(8f, 8f, 0f)
-                    gridColor = GridLineColor
+                    //enableGridDashedLine(8f, 8f, 0f)
+                    gridLineWidth = 1.5f
+                    gridColor = gridLineColor
                     setLabelCount(5, false)
                     axisMinimum = 0f
                     setDrawAxisLine(false)
-                    textColor = AxisTextColor
+                    textColor = axisTextColor
                     textSize = 11f
 
                     val maxBar = (barEntries.maxOfOrNull { it.y } ?: 0f)
@@ -116,11 +116,11 @@ fun BeautifulBarChart(
                         // Create a beautiful target line with enhanced styling
                         val targetLine = LimitLine(it.toFloat(), "").apply {
                             lineWidth = 3f
-                            lineColor = TargetLineColor
+                            lineColor = targetLineColor
                             enableDashedLine(15f, 10f, 0f)
 
                             // Custom label styling
-                            textColor = TargetLineColor
+                            textColor = targetLineColor
                             textSize = 11f
                             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                             labelPosition = LimitLine.LimitLabelPosition.RIGHT_TOP
