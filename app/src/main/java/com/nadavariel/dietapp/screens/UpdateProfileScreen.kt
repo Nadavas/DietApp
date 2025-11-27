@@ -380,7 +380,14 @@ fun UpdateProfileScreen(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            dateOfBirthInput = Date(millis)
+                            val selectedCal = Calendar.getInstance().apply { timeInMillis = millis }
+                            val now = Calendar.getInstance()
+
+                            // Logic: If future date, use Today (or keep previous valid if you prefer, but Today is standard fallback)
+                            // Better UX might be to just clamp it to today, which this does.
+                            val finalDate = if (selectedCal.after(now)) now.time else Date(millis)
+
+                            dateOfBirthInput = finalDate
                         }
                         showDatePicker = false
                     },
