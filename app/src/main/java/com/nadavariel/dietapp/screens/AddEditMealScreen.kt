@@ -94,6 +94,9 @@ fun AddEditMealScreen(
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
 
+    // State to toggle nutrition details (defined here for this scope)
+    var showNutrients by remember { mutableStateOf(false) }
+
     // Image & Time
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -284,12 +287,21 @@ fun AddEditMealScreen(
                 ) {
                     item {
                         Column {
+                            // --- ADDED THIS TEXT ---
+                            Text(
+                                text = "* Indicates required fields",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = AppTheme.colors.textSecondary,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                            )
+                            // -----------------------
+
                             SectionHeader(title = "Meal Details")
                             FormCard {
                                 ThemedOutlinedTextField(
                                     value = foodName,
                                     onValueChange = { foodName = it },
-                                    label = "Meal Name",
+                                    label = "Meal Name*",
                                     modifier = Modifier.fillMaxWidth(),
                                     leadingIcon = Icons.Default.EditNote,
                                     singleLine = true, // Force single line
@@ -697,9 +709,18 @@ fun AddEditMealScreen(
                             }
                         }
                         AddMealMode.MANUAL -> {
-                            // Meal Name Section
+                            // Meal Name Section (Always Visible)
                             item {
                                 Column {
+                                    // --- ADDED THIS TEXT ---
+                                    Text(
+                                        text = "* Indicates required fields",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = AppTheme.colors.textSecondary,
+                                        modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
+                                    )
+                                    // -----------------------
+
                                     SectionHeader(title = "Meal Details")
                                     FormCard {
                                         ThemedOutlinedTextField(
@@ -708,7 +729,7 @@ fun AddEditMealScreen(
                                             label = "Meal Name*",
                                             modifier = Modifier.fillMaxWidth(),
                                             leadingIcon = Icons.Default.EditNote,
-                                            singleLine = true, // Force single line
+                                            singleLine = true,
                                             keyboardOptions = KeyboardOptions(
                                                 capitalization = KeyboardCapitalization.Sentences,
                                                 imeAction = ImeAction.Done
@@ -718,7 +739,7 @@ fun AddEditMealScreen(
                                 }
                             }
 
-                            // Serving & Calories Section
+                            // Serving & Calories Section (Always Visible)
                             item {
                                 ServingAndCaloriesSection(
                                     servingAmountText, { servingAmountText = it },
@@ -727,28 +748,58 @@ fun AddEditMealScreen(
                                 )
                             }
 
-                            // Macros Section
+                            // --- Show/Hide Toggle Button ---
                             item {
-                                MacronutrientsSection(
-                                    proteinText, { proteinText = it },
-                                    carbsText, { carbsText = it },
-                                    fatText, { fatText = it }
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    TextButton(
+                                        onClick = { showNutrients = !showNutrients },
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = AppTheme.colors.primaryGreen
+                                        )
+                                    ) {
+                                        Text(
+                                            text = if (showNutrients) "Hide Nutrition Details" else "Add Macro & Micro Nutrients",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = if (showNutrients) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
                             }
 
-                            // Micros Section
-                            item {
-                                MicronutrientsSection(
-                                    fiberText, { fiberText = it },
-                                    sugarText, { sugarText = it },
-                                    sodiumText, { sodiumText = it },
-                                    potassiumText, { potassiumText = it },
-                                    calciumText, { calciumText = it },
-                                    ironText, { ironText = it },
-                                    vitaminCText, { vitaminCText = it },
-                                    vitaminAText, { vitaminAText = it },
-                                    vitaminB12Text, { vitaminB12Text = it }
-                                )
+                            // Macros Section (Collapsible)
+                            if (showNutrients) {
+                                item {
+                                    MacronutrientsSection(
+                                        proteinText, { proteinText = it },
+                                        carbsText, { carbsText = it },
+                                        fatText, { fatText = it }
+                                    )
+                                }
+
+                                // Micros Section (Collapsible)
+                                item {
+                                    MicronutrientsSection(
+                                        fiberText, { fiberText = it },
+                                        sugarText, { sugarText = it },
+                                        sodiumText, { sodiumText = it },
+                                        potassiumText, { potassiumText = it },
+                                        calciumText, { calciumText = it },
+                                        ironText, { ironText = it },
+                                        vitaminCText, { vitaminCText = it },
+                                        vitaminAText, { vitaminAText = it },
+                                        vitaminB12Text, { vitaminB12Text = it }
+                                    )
+                                }
                             }
 
                             // Direct Log Button
@@ -784,7 +835,9 @@ fun AddEditMealScreen(
                                         // Go back to Home
                                         navController.popBackStack(NavRoutes.HOME, inclusive = false)
                                     },
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
                                     enabled = manualButtonEnabled,
                                     colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primaryGreen),
                                     shape = RoundedCornerShape(16.dp)
