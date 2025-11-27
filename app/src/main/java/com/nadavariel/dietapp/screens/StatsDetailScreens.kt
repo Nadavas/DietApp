@@ -555,11 +555,11 @@ private fun MacroBreakdownCard(macroPercentages: Map<String, Float>) {
                 color = AppTheme.colors.textPrimary
             )
 
-            MacroRow("Protein", macroPercentages["Protein"] ?: 0f, AppTheme.colors.statsGreen)
+            MacroRow("Protein", macroPercentages["Protein"] ?: 0f, AppTheme.colors.primaryGreen)
             HorizontalDivider(color = Color(0xFFEEEEEE))
-            MacroRow("Carbs", macroPercentages["Carbs"] ?: 0f, AppTheme.colors.softBlue)
+            MacroRow("Carbs", macroPercentages["Carbs"] ?: 0f, AppTheme.colors.activeLifestyle)
             HorizontalDivider(color = Color(0xFFEEEEEE))
-            MacroRow("Fat", macroPercentages["Fat"] ?: 0f, AppTheme.colors.warmOrange)
+            MacroRow("Fat", macroPercentages["Fat"] ?: 0f, AppTheme.colors.disclaimerIcon)
         }
     }
 }

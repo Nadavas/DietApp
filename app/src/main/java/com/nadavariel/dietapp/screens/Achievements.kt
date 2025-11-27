@@ -157,7 +157,7 @@ fun WeeklyAchievementsCarousel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Your Weekly Achievements",
+                text = "Weekly Achievements",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = AppTheme.colors.textPrimary

@@ -83,7 +83,7 @@ fun StatisticsScreen(
 
                 item {
                     Text(
-                        text = "Your Nutritional Breakdown",
+                        text = "Nutritional Breakdown",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = AppTheme.colors.textPrimary

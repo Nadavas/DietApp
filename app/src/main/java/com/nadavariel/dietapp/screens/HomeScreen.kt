@@ -290,10 +290,10 @@ fun HomeScreen(
                     modifier = Modifier.verticalScroll(rememberScrollState())
                 ) {
                     // Macronutrients
-                    NutritionRow("Protein", totalProtein, "g", AppTheme.colors.statsGreen)
+                    NutritionRow("Protein", totalProtein, "g", AppTheme.colors.primaryGreen)
                     // FIXED: Switched colors for Carbs and Fat
-                    NutritionRow("Carbohydrates", totalCarbs, "g", AppTheme.colors.softBlue)
-                    NutritionRow("Fat", totalFat, "g", AppTheme.colors.warmOrange)
+                    NutritionRow("Carbohydrates", totalCarbs, "g", AppTheme.colors.activeLifestyle)
+                    NutritionRow("Fat", totalFat, "g", AppTheme.colors.disclaimerIcon)
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = AppTheme.colors.textSecondary.copy(alpha = 0.2f))
 

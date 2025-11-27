@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
@@ -22,6 +21,7 @@ import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.ValueFormatter
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.RoundedBarChartRenderer
 import java.text.DecimalFormat
 import java.time.LocalDate
@@ -172,26 +172,24 @@ fun BeautifulBarChart(
 fun BeautifulPieChart(
     data: Map<String, Float>
 ) {
-    val centerTextColor = HealthyGreenCompose.toArgb()
-
-    val macroColors = remember {
-        listOf(
-            HealthyGreenCompose.toArgb(),
-            "#42A5F5".toColorInt(),
-            "#FFA726".toColorInt()
-        )
-    }
+    // 1. Get Colors from AppTheme
+    val proteinColor = AppTheme.colors.primaryGreen.toArgb()
+    val carbsColor = AppTheme.colors.activeLifestyle.toArgb()
+    val fatColor = AppTheme.colors.disclaimerIcon.toArgb()
+    val centerTextColor = proteinColor
+    val legendTextColor = AppTheme.colors.textSecondary.toArgb()
 
     val entries = data.entries
         .filter { it.value > 0 }
         .map { PieEntry(it.value, it.key) }
 
+    // 2. Map entries to specific theme colors
     val entryColors = entries.map { entry ->
         when (entry.label) {
-            "Protein" -> macroColors[0]
-            "Carbs" -> macroColors[1]
-            "Fat" -> macroColors[2]
-            else -> macroColors.random()
+            "Protein" -> proteinColor
+            "Carbs" -> carbsColor
+            "Fat" -> fatColor
+            else -> proteinColor
         }
     }
 
@@ -214,7 +212,7 @@ fun BeautifulPieChart(
                     setDrawInside(false)
                     yEntrySpace = 6f
                     xOffset = 5f
-                    textColor = AxisTextColor
+                    textColor = legendTextColor // Updated to use theme
                     textSize = 12f
                     typeface = Typeface.DEFAULT_BOLD
                     isWordWrapEnabled = true
@@ -258,6 +256,9 @@ fun BeautifulPieChart(
                 })
                 setDrawValues(true)
             }
+
+            // Update legend color in case theme changes
+            chart.legend.textColor = legendTextColor
 
             chart.legend.setCustom(entries.mapIndexed { index, entry ->
                 LegendEntry(
