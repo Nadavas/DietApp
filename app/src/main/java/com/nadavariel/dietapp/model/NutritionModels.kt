@@ -66,8 +66,8 @@ enum class MealSection(val sectionName: String, val color: Color) {
 // ---
 
 data class DietPlan(
-    val healthOverview: String = "",
-    val goalStrategy: String = "",
+    val healthOverview: List<String> = emptyList(), // Changed to List
+    val goalStrategy: List<String> = emptyList(),   // Changed to List
     val concretePlan: ConcretePlan = ConcretePlan(),
     val exampleMealPlan: ExampleMealPlan = ExampleMealPlan(),
     val disclaimer: String = ""
@@ -76,9 +76,10 @@ data class DietPlan(
 data class ConcretePlan(
     val targets: Targets = Targets(),
     val mealGuidelines: MealGuidelines = MealGuidelines(),
-    val trainingAdvice: String = ""
+    val trainingAdvice: List<String> = emptyList() // Changed to List
 )
 
+// The rest remain the same, but included for context:
 data class Targets(
     val dailyCalories: Int = 0,
     val proteinGrams: Int = 0,
@@ -93,13 +94,12 @@ data class MealGuidelines(
 )
 
 data class ExampleMealPlan(
-    val breakfast: ExampleMeal = ExampleMeal(), // Uses renamed ExampleMeal
+    val breakfast: ExampleMeal = ExampleMeal(),
     val lunch: ExampleMeal = ExampleMeal(),
     val dinner: ExampleMeal = ExampleMeal(),
     val snacks: ExampleMeal = ExampleMeal()
 )
 
-// Renamed from "Meal" to "ExampleMeal" to avoid conflict with your existing class
 data class ExampleMeal(
     val description: String = "",
     val estimatedCalories: Int = 0

@@ -212,8 +212,17 @@ exports.generateDietPlan = onCall(
 
           The JSON object must have the following structure:
           {
-            "healthOverview": "<string: 2-3 sentence analysis of the user's *current* health situation based on their profile data (e.g., activity level, goals)>",
-            "goalStrategy": "<string: A brief, high-level explanation of the *steps* needed to achieve their goal (e.g., 'To lose weight, we will establish a consistent calorie deficit...')>",
+            "healthOverview": [
+              "<string: Bullet point analyzing current health status (max 30 words)>",
+              "<string: Bullet point about activity level/lifestyle (max 30 words)>",
+              "<string: Bullet point of your choice (optional, max 30 words)>"
+            ],
+            "goalStrategy": [
+              "<string: Bullet point step 1 to achieve goal (max 30 words)>",
+              "<string: Bullet point step 2 to achieve goal (max 30 words)>",
+              "<string: Bullet point step 3 to achieve goal (max 30 words)>",
+              "<string: Bullet point step 4 to achieve goal (optional, max 30 words)>"
+            ],
             "concretePlan": {
               "targets": {
                 "dailyCalories": <integer>,
@@ -226,7 +235,11 @@ exports.generateDietPlan = onCall(
                 "foodsToEmphasize": ["<string: e.g., Lean proteins>", "<string: e.g., Leafy greens>", "<string: e.g., Healthy fats (avocado, nuts)>"],
                 "foodsToLimit": ["<string: e.g., Processed snacks>", "<string: e.g., Sugary drinks>"]
               },
-              "trainingAdvice": "<string: 2-3 sentences of specific, concrete exercise advice based on their profile, e.g., 'Aim for 3 days of strength training and 2 days of cardio.'>"
+              "trainingAdvice": [
+                "<string: Bullet point specific exercise advice (max 30 words)>",
+                "<string: Bullet point frequency/intensity recommendation (max 30 words)>",
+                "<string: Bullet point of your choice (optional, max 30 words)>"
+              ]
             },
             "exampleMealPlan": {
               "breakfast": {

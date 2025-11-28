@@ -191,36 +191,59 @@ fun DietPlanScreen(
             // Hero Calorie Card - Stunning redesign
             dietPlan?.let { plan ->
 
-                // --- NEW CARD: Health Overview ---
+                // --- NEW CARD: Health Overview (Updated for List) ---
                 CollapsibleCard(
                     icon = Icons.Default.PersonSearch,
                     iconBackgroundColor = AppTheme.colors.healthOverviewBackground,
                     iconTint = AppTheme.colors.healthOverviewTint,
                     title = "Your Health Overview"
                 ) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = plan.healthOverview,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = AppTheme.colors.darkGreyText.copy(alpha = 0.85f),
-                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
-                    )
+                    Spacer(Modifier.height(8.dp))
+                    // Loop through the list of strings
+                    plan.healthOverview.forEach { point ->
+                        Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
+                            Text(
+                                "•",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.healthOverviewTint,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = point,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.darkGreyText.copy(alpha = 0.85f),
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.times(1.4f)
+                            )
+                        }
+                    }
                 }
 
-                // --- NEW CARD: Goal Strategy ---
+                // --- NEW CARD: Goal Strategy (Updated for List) ---
                 CollapsibleCard(
                     icon = Icons.Default.Flag,
                     iconBackgroundColor = AppTheme.colors.exampleMealPlanTint.copy(alpha = 0.1f),
                     iconTint = AppTheme.colors.exampleMealPlanTint,
                     title = "Your Goal Strategy"
                 ) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = plan.goalStrategy,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = AppTheme.colors.darkGreyText.copy(alpha = 0.85f),
-                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
-                    )
+                    Spacer(Modifier.height(8.dp))
+                    plan.goalStrategy.forEach { point ->
+                        Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
+                            Text(
+                                "•",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.exampleMealPlanTint,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = point,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.darkGreyText.copy(alpha = 0.85f),
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.times(1.4f)
+                            )
+                        }
+                    }
                 }
 
                 AnimatedCalorieHeroCard(
@@ -328,20 +351,31 @@ fun DietPlanScreen(
                     }
                 }
 
-                // AI Recommendations (Existing, now just for Training)
+                // AI Recommendations (Updated for List)
                 CollapsibleCard(
                     icon = Icons.Default.Lightbulb,
                     iconBackgroundColor = AppTheme.colors.personalizedTrainingBackground,
                     iconTint = AppTheme.colors.orange,
                     title = "Personalized Training Advice"
                 ) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = plan.concretePlan.trainingAdvice,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = AppTheme.colors.darkGreyText.copy(alpha = 0.85f),
-                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
-                    )
+                    Spacer(Modifier.height(8.dp))
+                    plan.concretePlan.trainingAdvice.forEach { point ->
+                        Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
+                            Text(
+                                "•",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.orange,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = point,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.darkGreyText.copy(alpha = 0.85f),
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight.times(1.4f)
+                            )
+                        }
+                    }
                 }
 
                 // Disclaimer - Subtle and informative (This was already correct)

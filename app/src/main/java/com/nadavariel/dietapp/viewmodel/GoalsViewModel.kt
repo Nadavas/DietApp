@@ -68,7 +68,6 @@ class GoalsViewModel : ViewModel() {
 
         _isLoadingPlan.value = true
 
-        // 8. SAVE THE LISTENER
         dietPlanListener = firestore.collection("users").document(userId)
             .collection("diet_plans").document("current_plan")
             .addSnapshotListener { snapshot, e ->
@@ -81,9 +80,96 @@ class GoalsViewModel : ViewModel() {
                 }
 
                 if (snapshot != null && snapshot.exists()) {
-                    val plan = snapshot.toObject(DietPlan::class.java)
-                    _currentDietPlan.value = plan
-                    Log.d("GoalsViewModel", "Live diet plan updated.")
+                    try {
+                        // --- MANUAL MAPPING TO PREVENT CRASH ON OLD DATA ---
+
+                        // 1. Helper to safely get List<String> from String OR List
+                        fun getListField(fieldName: String): List<String> {
+                            val rawValue = snapshot.get(fieldName)
+                            return when (rawValue) {
+                                is List<*> -> rawValue.mapNotNull { it?.toString() }
+                                is String -> listOf(rawValue) // Fallback for old data
+                                else -> emptyList()
+                            }
+                        }
+
+                        // 2. Helper to safely get List<String> from nested ConcretePlan
+                        fun getNestedListField(path: String): List<String> {
+                            val rawValue = snapshot.get(path) // e.g. "concretePlan.trainingAdvice"
+                            return when (rawValue) {
+                                is List<*> -> rawValue.mapNotNull { it?.toString() }
+                                is String -> listOf(rawValue)
+                                else -> emptyList()
+                            }
+                        }
+
+                        // 3. Map top-level fields
+                        val healthOverview = getListField("healthOverview")
+                        val goalStrategy = getListField("goalStrategy")
+                        val disclaimer = snapshot.getString("disclaimer") ?: ""
+
+                        // 4. Map ConcretePlan (Manually to handle trainingAdvice list)
+                        val concretePlanMap = snapshot.get("concretePlan") as? Map<String, Any> ?: emptyMap()
+                        val targetsMap = concretePlanMap["targets"] as? Map<String, Any> ?: emptyMap()
+                        val guidelinesMap = concretePlanMap["mealGuidelines"] as? Map<String, Any> ?: emptyMap()
+
+                        // Reconstruct ConcretePlan manually
+                        val concretePlan = com.nadavariel.dietapp.model.ConcretePlan(
+                            targets = com.nadavariel.dietapp.model.Targets(
+                                dailyCalories = (targetsMap["dailyCalories"] as? Long)?.toInt() ?: 0,
+                                proteinGrams = (targetsMap["proteinGrams"] as? Long)?.toInt() ?: 0,
+                                carbsGrams = (targetsMap["carbsGrams"] as? Long)?.toInt() ?: 0,
+                                fatGrams = (targetsMap["fatGrams"] as? Long)?.toInt() ?: 0
+                            ),
+                            mealGuidelines = com.nadavariel.dietapp.model.MealGuidelines(
+                                mealFrequency = guidelinesMap["mealFrequency"] as? String ?: "",
+                                foodsToEmphasize = (guidelinesMap["foodsToEmphasize"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
+                                foodsToLimit = (guidelinesMap["foodsToLimit"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                            ),
+                            // Handle trainingAdvice list vs string manually from the map
+                            trainingAdvice = when (val advice = concretePlanMap["trainingAdvice"]) {
+                                is List<*> -> advice.mapNotNull { it?.toString() }
+                                is String -> listOf(advice)
+                                else -> emptyList()
+                            }
+                        )
+
+                        // 5. Map ExampleMealPlan (Standard mapping is safe here usually, but manual for consistency)
+                        // Using toObject for this part is generally safe as structure didn't change drastically,
+                        // but let's stick to the manual reconstruction to be 100% safe.
+                        val mealPlanMap = snapshot.get("exampleMealPlan") as? Map<String, Any> ?: emptyMap()
+
+                        fun mapMeal(key: String): com.nadavariel.dietapp.model.ExampleMeal {
+                            val m = mealPlanMap[key] as? Map<String, Any> ?: return com.nadavariel.dietapp.model.ExampleMeal()
+                            return com.nadavariel.dietapp.model.ExampleMeal(
+                                description = m["description"] as? String ?: "",
+                                estimatedCalories = (m["estimatedCalories"] as? Long)?.toInt() ?: 0
+                            )
+                        }
+
+                        val exampleMealPlan = com.nadavariel.dietapp.model.ExampleMealPlan(
+                            breakfast = mapMeal("breakfast"),
+                            lunch = mapMeal("lunch"),
+                            dinner = mapMeal("dinner"),
+                            snacks = mapMeal("snacks")
+                        )
+
+                        // 6. Build final object
+                        val safePlan = DietPlan(
+                            healthOverview = healthOverview,
+                            goalStrategy = goalStrategy,
+                            concretePlan = concretePlan,
+                            exampleMealPlan = exampleMealPlan,
+                            disclaimer = disclaimer
+                        )
+
+                        _currentDietPlan.value = safePlan
+                        Log.d("GoalsViewModel", "Live diet plan updated (Safe Mapping).")
+
+                    } catch (e: Exception) {
+                        Log.e("GoalsViewModel", "Error parsing diet plan manually", e)
+                        _currentDietPlan.value = null
+                    }
                 } else {
                     Log.d("GoalsViewModel", "No diet plan document found.")
                     _currentDietPlan.value = null
