@@ -43,7 +43,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,8 +101,9 @@ fun SignUpScreen(
                 val account = task.getResult(ApiException::class.java)
                 authViewModel.handleGoogleSignIn(account) { flowResult ->
                     when (flowResult) {
-                        GoogleSignInFlowResult.GoToHome -> onSignUpSuccess(false)
-                        GoogleSignInFlowResult.GoToSignUp -> {}
+                        GoogleSignInFlowResult.GoToHome -> onSignUpSuccess(false) // Existing -> Home
+                        // New User -> Already created in VM -> Go to Questionnaire
+                        GoogleSignInFlowResult.GoToSignUp -> onSignUpSuccess(true)
                         GoogleSignInFlowResult.Error -> {}
                     }
                 }

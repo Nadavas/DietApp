@@ -354,7 +354,7 @@ fun AccountScreen(
         ModernAccountHeader()
 
         Box(modifier = Modifier.weight(1f)) {
-            val showLoading = isLoadingProfile || (authViewModel.currentUser != null && userProfile.name.isBlank())
+            val showLoading = isLoadingProfile
 
             if (showLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = AppTheme.colors.primaryGreen)

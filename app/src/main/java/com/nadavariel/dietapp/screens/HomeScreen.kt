@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.Assessment
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.*
@@ -125,9 +127,63 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
 
+                    // --- MISSING ALERT SECTION ---
+                    // Show this card if no diet plan exists and we aren't loading one.
+                    // This prompts the user to finish the questionnaire.
                     if (dietPlan == null) {
-                        item { /* Placeholder */ }
+                        item {
+                            Card(
+                                onClick = { navController.navigate(NavRoutes.QUESTIONS) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = AppTheme.colors.warmOrange.copy(alpha = 0.15f)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(AppTheme.colors.warmOrange.copy(alpha = 0.2f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = AppTheme.colors.warmOrange,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Action Required",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AppTheme.colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Complete your questionnaire to get your personalized plan.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = AppTheme.colors.textSecondary
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Rounded.ChevronRight,
+                                        contentDescription = "Go",
+                                        tint = AppTheme.colors.textSecondary
+                                    )
+                                }
+                            }
+                        }
                     }
+                    // -----------------------------
 
                     // --- SECTION 1: WEIGHT ---
                     item {

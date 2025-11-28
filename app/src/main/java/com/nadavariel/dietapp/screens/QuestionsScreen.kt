@@ -1,5 +1,7 @@
 package com.nadavariel.dietapp.screens
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,6 +17,7 @@ import com.nadavariel.dietapp.ui.questions.*
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuestionsScreen(
@@ -68,29 +71,37 @@ fun QuestionsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        when (screenState) {
-                            ScreenState.LANDING -> {
-                                navController.popBackStack()
-                            }
-                            ScreenState.QUIZ_MODE -> {
-                                if (quizCurrentIndex > 0) {
-                                    quizCurrentIndex--
-                                } else {
+                    // --- LOGIC CHANGE START ---
+                    // Hide back button ONLY if we are at Q1 (index 0) AND currently in the mandatory Sign-Up flow
+                    val hideBackButton = startQuiz && screenState == ScreenState.QUIZ_MODE && quizCurrentIndex == 0
+
+                    if (!hideBackButton) {
+                        IconButton(onClick = {
+                            when (screenState) {
+                                ScreenState.LANDING -> {
+                                    navController.popBackStack()
+                                }
+                                ScreenState.QUIZ_MODE -> {
+                                    if (quizCurrentIndex > 0) {
+                                        quizCurrentIndex--
+                                    } else {
+                                        // If we are here, it means startQuiz is false (manual retake), so go back to Landing
+                                        screenState = ScreenState.LANDING
+                                    }
+                                }
+                                else -> {
                                     screenState = ScreenState.LANDING
                                 }
                             }
-                            else -> {
-                                screenState = ScreenState.LANDING
-                            }
+                        }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = AppTheme.colors.darkGreyText
+                            )
                         }
-                    }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = AppTheme.colors.darkGreyText
-                        )
                     }
+                    // --- LOGIC CHANGE END ---
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AppTheme.colors.screenBackground

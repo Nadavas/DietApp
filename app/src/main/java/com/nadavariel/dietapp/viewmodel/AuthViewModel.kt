@@ -369,40 +369,43 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         _authResult.value = AuthResult.Loading
         viewModelScope.launch {
             try {
-                // Step 1: Always sign in to Auth. This will log in *or* create an Auth entry.
+                // Step 1: Sign in to Auth
                 val credential = GoogleAuthProvider.getCredential(account.idToken, null)
                 val authResultTask = auth.signInWithCredential(credential).await()
 
                 val userId = authResultTask.user?.uid
-                if (userId == null) {
-                    throw Exception("Failed to get user ID after sign in.")
-                }
+                if (userId == null) throw Exception("Failed to get user ID.")
 
-                // Step 2: Check Firestore for an *existing profile*
+                // Step 2: Check Firestore for existing profile
                 val userDoc = firestore.collection("users").document(userId).get().await()
 
                 if (userDoc.exists()) {
-                    // Step 3 (Logic A): User exists. Log them in and go to Home.
-                    Log.d("AuthViewModel", "Google user profile exists in Firestore. Logging in.")
+                    // --- EXISTING USER ---
+                    Log.d("AuthViewModel", "Google user exists. Logging in.")
                     _authResult.value = AuthResult.Success
                     if (rememberMeState.value) {
                         preferencesRepository.saveUserPreferences(account.email ?: "", rememberMeState.value)
                     }
                     onFlowResult(GoogleSignInFlowResult.GoToHome)
                 } else {
-                    // Step 3 (Logic B): New user. Store details and go to SignUp.
-                    Log.d("AuthViewModel", "New Google user. Prefilling. Name: ${account.displayName}, Email: ${account.email}")
+                    // --- NEW USER ---
+                    Log.d("AuthViewModel", "New Google user. Setting state for Questionnaire.")
+
+                    // 1. Set the state so QuestionsViewModel knows this is a Google Sign Up
                     _googleAccount.value = account
                     nameState.value = account.displayName ?: ""
                     emailState.value = account.email ?: ""
 
-                    _authResult.value = AuthResult.Idle
+                    // 2. DO NOT create profile yet. QuestionsViewModel will do it later.
+
+                    // 3. Signal UI to navigate
+                    _authResult.value = AuthResult.Idle // Keep Idle so it doesn't trigger 'Success' toast yet
                     onFlowResult(GoogleSignInFlowResult.GoToSignUp)
                 }
             } catch (e: Exception) {
-                // This will catch sign-in failures or Firestore errors
-                Log.e("AuthViewModel", "handleGoogleSignIn failed: ${e.message}", e)
-                _authResult.value = AuthResult.Error(e.message ?: "Google Sign-In failed.")
+                Log.e("AuthViewModel", "Google Sign-In failed", e)
+                _authResult.value = AuthResult.Error(e.message ?: "Sign-In failed.")
+                _googleAccount.value = null
                 onFlowResult(GoogleSignInFlowResult.Error)
             }
         }

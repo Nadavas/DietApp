@@ -97,7 +97,8 @@ fun SignInScreen(
             authViewModel.handleGoogleSignIn(account) { flowResult ->
                 when (flowResult) {
                     GoogleSignInFlowResult.GoToHome -> onSignInSuccess(false)
-                    GoogleSignInFlowResult.GoToSignUp -> onNavigateToSignUp()
+                    // New User found during Sign In -> Go to Questionnaire (treat as new sign up)
+                    GoogleSignInFlowResult.GoToSignUp -> onSignInSuccess(true)
                     GoogleSignInFlowResult.Error -> { /* Error handled by LaunchedEffect */ }
                 }
             }
