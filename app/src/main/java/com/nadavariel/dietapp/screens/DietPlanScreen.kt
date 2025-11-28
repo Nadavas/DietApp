@@ -1,6 +1,5 @@
 package com.nadavariel.dietapp.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -50,7 +49,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.ExampleMeal
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
@@ -66,18 +64,6 @@ fun DietPlanScreen(
     val dietPlan by goalsViewModel.currentDietPlan.collectAsState()
     val userWeight by goalsViewModel.userWeight.collectAsState() // Keep for protein card
 
-    val navigateToAccount = {
-        navController.navigate(NavRoutes.ACCOUNT) {
-            popUpTo(navController.graph.id) {
-                inclusive = true
-            }
-        }
-    }
-
-    BackHandler(enabled = true) {
-        navigateToAccount()
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -89,16 +75,15 @@ fun DietPlanScreen(
                     )
                 },
                 navigationIcon = {
-                    // --- THIS IS THE FIX (PART 2) ---
-                    // Use the same logic for the TopAppBar's back button
-                    IconButton(onClick = { navigateToAccount() }) {
-                        // --- END OF FIX (PART 2) ---
+                    // --- FIX: Simply pop back to the previous screen ---
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = AppTheme.colors.darkGreyText
                         )
                     }
+                    // --- END OF FIX ---
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AppTheme.colors.screenBackground
