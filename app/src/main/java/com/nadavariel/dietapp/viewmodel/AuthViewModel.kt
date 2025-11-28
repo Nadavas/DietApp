@@ -393,8 +393,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
                     // 1. Set the state so QuestionsViewModel knows this is a Google Sign Up
                     _googleAccount.value = account
-                    nameState.value = account.displayName ?: ""
-                    emailState.value = account.email ?: ""
+//                    nameState.value = account.displayName ?: ""
+//                    emailState.value = account.email ?: ""
 
                     // 2. DO NOT create profile yet. QuestionsViewModel will do it later.
 
