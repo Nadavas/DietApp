@@ -404,11 +404,17 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(NavRoutes.HOME) {
+                                // Check if QuestionsViewModel is currently loading (generating)
+                                val isGenerating by remember(dietPlanResult) {
+                                    mutableStateOf(dietPlanResult is DietPlanResult.Loading)
+                                }
+
                                 HomeScreen(
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
                                     goalViewModel = goalsViewModel,
-                                    navController = navController
+                                    navController = navController,
+                                    isGeneratingPlan = isGenerating
                                 )
                             }
 

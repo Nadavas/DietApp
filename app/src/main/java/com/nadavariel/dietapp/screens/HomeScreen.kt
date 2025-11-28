@@ -51,7 +51,8 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     foodLogViewModel: FoodLogViewModel,
     goalViewModel: GoalsViewModel = viewModel(),
-    navController: NavController
+    navController: NavController,
+    isGeneratingPlan: Boolean = false
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
@@ -130,7 +131,7 @@ fun HomeScreen(
                     // --- MISSING ALERT SECTION ---
                     // Show this card if no diet plan exists and we aren't loading one.
                     // This prompts the user to finish the questionnaire.
-                    if (dietPlan == null) {
+                    if (dietPlan == null && !isGeneratingPlan) {
                         item {
                             Card(
                                 onClick = { navController.navigate(NavRoutes.QUESTIONS) },
