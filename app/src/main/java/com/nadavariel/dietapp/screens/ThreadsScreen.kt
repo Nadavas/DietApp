@@ -53,24 +53,18 @@ import java.util.Locale
 @Composable
 fun ThreadsScreen(
     navController: NavController,
-    threadViewModel: ThreadViewModel = viewModel()
+    threadViewModel: ThreadViewModel = viewModel(),
+    initialTopicId: String? = null // New parameter from MainActivity
 ) {
     val allTopics = communityTopics
     val threads by threadViewModel.threads.collectAsState()
     val hottestThreads by threadViewModel.hottestThreads.collectAsState()
 
-    var selectedTopicKey by rememberSaveable { mutableStateOf<String?>(null) }
-    val selectedTopic: Topic? = remember(selectedTopicKey) {
-        allTopics.find { it.key == selectedTopicKey }
+    // We determine the view mode based on the passed ID directly
+    val selectedTopic = remember(initialTopicId) {
+        allTopics.find { it.key == initialTopicId }
     }
 
-    // FIX 3: BackHandler logic placed explicitly at the top
-    // This intercepts the back button ONLY when a topic is selected
-    BackHandler(enabled = selectedTopicKey != null) {
-        selectedTopicKey = null
-    }
-
-    // Main Container matching Statistics Screen background
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -78,42 +72,35 @@ fun ThreadsScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Modern Header
+            // Header adapts based on whether we are in a Topic or Home
             ModernCommunityHeader(
                 title = selectedTopic?.displayName ?: "Community Hub",
-                subtitle = if (selectedTopic == null) "Connect, share, and learn" else selectedTopic.subtitle,
-                showBack = selectedTopicKey != null,
-                onBack = { selectedTopicKey = null },
+                subtitle = selectedTopic?.subtitle ?: "Connect, share, and learn",
+                showBack = selectedTopic != null, // Show back arrow if inside a topic
+                onBack = { navController.popBackStack() }, // Use system navigation to go back
                 onNewThread = { navController.navigate("create_thread") }
             )
 
-            // Content Area
-            AnimatedContent(
-                targetState = selectedTopicKey,
-                transitionSpec = {
-                    fadeIn(tween(400)) + slideInHorizontally(tween(400)) { it / 10 } togetherWith
-                            fadeOut(tween(400)) + slideOutHorizontally(tween(400)) { -it / 10 }
-                },
-                label = "TopicTransition",
-                modifier = Modifier.fillMaxSize()
-            ) { key ->
-                if (key == null) {
-                    CommunityHomeContent(
-                        hottestThreads = hottestThreads,
-                        allTopics = allTopics,
-                        navController = navController,
-                        threadViewModel = threadViewModel,
-                        onTopicSelected = { selectedTopicKey = it.key }
-                    )
-                } else {
-                    // Filter threads for selected topic
-                    TopicThreadList(
-                        threads = threads.filter { it.topic == key },
-                        topic = selectedTopic!!,
-                        navController = navController,
-                        threadViewModel = threadViewModel
-                    )
-                }
+            if (selectedTopic == null) {
+                // Show Main List
+                CommunityHomeContent(
+                    hottestThreads = hottestThreads,
+                    allTopics = allTopics,
+                    navController = navController,
+                    threadViewModel = threadViewModel,
+                    // FIX: Navigate to the new Route ID instead of setting local state
+                    onTopicSelected = { topic ->
+                        navController.navigate("thread_topic/${topic.key}")
+                    }
+                )
+            } else {
+                // Show Topic Specific List
+                TopicThreadList(
+                    threads = threads.filter { it.topic == selectedTopic.key },
+                    topic = selectedTopic,
+                    navController = navController,
+                    threadViewModel = threadViewModel
+                )
             }
         }
     }

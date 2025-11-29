@@ -596,6 +596,18 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(
+                                route = "thread_topic/{topicId}",
+                                arguments = listOf(navArgument("topicId") { type = NavType.StringType })
+                            ) { backStackEntry ->
+                                val topicId = backStackEntry.arguments?.getString("topicId")
+                                ThreadsScreen(
+                                    navController = navController,
+                                    threadViewModel = threadViewModel,
+                                    initialTopicId = topicId // We pass the ID here
+                                )
+                            }
+
+                            composable(
                                 route = NavRoutes.THREAD_DETAIL_WITH_ARG,
                                 arguments = listOf(navArgument("threadId") { type = NavType.StringType })
                             ) { backStackEntry ->
