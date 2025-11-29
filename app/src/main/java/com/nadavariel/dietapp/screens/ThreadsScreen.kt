@@ -49,6 +49,9 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material.icons.rounded.Newspaper
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.AccessTime
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -124,18 +127,18 @@ fun CommunityHomeContent(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp) // Increased spacing for cleaner look
     ) {
-        // FIX 1: Daily Challenge REMOVED
+
+        // ... [Daily Challenge & Trending Section code remains exactly the same] ...
+        // ... [Topics Section code remains exactly the same] ...
 
         // 2. Trending Section
         if (hottestThreads.isNotEmpty()) {
             item {
                 SectionHeaderModern(title = "Trending Now")
             }
-
             item {
-                // FIX 2: Fixed height carousel
                 HottestThreadsCarouselModern(
                     hottestThreads = hottestThreads,
                     allTopics = allTopics,
@@ -162,20 +165,28 @@ fun CommunityHomeContent(
             }
         }
 
-        // 4. News Section
+        // 4. --- REDESIGNED NEWS SECTION ---
         item {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SectionHeaderModern(title = "Nutrition News")
-                IconButton(onClick = { newsViewModel.refresh() }, modifier = Modifier.size(24.dp)) {
+
+                // Subtle refresh button
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { newsViewModel.refresh() }
+                        .padding(4.dp)
+                ) {
                     Icon(
                         Icons.Default.Refresh,
                         contentDescription = "Refresh",
-                        tint = AppTheme.colors.textSecondary
+                        tint = AppTheme.colors.textSecondary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -183,14 +194,25 @@ fun CommunityHomeContent(
 
         if (isLoadingNews) {
             item {
-                Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = AppTheme.colors.primaryGreen)
+                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = AppTheme.colors.warmOrange)
                 }
             }
         } else if (articles.isNotEmpty()) {
-            items(articles) { article ->
-                // FIX 4: Improved News Card
-                EnhancedNewsCard(
+            // We treat the first article as a "Highlight"
+            item {
+                NewsHighlightCard(
+                    article = articles.first(),
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articles.first().url))
+                        context.startActivity(intent)
+                    }
+                )
+            }
+
+            // The rest are standard list items
+            items(articles.drop(1)) { article ->
+                NewsListItem(
                     article = article,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
@@ -600,84 +622,178 @@ fun ThreadCardModern(
     }
 }
 
-// FIX 4: Enhanced News Card
 @Composable
-fun EnhancedNewsCard(article: NewsArticle, onClick: () -> Unit) {
+fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                // Badge
+                Surface(
+                    color = AppTheme.colors.warmOrange.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "TOP STORY",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AppTheme.colors.warmOrange,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Title
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = AppTheme.colors.textPrimary,
+                    lineHeight = 28.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Metadata
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = article.source,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.textSecondary
+                    )
+                    Text(
+                        text = " • ${getRelativeTime(article.publishedDate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.textSecondary.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Large Icon "Thumbnail"
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFFF9800), // Orange
+                                Color(0xFFFFCC80)  // Light Orange
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Newspaper,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun NewsListItem(article: NewsArticle, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.height(IntrinsicSize.Min) // Allows accent bar to fill height
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Accent Bar
+            // Smaller Icon "Thumbnail"
             Box(
                 modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(AppTheme.colors.warmOrange)
-            )
-
-            // Content
-            Row(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(AppTheme.colors.warmOrange.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // Source Badge
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(AppTheme.colors.warmOrange.copy(alpha = 0.1f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = article.source.uppercase(),
-                                fontSize = 10.sp,
-                                color = AppTheme.colors.warmOrange,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = getRelativeTime(article.publishedDate),
-                            fontSize = 11.sp,
-                            color = AppTheme.colors.textSecondary
-                        )
-                    }
-
-                    // Title
-                    Text(
-                        text = article.title,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 22.sp
-                    )
-                }
-
-                // Action Icon
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                    imageVector = Icons.Rounded.Newspaper, // Or switch to Icons.Default.Article
                     contentDescription = null,
-                    tint = AppTheme.colors.textSecondary.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
+                    tint = AppTheme.colors.warmOrange,
+                    modifier = Modifier.size(24.dp)
                 )
             }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                // Title
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Metadata Row
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = article.source.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AppTheme.colors.warmOrange,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.AccessTime,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = AppTheme.colors.textSecondary.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = getRelativeTime(article.publishedDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.textSecondary.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Chevron
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = AppTheme.colors.textSecondary.copy(alpha = 0.3f),
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
