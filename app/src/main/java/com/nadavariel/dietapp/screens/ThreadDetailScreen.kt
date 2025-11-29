@@ -1,11 +1,11 @@
 package com.nadavariel.dietapp.screens
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +14,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -22,17 +25,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
+import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Comment
 import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.model.communityTopics
@@ -56,15 +59,26 @@ fun ThreadDetailScreen(
     val hasUserLiked by threadViewModel.hasUserLiked.collectAsState()
 
     val currentUser: FirebaseUser? = authViewModel.currentUser
+    val context = LocalContext.current
+
     var newCommentText by remember { mutableStateOf("") }
+
+    // Dialog States
     var showLikesDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) } // For the dropdown menu
+
     var likedUsers by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val topic = remember(selectedThread) {
         communityTopics.find { it.key == selectedThread?.topic }
     }
-    // Use AppTheme colors by default, fallback to topic gradient for accents
     val accentColor = topic?.gradient?.first() ?: AppTheme.colors.primaryGreen
+
+    // CHECK OWNERSHIP
+    val isOwner = remember(currentUser, selectedThread) {
+        currentUser != null && selectedThread != null && currentUser.uid == selectedThread!!.authorId
+    }
 
     LaunchedEffect(threadId) {
         threadViewModel.fetchThreadById(threadId)
@@ -78,7 +92,6 @@ fun ThreadDetailScreen(
     Scaffold(
         containerColor = AppTheme.colors.screenBackground,
         topBar = {
-            // "Hub" style header
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -113,6 +126,45 @@ fun ThreadDetailScreen(
                             color = AppTheme.colors.textPrimary
                         )
                     }
+
+                    // Spacer to push the menu to the right
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // --- NEW: Owner Menu ---
+                    if (isOwner) {
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "Options",
+                                    tint = AppTheme.colors.textPrimary
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit Thread") },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null, tint = AppTheme.colors.primaryGreen) },
+                                    onClick = {
+                                        showMenu = false
+                                        // Navigate to Create Thread Screen with ID (Edit Mode)
+                                        navController.navigate(NavRoutes.createThread(threadId))
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete Thread", color = Color.Red) },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteConfirmDialog = true
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -142,12 +194,10 @@ fun ThreadDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 1. Subtle Themed Background Pattern
             if (topic != null) {
                 ThemedBackground(icon = topic.icon, color = accentColor)
             }
 
-            // 2. Content
             if (selectedThread == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = AppTheme.colors.primaryGreen)
@@ -158,7 +208,6 @@ fun ThreadDetailScreen(
                     contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Main Thread Card
                     item {
                         ThreadContentView(
                             thread = selectedThread!!,
@@ -205,8 +254,46 @@ fun ThreadDetailScreen(
             accentColor = accentColor
         )
     }
+
+    // --- NEW: Delete Confirmation Dialog ---
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Thread") },
+            text = { Text("Are you sure you want to delete this thread? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        threadViewModel.deleteThread(
+                            threadId = threadId,
+                            onSuccess = {
+                                showDeleteConfirmDialog = false
+                                Toast.makeText(context, "Thread deleted", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack() // Go back to list
+                            },
+                            onError = { error ->
+                                showDeleteConfirmDialog = false
+                                Toast.makeText(context, "Error: $error", Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 }
 
+// ... [The rest of the helper composables (ThemedBackground, ThreadContentView, etc.) remain unchanged] ...
 @Composable
 fun ThemedBackground(icon: ImageVector, color: Color) {
     Box(modifier = Modifier.fillMaxSize()) {

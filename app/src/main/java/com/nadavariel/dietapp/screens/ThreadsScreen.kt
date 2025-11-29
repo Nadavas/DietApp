@@ -322,50 +322,53 @@ fun ModernCommunityHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // ONLY SHOW BUTTONS IF WE ARE ON THE HOME SCREEN (showBack is false)
+            if (!showBack) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Bottom Row: Action Buttons (Clearer Separation)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // 1. Clearly labeled "My Threads" Button
-                OutlinedButton(
-                    onClick = onMyThreads,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, AppTheme.colors.softBlue),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = AppTheme.colors.softBlue
-                    )
+                // Bottom Row: Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("My Threads", fontWeight = FontWeight.Bold)
-                }
+                    // 1. "My Threads" Button
+                    OutlinedButton(
+                        onClick = onMyThreads,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, AppTheme.colors.softBlue),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = AppTheme.colors.softBlue
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("My Threads", fontWeight = FontWeight.Bold)
+                    }
 
-                // 2. "New Thread" Button
-                Button(
-                    onClick = onNewThread,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AppTheme.colors.primaryGreen,
-                        contentColor = Color.White
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(2.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("New Thread", fontWeight = FontWeight.Bold)
+                    // 2. "New Thread" Button
+                    Button(
+                        onClick = onNewThread,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AppTheme.colors.primaryGreen,
+                            contentColor = Color.White
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(2.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("New Thread", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
