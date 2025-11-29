@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -78,7 +79,8 @@ fun ThreadsScreen(
                 subtitle = selectedTopic?.subtitle ?: "Connect, share, and learn",
                 showBack = selectedTopic != null, // Show back arrow if inside a topic
                 onBack = { navController.popBackStack() }, // Use system navigation to go back
-                onNewThread = { navController.navigate("create_thread") }
+                onNewThread = { navController.navigate("create_thread") },
+                onMyThreads = { navController.navigate(NavRoutes.MY_THREADS) }
             )
 
             if (selectedTopic == null) {
@@ -264,29 +266,31 @@ fun TopicThreadList(
 // MODERN COMPONENTS
 // -----------------------------------------------------------------------------
 
+// ... imports remain the same
+
 @Composable
 fun ModernCommunityHeader(
     title: String,
     subtitle: String,
     showBack: Boolean,
     onBack: () -> Unit,
-    onNewThread: () -> Unit
+    onNewThread: () -> Unit,
+    onMyThreads: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shadowElevation = 2.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
+            // Top Row: Title and Back Button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (showBack) {
                     IconButton(onClick = onBack, modifier = Modifier.padding(end = 8.dp)) {
@@ -298,10 +302,10 @@ fun ModernCommunityHeader(
                     }
                 }
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        fontSize = 30.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppTheme.colors.textPrimary,
                         maxLines = 1,
@@ -318,23 +322,51 @@ fun ModernCommunityHeader(
                 }
             }
 
-            Button(
-                onClick = onNewThread,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.1f),
-                    contentColor = AppTheme.colors.primaryGreen
-                ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(50),
-                elevation = ButtonDefaults.buttonElevation(0.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bottom Row: Action Buttons (Clearer Separation)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text("New", fontWeight = FontWeight.Bold)
+                // 1. Clearly labeled "My Threads" Button
+                OutlinedButton(
+                    onClick = onMyThreads,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, AppTheme.colors.softBlue),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = AppTheme.colors.softBlue
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("My Threads", fontWeight = FontWeight.Bold)
+                }
+
+                // 2. "New Thread" Button
+                Button(
+                    onClick = onNewThread,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppTheme.colors.primaryGreen,
+                        contentColor = Color.White
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(2.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("New Thread", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

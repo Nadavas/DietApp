@@ -237,8 +237,6 @@ class MainActivity : ComponentActivity() {
                                 NavigationBarItem(
                                     selected = selectedRoute == NavRoutes.HOME,
                                     onClick = {
-                                        // FIX: Force a hard reset to Home.
-                                        // This clears the corrupted/deep-linked back stack and ensures Home loads fresh.
                                         navController.navigate(NavRoutes.HOME) {
                                             popUpTo(navController.graph.id) {
                                                 inclusive = true
@@ -573,16 +571,34 @@ class MainActivity : ComponentActivity() {
                                     threadViewModel = threadViewModel,
                                 )
                             }
-                            composable(NavRoutes.CREATE_THREAD) {
+
+                            // --- NEW: Create/Edit Thread Route with Arguments ---
+                            composable(
+                                route = NavRoutes.CREATE_THREAD,
+                                arguments = listOf(navArgument("threadId") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                })
+                            ) { backStackEntry ->
+                                val threadId = backStackEntry.arguments?.getString("threadId")
                                 CreateThreadScreen(
                                     navController = navController,
-                                    threadViewModel = threadViewModel
+                                    threadViewModel = threadViewModel,
+                                    threadIdToEdit = threadId
+                                )
+                            }
+
+                            // --- NEW: My Threads Screen ---
+                            composable(NavRoutes.MY_THREADS) {
+                                MyThreadsScreen(
+                                    navController = navController,
+                                    threadViewModel = threadViewModel,
+                                    authViewModel = authViewModel
                                 )
                             }
 
                             composable(NavRoutes.ALL_ACHIEVEMENTS) {
-                                // Collect the flows.
-                                // Since FoodLogViewModel emits Map<LocalDate, ...>, these match the new signature in AllAchievementsScreen.
                                 val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsStateWithLifecycle()
                                 val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsStateWithLifecycle()
                                 val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsStateWithLifecycle()
@@ -603,7 +619,7 @@ class MainActivity : ComponentActivity() {
                                 ThreadsScreen(
                                     navController = navController,
                                     threadViewModel = threadViewModel,
-                                    initialTopicId = topicId // We pass the ID here
+                                    initialTopicId = topicId
                                 )
                             }
 
