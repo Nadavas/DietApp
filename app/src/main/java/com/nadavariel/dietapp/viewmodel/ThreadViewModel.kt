@@ -4,10 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth // <-- IMPORT ADDED
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ListenerRegistration // <-- IMPORT ADDED
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
@@ -24,14 +24,15 @@ import kotlinx.coroutines.tasks.await
 
 class ThreadViewModel : ViewModel() {
     private val firestore = Firebase.firestore
-    private val auth: FirebaseAuth = Firebase.auth // <-- 1. ADD AUTH INSTANCE
+    private val auth: FirebaseAuth = Firebase.auth
 
     // --- LISTENER REGISTRATIONS FOR CLEANUP ---
     private var threadsListener: ListenerRegistration? = null
     private var commentsListener: ListenerRegistration? = null
     private var likesListener: ListenerRegistration? = null
+    private var userThreadsListener: ListenerRegistration? = null
 
-    // --- EXISTING STATE FLOWS ---
+    // --- STATE FLOWS ---
     private val _threads = MutableStateFlow<List<Thread>>(emptyList())
     val threads: StateFlow<List<Thread>> = _threads.asStateFlow()
 
@@ -50,25 +51,24 @@ class ThreadViewModel : ViewModel() {
     private val _hottestThreads = MutableStateFlow<List<Thread>>(emptyList())
     val hottestThreads: StateFlow<List<Thread>> = _hottestThreads.asStateFlow()
 
+    // State for the current user's personal threads
+    private val _userThreads = MutableStateFlow<List<Thread>>(emptyList())
+    val userThreads: StateFlow<List<Thread>> = _userThreads.asStateFlow()
+
     init {
-        // 2. ADD AUTH STATE LISTENER
         auth.addAuthStateListener { firebaseAuth ->
             if (firebaseAuth.currentUser != null) {
-                // User is logged in, now it's safe to fetch
                 fetchAllThreads()
             } else {
-                // User logged out, clear all data and listeners
                 clearAllListenersAndData()
             }
         }
     }
 
     private fun fetchAllThreads() {
-        // 3. Clear any previous listener
         threadsListener?.remove()
         viewModelScope.launch {
             try {
-                // 4. Save the new listener
                 threadsListener = firestore.collection("threads")
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                     .addSnapshotListener { snapshots, e ->
@@ -92,6 +92,72 @@ class ThreadViewModel : ViewModel() {
             }
         }
     }
+
+    // --- USER THREADS FUNCTIONALITY ---
+
+    fun fetchUserThreads(userId: String) {
+        userThreadsListener?.remove()
+
+        userThreadsListener = firestore.collection("threads")
+            .whereEqualTo("authorId", userId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.e("ThreadViewModel", "Error fetching user threads", e)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val threadsList = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject<Thread>()?.copy(id = doc.id)
+                    }
+                    // Sort locally since Firestore composite indexes can be tricky with 'where' + 'orderBy'
+                    _userThreads.value = threadsList.sortedByDescending { it.timestamp }
+                }
+            }
+    }
+
+    // --- DELETE FUNCTIONALITY ---
+
+    fun deleteThread(threadId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        // Deleting the main document.
+        // Note: Subcollections (comments/likes) are not automatically deleted in Firestore client SDKs.
+        // They become orphaned. To delete them fully, a Cloud Function is usually recommended.
+        firestore.collection("threads").document(threadId)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("ThreadViewModel", "Thread deleted successfully: $threadId")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e("ThreadViewModel", "Error deleting thread", e)
+                onError(e.message ?: "Error deleting thread")
+            }
+    }
+
+    // --- UPDATE FUNCTIONALITY ---
+
+    fun updateThread(threadId: String, newHeader: String, newContent: String, onSuccess: () -> Unit) {
+        val updates = mapOf(
+            "header" to newHeader,
+            "paragraph" to newContent,
+            "timestamp" to System.currentTimeMillis() // Optional: Update timestamp to bump it
+        )
+
+        firestore.collection("threads").document(threadId)
+            .update(updates)
+            .addOnSuccessListener {
+                Log.d("ThreadViewModel", "Thread updated successfully: $threadId")
+                // Refresh the selected thread if it's currently being viewed
+                if (_selectedThread.value?.id == threadId) {
+                    fetchThreadById(threadId)
+                }
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e("ThreadViewModel", "Error updating thread", e)
+            }
+    }
+
+    // --- HELPER FUNCTIONS ---
 
     private data class ThreadWithStats(val thread: Thread, val score: Int)
 
@@ -147,7 +213,7 @@ class ThreadViewModel : ViewModel() {
     }
 
     fun fetchThreadById(threadId: String) {
-        // Clear previous listeners before fetching new thread data
+        // Clear listeners for the previous thread before fetching new one
         commentsListener?.remove()
         likesListener?.remove()
 
@@ -159,9 +225,8 @@ class ThreadViewModel : ViewModel() {
                 _selectedThread.value = docSnapshot.toObject<Thread>()?.copy(id = docSnapshot.id)
 
                 if (_selectedThread.value != null) {
-                    // Fetch comments and likes for the *new* thread
                     fetchCommentsForThread(threadId)
-                    listenForLikes(threadId) // This was missing, good to have
+                    listenForLikes(threadId)
                 } else {
                     Log.w("ThreadViewModel", "Thread with ID $threadId not found.")
                 }
@@ -172,10 +237,9 @@ class ThreadViewModel : ViewModel() {
     }
 
     private fun fetchCommentsForThread(threadId: String) {
-        commentsListener?.remove() // 5. Clear previous comments listener
+        commentsListener?.remove()
         viewModelScope.launch {
             try {
-                // 6. Save comments listener
                 commentsListener = firestore.collection("threads")
                     .document(threadId)
                     .collection("comments")
@@ -234,10 +298,9 @@ class ThreadViewModel : ViewModel() {
     }
 
     fun listenForLikes(threadId: String) {
-        likesListener?.remove() // 7. Clear previous likes listener
+        likesListener?.remove()
         val currentUserId = auth.currentUser?.uid
 
-        // 8. Save likes listener
         likesListener = firestore.collection("threads")
             .document(threadId)
             .collection("likes")
@@ -317,22 +380,18 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-    // 9. RENAME function to be more descriptive
     fun clearSelectedThreadAndListeners() {
-        // Detach listeners
         commentsListener?.remove()
         commentsListener = null
         likesListener?.remove()
         likesListener = null
 
-        // Reset states
         _selectedThread.value = null
         _comments.value = emptyList()
         _likeCount.value = 0
         _hasUserLiked.value = false
     }
 
-    // 10. NEW FUNCTION to clear everything on logout
     private fun clearAllListenersAndData() {
         threadsListener?.remove()
         threadsListener = null
@@ -340,9 +399,12 @@ class ThreadViewModel : ViewModel() {
         commentsListener = null
         likesListener?.remove()
         likesListener = null
+        userThreadsListener?.remove()
+        userThreadsListener = null
 
         _threads.value = emptyList()
         _hottestThreads.value = emptyList()
+        _userThreads.value = emptyList()
         _selectedThread.value = null
         _comments.value = emptyList()
         _likeCount.value = 0
@@ -350,12 +412,10 @@ class ThreadViewModel : ViewModel() {
         Log.d("ThreadViewModel", "Cleared all listeners and data.")
     }
 
-    // 11. OVERRIDE onCleared for proper ViewModel lifecycle cleanup
     override fun onCleared() {
         super.onCleared()
         clearAllListenersAndData()
     }
-
 
     fun getLikesForThread(threadId: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {

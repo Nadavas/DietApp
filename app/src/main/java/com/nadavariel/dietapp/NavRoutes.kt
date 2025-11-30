@@ -10,8 +10,27 @@ object NavRoutes {
     const val CHANGE_PASSWORD = "change_password"
     const val QUESTIONS = "questions"
     const val THREADS = "threads"
-    const val CREATE_THREAD = "create_thread"
+
+    // --- UPDATED ROUTES ---
+    const val MY_THREADS = "my_threads"
+    // The definition for the NavHost
+    const val CREATE_THREAD = "create_thread?threadId={threadId}"
+    const val THREAD_TOPIC = "thread_topic/{topicId}"
     const val THREAD_DETAIL_WITH_ARG = "thread_detail/{threadId}"
+
+    // --- HELPER FUNCTIONS (CRITICAL FIX) ---
+    // Use this when navigating TO the screen
+    fun createThread(threadId: String? = null): String {
+        return if (threadId != null) {
+            "create_thread?threadId=$threadId"
+        } else {
+            "create_thread"
+        }
+    }
+
+    fun threadDetail(threadId: String) = "thread_detail/$threadId"
+    // ----------------------
+
     const val DIET_PLAN = "diet_plan"
     const val EDIT_PROFILE_BASE = "update_profile"
     const val IS_NEW_USER_ARG = "isNewUser"
@@ -28,7 +47,4 @@ object NavRoutes {
     const val STATS_VITAMINS = "stats/vitamins"
     const val WEIGHT_TRACKER = "weight_tracker"
     const val ALL_ACHIEVEMENTS = "all_achievements"
-
-    fun threadDetail(threadId: String) = "thread_detail/$threadId"
-
 }
