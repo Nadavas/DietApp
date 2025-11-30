@@ -18,7 +18,7 @@ import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
-import com.nadavariel.dietapp.model.GraphPreference
+// REMOVED: GraphPreference import
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.model.WeightEntry
@@ -61,7 +61,7 @@ class FoodLogViewModel : ViewModel() {
     private var weightHistoryListener: ListenerRegistration? = null
     private var targetWeightListener: ListenerRegistration? = null
 
-    private val _graphPreferences = MutableStateFlow<List<GraphPreference>>(emptyList())
+    // REMOVED: _graphPreferences StateFlow
 
     private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
     val weightHistory = _weightHistory.asStateFlow()
@@ -142,7 +142,7 @@ class FoodLogViewModel : ViewModel() {
                     viewModelScope.launch {
                         try {
                             fetchMealsForLastSevenDays()
-                            fetchGraphPreferences()
+                            // REMOVED: fetchGraphPreferences()
                         } catch (e: Exception) {
                             Log.e("FoodLogViewModel", "Error in initial data fetch: $e")
                         } finally {
@@ -179,7 +179,7 @@ class FoodLogViewModel : ViewModel() {
         _weeklyVitaminA.value = emptyMap()
         _weeklyVitaminB12.value = emptyMap()
         // END: Added for Vitamin A and B12
-        _graphPreferences.value = emptyList()
+        // REMOVED: _graphPreferences.value = emptyList()
         _caloriesByTimeOfDay.value = mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
         _isFutureTimeSelected.value = false
         _weightHistory.value = emptyList()
@@ -190,89 +190,11 @@ class FoodLogViewModel : ViewModel() {
         _isFutureTimeSelected.value = selectedTime.after(Date())
     }
 
-    private fun getDefaultGraphPreferences(): List<GraphPreference> = listOf(
-        GraphPreference("calories", "Weekly Calorie Intake", 0, true, true),
-        GraphPreference("protein", "Weekly Protein Intake", 1, true, true),
-        GraphPreference("weekly_macros_pie", "Weekly Macronutrient Distribution", 2, true, true),
-        GraphPreference("fiber", "Weekly Fiber Intake", 3, true, false),
-        GraphPreference("sugar", "Weekly Sugar Intake", 4, true, false),
-        GraphPreference("sodium", "Weekly Sodium Intake", 5, true, false),
-        GraphPreference("potassium", "Weekly Potassium Intake", 6, true, false),
-        GraphPreference("calcium", "Weekly Calcium Intake", 7, true, false),
-        GraphPreference("iron", "Weekly Iron Intake", 8, true, false),
-        GraphPreference("vitamin_c", "Weekly Vitamin C Intake", 9, true, false),
-        // START: Added for Vitamin A and B12
-        GraphPreference("vitamin_a", "Weekly Vitamin A Intake", 10, true, false),
-        GraphPreference("vitamin_b12", "Weekly Vitamin B12 Intake", 11, true, false)
-        // END: Added for Vitamin A and B12
-    )
+    // REMOVED: getDefaultGraphPreferences()
 
-    private suspend fun fetchGraphPreferences() {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.d("FoodLogViewModel", "Cannot fetch graph preferences, user not logged in.")
-            return
-        }
-        val preferencesDocRef = firestore.collection("users").document(userId)
-            .collection("preferences").document("graph_order")
+    // REMOVED: fetchGraphPreferences()
 
-        try {
-            val snapshot = preferencesDocRef.get().await()
-            val defaultMap = getDefaultGraphPreferences().associateBy { it.id }
-
-            val preferences = if (snapshot.exists()) {
-                @Suppress("UNCHECKCHECKED_CAST")
-                val storedList = snapshot.get("list") as? List<Map<String, Any>>
-                val storedPreferences = storedList?.mapNotNull { map ->
-                    GraphPreference(
-                        id = map["id"] as? String ?: return@mapNotNull null,
-                        title = map["title"] as? String ?: return@mapNotNull null,
-                        order = (map["order"] as? Long)?.toInt() ?: 0,
-                        isVisible = map["isVisible"] as? Boolean != false,
-                        isMacro = map["isMacro"] as? Boolean == true
-                    )
-                } ?: getDefaultGraphPreferences()
-                val storedMap = storedPreferences.associateBy { it.id }
-                defaultMap.keys.mapNotNull { id ->
-                    if (storedMap.containsKey(id)) {
-                        storedMap[id]?.copy(title = defaultMap[id]?.title ?: storedMap[id]!!.title)
-                    } else {
-                        defaultMap[id]?.copy(order = defaultMap.size + storedMap.size)
-                    }
-                }.sortedBy { it.order }
-            } else {
-                getDefaultGraphPreferences()
-            }
-
-            _graphPreferences.value = preferences
-            if (!snapshot.exists()) {
-                saveGraphPreferences(preferences)
-            }
-        } catch (e: Exception) {
-            Log.e("FoodLogViewModel", "Error fetching graph preferences: ${e.message}")
-            _graphPreferences.value = getDefaultGraphPreferences()
-        }
-    }
-
-    fun saveGraphPreferences(preferences: List<GraphPreference>) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.d("FoodLogViewModel", "Cannot save graph preferences, user not logged in.")
-            return
-        }
-        val preferencesDocRef = firestore.collection("users").document(userId)
-            .collection("preferences").document("graph_order")
-
-        _graphPreferences.value = preferences
-        viewModelScope.launch {
-            try {
-                val dataToSave = hashMapOf("list" to preferences.map { it.toMap() })
-                preferencesDocRef.set(dataToSave).await()
-            } catch (e: Exception) {
-                Log.e("FoodLogViewModel", "Error saving graph preferences: ${e.message}")
-            }
-        }
-    }
+    // REMOVED: saveGraphPreferences()
 
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
@@ -285,7 +207,7 @@ class FoodLogViewModel : ViewModel() {
     fun refreshStatistics() {
         viewModelScope.launch {
             fetchMealsForLastSevenDays()
-            fetchGraphPreferences()
+            // REMOVED: fetchGraphPreferences()
         }
     }
 
@@ -779,12 +701,4 @@ class FoodLogViewModel : ViewModel() {
     }
 }
 
-private fun GraphPreference.toMap(): Map<String, Any> {
-    return mapOf(
-        "id" to id,
-        "title" to title,
-        "order" to order,
-        "isVisible" to isVisible,
-        "isMacro" to isMacro
-    )
-}
+// REMOVED: GraphPreference extension

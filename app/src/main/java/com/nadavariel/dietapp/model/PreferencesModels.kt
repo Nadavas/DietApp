@@ -6,17 +6,6 @@ import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.PropertyName
 import java.util.Calendar
 
-
-// --- GraphPreference ---
-
-data class GraphPreference(
-    val id: String,
-    val title: String,
-    val order: Int,
-    val isVisible: Boolean,
-    val isMacro: Boolean
-)
-
 // --- NotificationPreference ---
 
 @IgnoreExtraProperties
