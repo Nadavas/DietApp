@@ -531,11 +531,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         .delete().await()
                     Log.d("AuthViewModel", "Deleted diet_plans/current_plan")
 
-                    firestore.collection("users").document(userId)
-                        .collection("preferences").document("graph_order")
-                        .delete().await()
-                    Log.d("AuthViewModel", "Deleted preferences/graph_order")
-
                     firestore.collection("users").document(userId).delete().await()
                     Log.d("AuthViewModel", "Successfully deleted main user document.")
 
@@ -564,6 +559,46 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             val noUserError = "No user is currently signed in to delete."
             _authResult.value = AuthResult.Error(noUserError)
             onError(noUserError)
+        }
+    }
+
+    fun resetUserData(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = auth.currentUser
+        val userId = user?.uid
+        if (userId == null) {
+            onError("User not logged in.")
+            return
+        }
+
+        _authResult.value = AuthResult.Loading
+        viewModelScope.launch {
+            try {
+                // 1. Delete activity history
+                deleteSubCollection(userId, "meals")
+                deleteSubCollection(userId, "weight_history")
+                deleteSubCollection(userId, "notifications")
+
+                // 2. Delete Diet Plan & Questionnaire (Reset the "Brain" of the app)
+                firestore.collection("users").document(userId)
+                    .collection("diet_plans").document("current_plan")
+                    .delete().await()
+
+                firestore.collection("users").document(userId)
+                    .collection("user_answers").document("diet_habits")
+                    .delete().await()
+
+                firestore.collection("users").document(userId)
+                    .collection("user_answers").document("goals")
+                    .delete().await()
+
+                Log.d("AuthViewModel", "Successfully reset user data and plan.")
+                _authResult.value = AuthResult.Success
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error resetting data", e)
+                _authResult.value = AuthResult.Error(e.message ?: "Reset failed.")
+                onError(e.message ?: "Reset failed.")
+            }
         }
     }
 }

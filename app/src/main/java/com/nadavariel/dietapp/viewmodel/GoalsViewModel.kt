@@ -188,7 +188,7 @@ class GoalsViewModel : ViewModel() {
         val allGoals = listOf(
             Goal(id = "calories", text = "How many calories a day is your target?"),
             Goal(id = "protein", text = "How many grams of protein a day is your target?"),
-            Goal(id = "target_weight", text = "Do you have a target weight or body composition goal in mind?")
+            Goal(id = "target_weight", text = "Do you have a target weight?")
         )
 
         // 9. SAVE THE LISTENER

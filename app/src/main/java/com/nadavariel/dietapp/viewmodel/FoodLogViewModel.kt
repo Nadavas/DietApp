@@ -349,7 +349,7 @@ class FoodLogViewModel : ViewModel() {
                     val answersMap = snapshot.get("answers") as? List<Map<String, String>>
 
                     val targetWeightAnswer = answersMap?.firstOrNull {
-                        it["question"] == "Do you have a target weight or body composition goal in mind?"
+                        it["question"] == "Do you have a target weight?"
                     }?.get("answer")
 
                     _targetWeight.value = targetWeightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull() ?: 0f

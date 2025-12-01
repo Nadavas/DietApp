@@ -49,7 +49,7 @@ class QuestionsViewModel : ViewModel() {
         const val GENDER_QUESTION = "What is your gender?"
         const val HEIGHT_QUESTION = "What is your height?"
         const val STARTING_WEIGHT_QUESTION = "What is your weight?"
-        const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight or body composition goal in mind?"
+        const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight?"
     }
 
     private val dobFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {

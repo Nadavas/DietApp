@@ -52,9 +52,6 @@ fun SecurityScreen(
     var confirmNewPassword by remember { mutableStateOf("") }
     var isPasswordSectionExpanded by remember { mutableStateOf(false) }
 
-    // App Lock State (Mock for now)
-    var isAppLockEnabled by remember { mutableStateOf(false) }
-
     // Dialog State
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showReauthDialog by remember { mutableStateOf(false) }
@@ -63,6 +60,7 @@ fun SecurityScreen(
 
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
+    var showResetConfirmationDialog by remember { mutableStateOf(false) }
 
     // Handle authentication results
     LaunchedEffect(authResult) {
@@ -126,67 +124,8 @@ fun SecurityScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- SECTION 1: APP ACCESS ---
-            Text(
-                "APP ACCESS",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.lightGreyText
-            )
 
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Fingerprint, // Or Lock
-                                contentDescription = null,
-                                tint = AppTheme.colors.primaryGreen,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(
-                                text = "App Lock",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppTheme.colors.darkGreyText
-                            )
-                            Text(
-                                text = "Biometric unlock",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = AppTheme.colors.lightGreyText
-                            )
-                        }
-                    }
-                    Switch(
-                        checked = isAppLockEnabled,
-                        onCheckedChange = { isAppLockEnabled = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = AppTheme.colors.primaryGreen
-                        )
-                    )
-                }
-            }
-
-            // --- SECTION 2: ACCOUNT SECURITY (Manual Users Only) ---
+            // --- SECTION 1: ACCOUNT SECURITY (Manual Users Only) ---
             if (authViewModel.isEmailPasswordUser) {
                 Text(
                     "ACCOUNT SECURITY",
@@ -355,7 +294,7 @@ fun SecurityScreen(
                 }
             }
 
-            // --- SECTION 3: LEGAL ---
+            // --- SECTION 2: LEGAL ---
             Text(
                 "LEGAL",
                 style = MaterialTheme.typography.labelLarge,
@@ -378,7 +317,7 @@ fun SecurityScreen(
                 onClick = { showTermsDialog = true }
             )
 
-            // --- SECTION 4: DANGER ZONE ---
+            // --- SECTION 3: DANGER ZONE ---
             Text(
                 "DANGER ZONE",
                 style = MaterialTheme.typography.labelLarge,
@@ -387,6 +326,32 @@ fun SecurityScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
+            // 1. Reset Data Button
+            OutlinedButton(
+                onClick = { showResetConfirmationDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = AppTheme.colors.darkGreyText
+                ),
+                border = BorderStroke(1.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.3f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    tint = AppTheme.colors.softBlue
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Reset Diet Journey",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            // 2. Delete Account Button
             Button(
                 onClick = { showDeleteConfirmationDialog = true },
                 modifier = Modifier
@@ -407,6 +372,20 @@ fun SecurityScreen(
     }
 
     // --- Dialogs copied from AccountScreen ---
+
+    if (showResetConfirmationDialog) {
+        StyledAlertDialog(
+            onDismissRequest = { showResetConfirmationDialog = false },
+            title = "Reset Journey?",
+            text = "This will delete all your diet plan, logged meals, weight history, and reminders. Your profile and settings will be kept.\n\nThis cannot be undone.",
+            confirmButtonText = "Reset Data",
+            dismissButtonText = "Cancel",
+            onConfirm = {
+                showResetConfirmationDialog = false
+                authViewModel.resetUserData(onSuccess = {}, onError = {})
+            }
+        )
+    }
 
     if (showDeleteConfirmationDialog) {
         StyledAlertDialog(
