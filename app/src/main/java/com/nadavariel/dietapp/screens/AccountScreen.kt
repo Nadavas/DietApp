@@ -11,8 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LockReset
+import androidx.compose.material.icons.filled.Lock // Imported Lock icon
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -33,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.ui.account.ReauthDialog
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.AuthResult
@@ -218,42 +216,14 @@ private fun SectionDivider(text: String) {
 
 @Composable
 fun AccountActionButtons(
-    onChangePasswordClick: () -> Unit, // Added callback
     onSignOutClick: () -> Unit,
-    onDeleteClick: () -> Unit,
-    showChangePassword: Boolean,
+    // REMOVED: onDeleteClick
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (showChangePassword) {
-            // Change Password Button
-            OutlinedButton(
-                onClick = onChangePasswordClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = AppTheme.colors.darkGreyText
-                ),
-                border = BorderStroke(1.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.3f))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LockReset,
-                    contentDescription = "Change Password",
-                    tint = AppTheme.colors.softBlue // Different color to distinguish
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Change Password",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
         OutlinedButton(
             onClick = onSignOutClick,
             modifier = Modifier
@@ -277,28 +247,7 @@ fun AccountActionButtons(
             )
         }
 
-        Button(
-            onClick = onDeleteClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Delete Account",
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Delete Account",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+        // REMOVED: Delete Account Button (Moved to Security Screen)
     }
 }
 
@@ -313,14 +262,10 @@ fun AccountScreen(
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    // Checks if the user signed in via Email/Password (providerId is "password")
-    val isEmailUser = remember(currentUser) {
-        currentUser?.providerData?.any { it.providerId == "password" } == true
-    }
 
-    var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
-    var showReauthDialog by remember { mutableStateOf(false) }
-    var reauthPassword by remember { mutableStateOf("") }
+    // REMOVED: showDeleteConfirmationDialog
+    // REMOVED: showReauthDialog
+    // REMOVED: reauthPassword
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
@@ -332,11 +277,9 @@ fun AccountScreen(
             }
 
             is AuthResult.Error -> {
-                errorMessage = if (result.message == "re-authenticate-required") {
-                    showReauthDialog = true
-                    "Please re-enter your password to confirm deletion."
-                } else {
-                    result.message
+                // Only show generic errors here. Reauth errors are handled in Security screen now.
+                if (result.message != "re-authenticate-required") {
+                    errorMessage = result.message
                 }
             }
 
@@ -427,16 +370,25 @@ fun AccountScreen(
                         )
                     }
 
+                    // --- ADDED: Security & Privacy Button ---
+                    item {
+                        MenuRow(
+                            title = "Security & Privacy",
+                            subtitle = "App lock, password & legal",
+                            leadingIcon = { Icon(Icons.Filled.Lock, "Security", modifier = Modifier.size(24.dp)) },
+                            onClick = { navController.navigate(NavRoutes.SECURITY) }
+                        )
+                    }
+                    // ----------------------------------------
+
                     item {
                         SectionDivider("ACCOUNT ACTIONS")
                     }
 
                     item {
                         AccountActionButtons(
-                            onChangePasswordClick = { navController.navigate(NavRoutes.CHANGE_PASSWORD) },
                             onSignOutClick = { showSignOutDialog = true },
-                            onDeleteClick = { showDeleteConfirmationDialog = true },
-                            showChangePassword = isEmailUser
+                            // REMOVED: onDeleteClick
                         )
                     }
 
@@ -466,48 +418,8 @@ fun AccountScreen(
         }
     }
 
-    if (showDeleteConfirmationDialog) {
-        StyledAlertDialog(
-            onDismissRequest = {
-                showDeleteConfirmationDialog = false
-                authViewModel.resetAuthResult()
-            },
-            title = "Confirm Deletion",
-            text = "Are you sure you want to permanently delete your account? This action cannot be undone.",
-            confirmButtonText = "Delete",
-            dismissButtonText = "Cancel",
-            onConfirm = {
-                showDeleteConfirmationDialog = false
-                authViewModel.deleteCurrentUser(onSuccess = {}, onError = {})
-            }
-        )
-    }
-
-    if (showReauthDialog) {
-        ReauthDialog(
-            errorMessage = errorMessage,
-            password = reauthPassword,
-            onPasswordChange = { reauthPassword = it },
-            onConfirm = {
-                val currentEmail = currentUser?.email
-                if (currentEmail != null && reauthPassword.isNotBlank()) {
-                    errorMessage = null
-                    authViewModel.signIn(currentEmail, reauthPassword) {
-                        showReauthDialog = false
-                        reauthPassword = ""
-                        authViewModel.deleteCurrentUser(onSuccess = {}, onError = {})
-                    }
-                } else {
-                    errorMessage = "Please enter your password."
-                }
-            },
-            onDismiss = {
-                showReauthDialog = false
-                reauthPassword = ""
-                authViewModel.resetAuthResult()
-            }
-        )
-    }
+    // REMOVED: Delete Confirmation Dialog
+    // REMOVED: Reauth Dialog
 
     if (showSignOutDialog) {
         StyledAlertDialog(

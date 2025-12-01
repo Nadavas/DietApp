@@ -7,7 +7,7 @@ object NavRoutes {
     const val HOME = "home"
     const val ACCOUNT = "account"
     const val MY_PROFILE = "my_profile"
-    const val CHANGE_PASSWORD = "change_password"
+    const val SECURITY = "security"
     const val QUESTIONS = "questions"
     const val THREADS = "threads"
 

@@ -519,8 +519,8 @@ class MainActivity : ComponentActivity() {
                                     goalsViewModel = goalsViewModel
                                 )
                             }
-                            composable(NavRoutes.CHANGE_PASSWORD) {
-                                ChangePasswordScreen(
+                            composable(NavRoutes.SECURITY) {
+                                SecurityScreen(
                                     navController = navController,
                                     authViewModel = authViewModel
                                 )
