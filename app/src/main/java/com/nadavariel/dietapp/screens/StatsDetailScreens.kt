@@ -55,7 +55,7 @@ fun EnergyDetailScreen(
     ) {
         item {
             DetailStatCard(
-                title = "Daily Calories",
+                title = "Calories",
                 weeklyData = weeklyCalories,
                 target = goals.getOrNull(0)?.value?.toIntOrNull(),
                 label = "kcal",
@@ -65,7 +65,7 @@ fun EnergyDetailScreen(
 
         item {
             DetailStatCard(
-                title = "Daily Protein",
+                title = "Protein",
                 weeklyData = weeklyProtein,
                 target = goals.getOrNull(1)?.value?.toIntOrNull(),
                 label = "g",
@@ -150,15 +150,17 @@ fun MacrosDetailScreen(
             }
         }
 
-        item {
-            MacroBreakdownCard(macroPercentages = weeklyMacroPercentages)
-        }
+        //item {
+        //    MacroBreakdownCard(macroPercentages = weeklyMacroPercentages)
+        //}
 
         item {
             InsightCard(
                 insights = listOf(
-                    "Balanced macros support overall health and energy",
-                    "Aim for 10-35% protein, 45-65% carbs, 20-35% fat"
+                    "Aim for 10-35% protein, 45-65% carbs, 20-35% fat to support overall health and energy",
+                    "Protein repairs muscle tissue and helps keep you feeling full longer.",
+                    "Carbs are your body's primary fuel source for brain function and physical energy.",
+                    "Healthy fats are essential for hormone regulation and absorbing vitamins."
                 )
             )
         }
@@ -190,7 +192,7 @@ fun CarbsDetailScreen(
     ) {
         item {
             DetailStatCard(
-                title = "Daily Fiber",
+                title = "Fiber",
                 weeklyData = weeklyFiber,
                 target = goals.getOrNull(2)?.value?.toIntOrNull(),
                 label = "g",
@@ -200,7 +202,7 @@ fun CarbsDetailScreen(
 
         item {
             DetailStatCard(
-                title = "Daily Sugar",
+                title = "Sugar",
                 weeklyData = weeklySugar,
                 target = goals.getOrNull(3)?.value?.toIntOrNull(),
                 label = "g",
@@ -536,68 +538,68 @@ private fun DetailStatCard(
     }
 }
 
-@Composable
-private fun MacroBreakdownCard(macroPercentages: Map<String, Float>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Breakdown",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.textPrimary
-            )
+//@Composable
+//private fun MacroBreakdownCard(macroPercentages: Map<String, Float>) {
+//    Card(
+//        modifier = Modifier.fillMaxWidth(),
+//        shape = RoundedCornerShape(24.dp),
+//        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+//        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(20.dp),
+//            verticalArrangement = Arrangement.spacedBy(16.dp)
+//        ) {
+//            Text(
+//                text = "Breakdown",
+//                fontSize = 18.sp,
+//                fontWeight = FontWeight.Bold,
+//                color = AppTheme.colors.textPrimary
+//            )
+//
+//            MacroRow("Protein", macroPercentages["Protein"] ?: 0f, AppTheme.colors.primaryGreen)
+//            HorizontalDivider(color = Color(0xFFEEEEEE))
+//            MacroRow("Carbs", macroPercentages["Carbs"] ?: 0f, AppTheme.colors.activeLifestyle)
+//            HorizontalDivider(color = Color(0xFFEEEEEE))
+//            MacroRow("Fat", macroPercentages["Fat"] ?: 0f, AppTheme.colors.disclaimerIcon)
+//        }
+//    }
+//}
 
-            MacroRow("Protein", macroPercentages["Protein"] ?: 0f, AppTheme.colors.primaryGreen)
-            HorizontalDivider(color = Color(0xFFEEEEEE))
-            MacroRow("Carbs", macroPercentages["Carbs"] ?: 0f, AppTheme.colors.activeLifestyle)
-            HorizontalDivider(color = Color(0xFFEEEEEE))
-            MacroRow("Fat", macroPercentages["Fat"] ?: 0f, AppTheme.colors.disclaimerIcon)
-        }
-    }
-}
-
-@Composable
-private fun MacroRow(name: String, percentage: Float, color: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(color)
-            )
-            Text(
-                text = name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = AppTheme.colors.textPrimary
-            )
-        }
-        Text(
-            text = "${percentage.toInt()}%",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-    }
-}
+//@Composable
+//private fun MacroRow(name: String, percentage: Float, color: Color) {
+//    Row(
+//        modifier = Modifier.fillMaxWidth(),
+//        horizontalArrangement = Arrangement.SpaceBetween,
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        Row(
+//            verticalAlignment = Alignment.CenterVertically,
+//            horizontalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            Box(
+//                modifier = Modifier
+//                    .size(12.dp)
+//                    .clip(CircleShape)
+//                    .background(color)
+//            )
+//            Text(
+//                text = name,
+//                fontSize = 16.sp,
+//                fontWeight = FontWeight.Medium,
+//                color = AppTheme.colors.textPrimary
+//            )
+//        }
+//        Text(
+//            text = "${percentage.toInt()}%",
+//            fontSize = 18.sp,
+//            fontWeight = FontWeight.Bold,
+//            color = color
+//        )
+//    }
+//}
 
 @Composable
 private fun InsightCard(insights: List<String>) {
