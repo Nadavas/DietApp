@@ -390,8 +390,8 @@ fun AccountScreen(
 
                     item {
                         MenuRow(
-                            title = "Questions",
-                            subtitle = "View your dietary preferences",
+                            title = "Personal Quiz", // Clear name
+                            subtitle = "Define your profile & diet plan", // Explains the impact
                             leadingIcon = {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_query_filled),
@@ -420,8 +420,8 @@ fun AccountScreen(
 
                     item {
                         MenuRow(
-                            title = "Notifications",
-                            subtitle = "Manage meal & weight reminders",
+                            title = "Reminders",
+                            subtitle = "Set alerts for meals & weight",
                             leadingIcon = { Icon(Icons.Filled.Notifications, "Notifications", modifier = Modifier.size(24.dp)) },
                             onClick = { navController.navigate(NavRoutes.NOTIFICATIONS) }
                         )
