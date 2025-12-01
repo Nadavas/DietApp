@@ -41,7 +41,8 @@ import com.nadavariel.dietapp.viewmodel.AuthViewModel
 @Composable
 fun SecurityScreen(
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    questionsViewModel: com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 ) {
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val currentUser = authViewModel.currentUser
@@ -381,8 +382,17 @@ fun SecurityScreen(
             confirmButtonText = "Reset Data",
             dismissButtonText = "Cancel",
             onConfirm = {
+                // 1. Clear UI dialog
                 showResetConfirmationDialog = false
-                authViewModel.resetUserData(onSuccess = {}, onError = {})
+
+                // 2. Perform the reset
+                authViewModel.resetUserData(
+                    onSuccess = {
+                        // 3. FIX: Clear the cached answers in the other ViewModel
+                        questionsViewModel.clearData()
+                    },
+                    onError = {}
+                )
             }
         )
     }

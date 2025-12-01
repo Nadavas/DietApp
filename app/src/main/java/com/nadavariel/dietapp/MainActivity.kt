@@ -522,7 +522,8 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.SECURITY) {
                                 SecurityScreen(
                                     navController = navController,
-                                    authViewModel = authViewModel
+                                    authViewModel = authViewModel,
+                                    questionsViewModel = questionsViewModel
                                 )
                             }
 

@@ -308,4 +308,10 @@ class QuestionsViewModel : ViewModel() {
     fun resetDietPlanResult() {
         _dietPlanResult.value = DietPlanResult.Idle
     }
+
+    fun clearData() {
+        _userAnswers.value = emptyList()
+        _dietPlanResult.value = DietPlanResult.Idle
+        Log.d("QuestionsViewModel", "Local data cleared.")
+    }
 }
