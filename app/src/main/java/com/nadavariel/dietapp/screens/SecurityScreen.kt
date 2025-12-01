@@ -16,16 +16,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +60,9 @@ fun SecurityScreen(
     var showReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
 
     // Handle authentication results
     LaunchedEffect(authResult) {
@@ -368,14 +368,14 @@ fun SecurityScreen(
                 title = "Privacy Policy",
                 icon = Icons.Default.PrivacyTip,
                 iconColor = AppTheme.colors.softBlue,
-                onClick = { /* Navigate or open URL */ }
+                onClick = { showPrivacyDialog = true }
             )
 
             SecurityOptionRow(
                 title = "Terms of Service",
                 icon = Icons.Default.Description,
                 iconColor = AppTheme.colors.softBlue,
-                onClick = { /* Navigate or open URL */ }
+                onClick = { showTermsDialog = true }
             )
 
             // --- SECTION 4: DANGER ZONE ---
@@ -450,6 +450,68 @@ fun SecurityScreen(
             }
         )
     }
+
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = { Text("Privacy Policy", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = """
+                            1. Data Collection
+                            We collect your name, email, and health metrics (weight, height) to generate your diet plan.
+                            
+                            2. Data Usage
+                            Your data is used solely for providing app functionality. We do not sell your data.
+                            
+                            3. Account Deletion
+                            You can delete your account and all associated data at any time from the Security settings.
+                        """.trimIndent(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text("Close", color = AppTheme.colors.primaryGreen)
+                }
+            },
+            containerColor = Color.White
+        )
+    }
+
+    if (showTermsDialog) {
+        AlertDialog(
+            onDismissRequest = { showTermsDialog = false },
+            title = { Text("Terms of Service", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = """
+                            1. Acceptance
+                            By using this app, you agree to these terms.
+                            
+                            2. Medical Disclaimer
+                            This app uses AI to generate advice. It is not a substitute for professional medical advice. Consult a doctor before making major lifestyle changes.
+                            
+                            3. Usage
+                            You agree to use this app responsibly.
+                        """.trimIndent(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTermsDialog = false }) {
+                    Text("Close", color = AppTheme.colors.primaryGreen)
+                }
+            },
+            containerColor = Color.White
+        )
+    }
 }
 
 @Composable
@@ -493,12 +555,6 @@ private fun SecurityOptionRow(
                 fontWeight = FontWeight.SemiBold,
                 color = AppTheme.colors.darkGreyText,
                 modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = AppTheme.colors.lightGreyText,
-                modifier = Modifier.size(16.dp)
             )
         }
     }
