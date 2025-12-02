@@ -1,7 +1,9 @@
 package com.nadavariel.dietapp.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -28,24 +34,30 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.util.AvatarConstants
 
 @Composable
 fun HoveringNotificationCard(
@@ -312,6 +324,85 @@ private fun EditableFoodItem(
                 modifier = Modifier.weight(1f),
                 textStyle = MaterialTheme.typography.bodySmall
             )
+        }
+    }
+}
+
+@Composable
+fun AvatarSelectionDialog(
+    currentAvatarId: String,
+    onDismiss: () -> Unit,
+    onAvatarSelected: (String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Choose Your Avatar",
+                    fontSize = 22.sp, // standardized font size
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textPrimary,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp), // Increased spacing slightly for better look
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
+                        val isSelected = currentAvatarId == avatarId
+
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                // Standardized on the Border look (cleaner)
+                                .border(
+                                    width = if (isSelected) 3.dp else 0.dp,
+                                    color = if (isSelected) AppTheme.colors.primaryGreen else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable {
+                                    onAvatarSelected(avatarId)
+                                    onDismiss()
+                                }
+                        ) {
+                            Image(
+                                painter = painterResource(id = drawableResId),
+                                contentDescription = "Avatar $avatarId",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    // Add small padding if selected so the border doesn't overlap the image content
+                                    .padding(if (isSelected) 3.dp else 0.dp)
+                                    .clip(CircleShape)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = AppTheme.colors.textSecondary
+                    )
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Medium)
+                }
+            }
         }
     }
 }

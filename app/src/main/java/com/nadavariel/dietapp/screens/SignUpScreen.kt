@@ -9,12 +9,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.ClickableText
@@ -46,12 +42,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.components.AvatarSelectionDialog
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -378,71 +374,12 @@ fun SignUpScreen(
     }
 
     if (showAvatarDialog) {
-        Dialog(onDismissRequest = { showAvatarDialog = false }) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = Color.White
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Select an Avatar",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = AppTheme.colors.textPrimary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 500.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(8.dp)
-                    ) {
-                        items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
-                            val isSelected = selectedAvatarId == avatarId
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .border(
-                                        width = if (isSelected) 3.dp else 0.dp,
-                                        color = if (isSelected) AppTheme.colors.primaryGreen else Color.Transparent,
-                                        shape = CircleShape
-                                    )
-                                    .clickable {
-                                        authViewModel.selectedAvatarId.value = avatarId
-                                        showAvatarDialog = false
-                                    }
-                            ) {
-                                Image(
-                                    painter = painterResource(id = drawableResId),
-                                    contentDescription = "Avatar $avatarId",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    TextButton(
-                        onClick = { showAvatarDialog = false },
-                        colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
-                    ) {
-                        Text("Cancel")
-                    }
-                }
+        AvatarSelectionDialog(
+            currentAvatarId = authViewModel.selectedAvatarId.value.toString(),
+            onDismiss = { showAvatarDialog = false },
+            onAvatarSelected = { newId ->
+                authViewModel.selectedAvatarId.value = newId
             }
-        }
+        )
     }
 }

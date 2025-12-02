@@ -6,9 +6,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,13 +29,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.components.AvatarSelectionDialog
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
@@ -402,73 +399,13 @@ fun EditProfileScreen(
     }
 
     if (showAvatarDialog) {
-        Dialog(onDismissRequest = { showAvatarDialog = false }) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                color = Color.White
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Choose Your Avatar",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary,
-                        modifier = Modifier.padding(bottom = 20.dp)
-                    )
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 500.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (avatarId == selectedAvatarId)
-                                            AppTheme.colors.primaryGreen.copy(alpha = 0.2f)
-                                        else Color.Transparent
-                                    )
-                                    .clickable {
-                                        selectedAvatarId = avatarId
-                                        showAvatarDialog = false
-                                    }
-                            ) {
-                                Image(
-                                    painter = painterResource(id = drawableResId),
-                                    contentDescription = "Avatar $avatarId",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(if (avatarId == selectedAvatarId) 4.dp else 0.dp)
-                                        .clip(CircleShape)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    TextButton(
-                        onClick = { showAvatarDialog = false },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = AppTheme.colors.textSecondary
-                        )
-                    ) {
-                        Text("Cancel", fontWeight = FontWeight.Medium)
-                    }
-                }
+        AvatarSelectionDialog(
+            currentAvatarId = selectedAvatarId.toString(),
+            onDismiss = { showAvatarDialog = false },
+            onAvatarSelected = { newId ->
+                selectedAvatarId = newId
             }
-        }
+        )
     }
 }
 
