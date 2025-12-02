@@ -242,6 +242,10 @@ class QuestionsViewModel : ViewModel() {
                 val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
                 val data = hashMapOf("userProfile" to updatedAnswersString)
                 val result = functions.getHttpsCallable("generateDietPlan").call(data).await()
+
+                // FIX: If user signed out/deleted account during await(), abort UI update
+                if (auth.currentUser == null) return@launch
+
                 val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
 
                 if (responseData["success"] == true) {
@@ -257,7 +261,10 @@ class QuestionsViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("QuestionsViewModel", "Error generating diet plan or creating user", e)
-                _dietPlanResult.value = DietPlanResult.Error(e.message ?: "An unexpected error occurred.")
+                // FIX: Ensure we don't show error if user is gone
+                if (auth.currentUser != null) {
+                    _dietPlanResult.value = DietPlanResult.Error(e.message ?: "An unexpected error occurred.")
+                }
             }
         }
     }

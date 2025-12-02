@@ -668,6 +668,9 @@ class FoodLogViewModel : ViewModel() {
                     .call(data)
                     .await()
 
+                // FIX: If user signed out during await(), abort showing the result
+                if (auth.currentUser == null) return@launch
+
                 val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response data is null.")
                 val success = responseData["success"] as? Boolean
                 val geminiData = responseData["data"]
@@ -689,7 +692,10 @@ class FoodLogViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Gemini analysis failed: ${e.message}", e)
-                _geminiResult.value = GeminiResult.Error("Function call failed: ${e.message}")
+                // FIX: Ensure we don't show error if user is gone
+                if (auth.currentUser != null) {
+                    _geminiResult.value = GeminiResult.Error("Function call failed: ${e.message}")
+                }
             }
         }
     }
@@ -700,5 +706,3 @@ class FoodLogViewModel : ViewModel() {
         tempMealTimestamp = null // Clear the timestamp
     }
 }
-
-// REMOVED: GraphPreference extension

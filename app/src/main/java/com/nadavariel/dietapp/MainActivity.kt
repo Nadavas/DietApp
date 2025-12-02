@@ -195,6 +195,10 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentUser, isLoadingProfile) {
                     if (!isLoadingProfile) {
                         if (currentUser == null) {
+                            // FIX: Reset results to hide hovering messages/abort processes immediately upon sign out
+                            questionsViewModel.resetDietPlanResult()
+                            foodLogViewModel.resetGeminiResult()
+
                             navController.navigate(NavRoutes.LANDING) {
                                 popUpTo(navController.graph.id) {
                                     inclusive = true
