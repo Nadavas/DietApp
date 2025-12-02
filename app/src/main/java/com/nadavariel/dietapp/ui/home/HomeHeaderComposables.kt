@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.components.UserAvatar
 import com.nadavariel.dietapp.util.AvatarConstants
 
 @Composable
@@ -86,14 +87,11 @@ fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit
                     .fillMaxSize()
                     .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
             )
-            // Avatar Image
-            Image(
-                painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
-                contentDescription = "User Avatar",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(60.dp) // FIX 3: Increased from 48.dp to 60.dp (Full size of box)
-                    .clip(CircleShape)
+            // FIX: Replaced manual Image with UserAvatar to support URLs/URIs
+            UserAvatar(
+                avatarId = avatarId,
+                size = 60.dp,
+                modifier = Modifier.clickable(onClick = onAvatarClick)
             )
         }
         // --- END OF UPDATED CODE ---

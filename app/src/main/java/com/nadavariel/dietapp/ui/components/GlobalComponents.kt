@@ -1,6 +1,11 @@
 package com.nadavariel.dietapp.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,7 +61,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
+import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.AvatarConstants
 
@@ -332,8 +340,20 @@ private fun EditableFoodItem(
 fun AvatarSelectionDialog(
     currentAvatarId: String,
     onDismiss: () -> Unit,
-    onAvatarSelected: (String) -> Unit
+    onAvatarSelected: (String) -> Unit,
+    onCustomImageSelected: (Uri) -> Unit // NEW: Callback for custom photo
 ) {
+    // Launcher for the Photo Picker
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            if (uri != null) {
+                onCustomImageSelected(uri)
+                onDismiss()
+            }
+        }
+    )
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -360,6 +380,30 @@ fun AvatarSelectionDialog(
                     horizontalArrangement = Arrangement.spacedBy(16.dp), // Increased spacing slightly for better look
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // 1. NEW: The "Upload Photo" Button (First Item)
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF0F0F0)) // Light grey background
+                                .clickable {
+                                    photoPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoCamera,
+                                contentDescription = "Upload Photo",
+                                tint = AppTheme.colors.primaryGreen,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
+                    // 2. Existing Avatars
                     items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
                         val isSelected = currentAvatarId == avatarId
 
@@ -403,6 +447,49 @@ fun AvatarSelectionDialog(
                     Text("Cancel", fontWeight = FontWeight.Medium)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun UserAvatar(
+    avatarId: String?,
+    size: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier
+) {
+    // 1. Check if it matches one of your pre-defined local avatars (avatar_1, etc.)
+    val localDrawable = AvatarConstants.AVATAR_DRAWABLES.find { it.first == avatarId }?.second
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Color.LightGray) // Background while loading
+    ) {
+        if (localDrawable != null) {
+            // Case A: It's a built-in avatar (local resource)
+            Image(
+                painter = painterResource(id = localDrawable),
+                contentDescription = "User Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (!avatarId.isNullOrBlank()) {
+            // Case B: It's a Custom Photo (URL or URI)
+            AsyncImage(
+                model = avatarId,
+                contentDescription = "User Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // Case C: Fallback / Default (e.g. if null)
+            Image(
+                painter = painterResource(id = R.drawable.ic_person_filled), // Ensure you have a default
+                contentDescription = "Default Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }

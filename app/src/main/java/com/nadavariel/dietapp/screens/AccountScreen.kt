@@ -32,6 +32,7 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.components.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.util.AvatarConstants
@@ -116,14 +117,11 @@ fun AccountHeaderInfo(
                         .size(96.dp)
                         .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
                 )
-                Image(
-                    painter = painterResource(id = AvatarConstants.getAvatarResId(avatarId)),
-                    contentDescription = "Profile Avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(86.dp)
-                        .clip(CircleShape)
-                        .clickable { onAvatarClick() }
+                // FIX: Use UserAvatar
+                UserAvatar(
+                    avatarId = avatarId,
+                    size = 86.dp,
+                    modifier = Modifier.clickable { onAvatarClick() }
                 )
             }
 

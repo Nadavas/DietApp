@@ -48,6 +48,7 @@ import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.components.AvatarSelectionDialog
+import com.nadavariel.dietapp.ui.components.UserAvatar
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -186,14 +187,10 @@ fun SignUpScreen(
                         .size(120.dp)
                         .clickable { showAvatarDialog = true }
                 ) {
-                    Image(
-                        painter = painterResource(id = AvatarConstants.getAvatarResId(selectedAvatarId)),
-                        contentDescription = "User Avatar",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
+                    // FIX: Use UserAvatar
+                    UserAvatar(
+                        avatarId = selectedAvatarId,
+                        size = 120.dp
                     )
 
                     // Edit Icon Overlay
@@ -379,6 +376,10 @@ fun SignUpScreen(
             onDismiss = { showAvatarDialog = false },
             onAvatarSelected = { newId ->
                 authViewModel.selectedAvatarId.value = newId
+            },
+            onCustomImageSelected = { uri ->
+                // TODO: Handle the URI
+                authViewModel.handleCustomImageSelection(uri)
             }
         )
     }

@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.components.UserAvatar
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
@@ -114,15 +115,10 @@ fun MyProfileScreen(
                                     .background(Color.White.copy(alpha = 0.2f))
                                     .padding(4.dp)
                             ) {
-                                Image(
-                                    painter = painterResource(
-                                        id = AvatarConstants.getAvatarResId(userProfile.avatarId)
-                                    ),
-                                    contentDescription = "Your Avatar",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
+                                // FIX: Use UserAvatar
+                                UserAvatar(
+                                    avatarId = userProfile.avatarId,
+                                    size = 120.dp // The modifier inside UserAvatar handles the clip(CircleShape)
                                 )
                             }
 

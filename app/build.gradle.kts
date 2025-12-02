@@ -76,6 +76,7 @@ dependencies {
     // For graphics
     implementation(libs.mpandroidchart)
     implementation(libs.androidx.room.runtime.android)
+    implementation("com.google.firebase:firebase-storage-ktx")
 
     // Testing dependencies
     testImplementation(libs.junit)

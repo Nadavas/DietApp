@@ -36,6 +36,7 @@ import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.components.AvatarSelectionDialog
+import com.nadavariel.dietapp.ui.components.UserAvatar
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
@@ -115,7 +116,7 @@ fun EditProfileScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isNewUser) "Create Your Profile" else "Edit Profile",
+                        text = "Edit Profile",
                         fontWeight = FontWeight.Bold,
                         color = AppTheme.colors.darkGreyText
                     )
@@ -177,16 +178,10 @@ fun EditProfileScreen(
                                 .size(120.dp)
                                 .clickable { showAvatarDialog = true }
                         ) {
-                            Image(
-                                painter = painterResource(
-                                    id = AvatarConstants.getAvatarResId(selectedAvatarId)
-                                ),
-                                contentDescription = "User Avatar",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
+                            // FIX: Use UserAvatar
+                            UserAvatar(
+                                avatarId = selectedAvatarId,
+                                size = 120.dp
                             )
 
                             Box(
@@ -404,6 +399,12 @@ fun EditProfileScreen(
             onDismiss = { showAvatarDialog = false },
             onAvatarSelected = { newId ->
                 selectedAvatarId = newId
+            },
+            onCustomImageSelected = { uri ->
+                // FIX: Update the LOCAL variable so the UI updates immediately
+                selectedAvatarId = uri.toString()
+
+                authViewModel.handleCustomImageSelection(uri)
             }
         )
     }
