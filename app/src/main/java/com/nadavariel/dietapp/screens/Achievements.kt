@@ -49,42 +49,68 @@ data class Achievement(
 )
 
 object AchievementRepository {
+
+    // Helper to safely get macro percentage as 0.0 - 1.0 scale
+    // This handles 0-100 inputs AND 0-1 inputs automatically.
+    private fun getMacro(map: Map<String, Float>, keys: List<String>): Float {
+        // 1. Find the value using multiple possible keys
+        val value = keys.firstNotNullOfOrNull { map[it] } ?: return 0f
+
+        // 2. Normalize: If value is > 1.0 (e.g., 45.5), treat it as percentage (0.455)
+        // If it's already small (e.g. 0.45), leave it alone.
+        return if (value > 1.0f) value / 100f else value
+    }
+
     val allAchievements = listOf(
-        // --- Consistency Badges ---
+        // --- Consistency Badges (Logic was fine) ---
         Achievement("c1", "The Starter", "Logged food at least 1 day this week.", "🌱", Color(0xFF8BC34A)) { d, _, _, _ -> d >= 1 },
         Achievement("c2", "Momentum", "Logged 3 days this week. Building a habit!", "🚀", Color(0xFF03A9F4)) { d, _, _, _ -> d >= 3 },
         Achievement("c3", "Week Warrior", "Perfect week! You logged all 7 days.", "🔥", Color(0xFFFF5722)) { d, _, _, _ -> d >= 7 },
         Achievement("c4", "Consistent", "Logged at least 5 days this week.", "🗓️", Color(0xFF9C27B0)) { d, _, _, _ -> d >= 5 },
 
-        // --- Calorie Badges ---
-        Achievement("k1", "On Target", "Avg calories 1800-2500 (Maintenance Zone).", "🎯", Color(0xFFFFC107)) { _, c, _, _ -> c in 1800..2500 },
-        Achievement("k2", "Light & Lean", "Avg calories under 1800 (Deficit Zone).", "🪶", Color(0xFF00BCD4)) { _, c, _, _ -> c in 1000..1799 },
-        Achievement("k3", "The Builder", "Avg calories over 2500 (Surplus Zone).", "🏗️", Color(0xFF795548)) { _, c, _, _ -> c > 2500 },
+        // --- Calorie Badges (Logic was fine) ---
+        Achievement("k1", "On Target", "Avg calories 1800-2500.", "🎯", Color(0xFFFFC107)) { _, c, _, _ -> c in 1800..2500 },
+        Achievement("k2", "Light & Lean", "Avg calories under 1800.", "🪶", Color(0xFF00BCD4)) { _, c, _, _ -> c in 1000..1799 },
+        Achievement("k3", "The Builder", "Avg calories over 2500.", "🏗️", Color(0xFF795548)) { _, c, _, _ -> c > 2500 },
 
-        // --- Protein Badges ---
+        // --- Protein Badges (Logic was fine) ---
         Achievement("p1", "Protein Starter", "Avg > 60g protein/day.", "🥚", Color(0xFFCDDC39)) { _, _, p, _ -> p > 60 },
         Achievement("p2", "Muscle Maker", "Avg > 100g protein/day.", "🥩", Color(0xFFF44336)) { _, _, p, _ -> p > 100 },
-        Achievement("p3", "Arnold Mode", "Avg > 150g protein/day. Elite!", "💪", Color(0xFF673AB7)) { _, _, p, _ -> p > 150 },
+        Achievement("p3", "Arnold Mode", "Avg > 150g protein/day.", "💪", Color(0xFF673AB7)) { _, _, p, _ -> p > 150 },
 
-        // --- Macro Balance Badges ---
+        // --- Macro Balance Badges (FIXED) ---
         Achievement("m1", "Balanced Plate", "Protein > 20%, Carbs > 30%, Fat < 35%.", "⚖️", Color(0xFF4CAF50)) { _, _, _, m ->
-            (m["Protein"] ?: 0f) > 0.2 && (m["Carbohydrates"] ?: 0f) > 0.3 && (m["Fat"] ?: 0f) < 0.35
+            val p = getMacro(m, listOf("Protein", "Pro"))
+            val c = getMacro(m, listOf("Carbohydrates", "Carbs", "Carb"))
+            val f = getMacro(m, listOf("Fat", "Fats"))
+
+            p > 0.2f && c > 0.3f && f < 0.35f && f > 0.0f // Ensure fat isn't 0 (missing data)
         },
         Achievement("m2", "Low Carb", "Carbs kept under 25% of total energy.", "🥑", Color(0xFF009688)) { _, _, _, m ->
-            val c = m["Carbohydrates"] ?: 0f
+            val c = getMacro(m, listOf("Carbohydrates", "Carbs"))
+            // Only award if we actually have data (c > 0)
             c in 0.01f..0.25f
         },
-        Achievement("m3", "Carb Loader", "Carbs over 50% (High Energy).", "🍝", Color(0xFFFF9800)) { _, _, _, m ->
-            (m["Carbohydrates"] ?: 0f) > 0.5f
+        Achievement("m3", "Carb Loader", "Carbs over 50%.", "🍝", Color(0xFFFF9800)) { _, _, _, m ->
+            val c = getMacro(m, listOf("Carbohydrates", "Carbs"))
+            c > 0.5f
         },
         Achievement("m4", "Keto Zone", "High Fat (>60%) and very low carbs (<10%).", "🥓", Color(0xFFD84315)) { _, _, _, m ->
-            (m["Fat"] ?: 0f) > 0.6f && (m["Carbohydrates"] ?: 0f) < 0.1f
+            val f = getMacro(m, listOf("Fat", "Fats"))
+            // Pass default 1.0f (100%) for Carbs if missing, so we don't accidentally award low carb for missing data
+            val cRaw = m["Carbohydrates"] ?: m["Carbs"]
+            val c = if (cRaw == null) 1.0f else if (cRaw > 1f) cRaw / 100f else cRaw
+
+            f > 0.6f && c < 0.1f
         },
 
-        // --- Lifestyle & Fun ---
+        // --- Lifestyle & Fun (FIXED) ---
         Achievement("v1", "Iron Will", "Logged 6+ days with high protein.", "⚔️", Color(0xFF607D8B)) { d, _, p, _ -> d >= 6 && p > 100 },
-        Achievement("v2", "Hydration Hero", "Consistent logging (4+ days) implies good hydration.", "💧", Color(0xFF2196F3)) { d, _, _, _ -> d >= 4 },
-        Achievement("v3", "Sweet Tooth", "Carbs are high (>55%). Enjoying life!", "🍭", Color(0xFFE91E63)) { _, _, _, m -> (m["Carbohydrates"] ?: 0f) > 0.55f },
+        Achievement("v2", "Hydration Hero", "Consistent logging (4+ days).", "💧", Color(0xFF2196F3)) { d, _, _, _ -> d >= 4 },
+        Achievement("v3", "Sweet Tooth", "Carbs are high (>55%).", "🍭", Color(0xFFE91E63)) { _, _, _, m ->
+            val c = getMacro(m, listOf("Carbohydrates", "Carbs"))
+            c > 0.55f
+        },
         Achievement("v4", "Clean Sheet", "You logged at least 1500 kcal for 5+ days.", "📝", Color(0xFF3F51B5)) { d, c, _, _ -> d >= 5 && c >= 1500 },
 
         // --- Special ---
