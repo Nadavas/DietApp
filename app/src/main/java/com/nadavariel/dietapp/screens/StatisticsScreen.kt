@@ -2,6 +2,7 @@ package com.nadavariel.dietapp.screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -10,11 +11,17 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,15 +30,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
+import com.nadavariel.dietapp.model.Achievement
+import com.nadavariel.dietapp.model.AchievementRepository
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import kotlinx.coroutines.delay
@@ -46,6 +57,10 @@ fun StatisticsScreen(
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
     val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsState()
+
+    // NOTE: Ensure your ViewModel exposes this. Defaulting to empty map if not yet implemented.
+    // val weeklyMicros by foodLogViewModel.weeklyMicros.collectAsState(initial = emptyMap())
+    val weeklyMicros = emptyMap<String, Float>() // Replace with actual ViewModel collection above
 
     LaunchedEffect(Unit) {
         foodLogViewModel.refreshStatistics()
@@ -65,12 +80,13 @@ fun StatisticsScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ADD THE CAROUSEL HERE
+                // ACHIEVEMENT CAROUSEL
                 item {
                     WeeklyAchievementsCarousel(
                         weeklyCalories = weeklyCalories,
                         weeklyProtein = weeklyProtein.mapValues { it.value.toFloat() },
                         weeklyMacroPercentages = weeklyMacroPercentages,
+                        weeklyAverageMicros = weeklyMicros,
                         onSeeAllClick = {
                             navController.navigate(NavRoutes.ALL_ACHIEVEMENTS)
                         }
@@ -90,6 +106,7 @@ fun StatisticsScreen(
                     )
                 }
 
+                // CATEGORY CARDS
                 item {
                     CategoryCard(
                         title = "Energy & Protein",
@@ -99,7 +116,6 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_ENERGY) }
                     )
                 }
-
                 item {
                     CategoryCard(
                         title = "Macronutrients",
@@ -109,7 +125,6 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_MACROS) }
                     )
                 }
-
                 item {
                     CategoryCard(
                         title = "Fiber & Sugar",
@@ -119,7 +134,6 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_CARBS) }
                     )
                 }
-
                 item {
                     CategoryCard(
                         title = "Minerals",
@@ -129,7 +143,6 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_MINERALS) }
                     )
                 }
-
                 item {
                     CategoryCard(
                         title = "Vitamins",
@@ -140,7 +153,6 @@ fun StatisticsScreen(
                     )
                 }
 
-                // Bottom spacing
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
@@ -148,121 +160,175 @@ fun StatisticsScreen(
 }
 
 // -----------------------------------------------------------------------------
-// NEW ACHIEVEMENT COMPONENTS
+// HELPER: CALCULATE STATS
 // -----------------------------------------------------------------------------
 
-private data class NutritionBadgeData(
-    val id: Int,
-    val title: String,
-    val emoji: String,
-    val color: Color,
-    val isUnlocked: Boolean
+data class CalculatedStats(
+    val daysLogged: Int,
+    val avgCals: Int,
+    val avgProtein: Int
 )
 
-@Composable
-private fun NutritionAchievementsSection(
+fun calculateStats(
     weeklyCalories: Map<LocalDate, Int>,
-    weeklyProtein: Map<LocalDate, Int>,
-    weeklyMacroPercentages: Map<String, Float>
+    weeklyProtein: Map<LocalDate, Float>
+): CalculatedStats {
+    val activeDaysCals = weeklyCalories.values.filter { it > 0 }
+    val activeDaysProtein = weeklyProtein.values.filter { it > 0f }
+
+    val daysLogged = activeDaysCals.size
+    val avgCals = if (activeDaysCals.isNotEmpty()) activeDaysCals.average().toInt() else 0
+    val avgProtein = if (activeDaysProtein.isNotEmpty()) activeDaysProtein.average().toInt() else 0
+
+    return CalculatedStats(daysLogged, avgCals, avgProtein)
+}
+
+// -----------------------------------------------------------------------------
+// COMPONENTS
+// -----------------------------------------------------------------------------
+
+@Composable
+fun WeeklyAchievementsCarousel(
+    weeklyCalories: Map<LocalDate, Int>,
+    weeklyProtein: Map<LocalDate, Float>,
+    weeklyMacroPercentages: Map<String, Float>,
+    weeklyAverageMicros: Map<String, Float>,
+    onSeeAllClick: () -> Unit
 ) {
-    // 1. Calculate Statistics for Unlocks
-    val daysLogged = weeklyCalories.size
-    val avgProtein = if (weeklyProtein.isNotEmpty()) weeklyProtein.values.average() else 0.0
-    val fatPercentage = weeklyMacroPercentages["Fat"] ?: 0f
-    // Assuming balanced if Protein > 20%, Carbs > 30%, Fat < 40% (Example logic)
-    val isBalanced = (weeklyMacroPercentages["Protein"] ?: 0f) > 0.2f &&
-            (weeklyMacroPercentages["Carbohydrates"] ?: 0f) > 0.3f
+    val stats = remember(weeklyCalories, weeklyProtein) {
+        calculateStats(weeklyCalories, weeklyProtein)
+    }
 
-    // 2. Define Badges and Check Conditions
-    val badges = listOf(
-        NutritionBadgeData(
-            1, "Starter", "🔥", AppTheme.colors.warmOrange,
-            isUnlocked = daysLogged >= 1
-        ),
-        NutritionBadgeData(
-            2, "Consistent", "📅", AppTheme.colors.softBlue,
-            isUnlocked = daysLogged >= 3
-        ),
-        NutritionBadgeData(
-            3, "Week Warrior", "⚔️", AppTheme.colors.primaryGreen,
-            isUnlocked = daysLogged >= 7
-        ),
-        NutritionBadgeData(
-            4, "Iron Lifter", "🥩", AppTheme.colors.sunsetPink,
-            isUnlocked = avgProtein > 80 // Example: Average > 80g protein
-        ),
-        NutritionBadgeData(
-            5, "Lean Machine", "🥑", AppTheme.colors.accentTeal,
-            isUnlocked = fatPercentage in 0.15f..0.35f // Healthy Fat Range
-        ),
-        NutritionBadgeData(
-            6, "Vita-Boost", "🍋", AppTheme.colors.warmOrange,
-            isUnlocked = isBalanced // Awarded for balanced macros
-        )
-    )
-
-    // 3. Cyclic Scrolling Logic
-    val startIndex = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2 % badges.size)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            listState.scrollBy(1.5f)
-            delay(20)
+    val unlockedAchievements = remember(stats, weeklyMacroPercentages, weeklyAverageMicros) {
+        AchievementRepository.allAchievements.filter {
+            it.condition(stats.daysLogged, stats.avgCals, stats.avgProtein, weeklyMacroPercentages, weeklyAverageMicros)
         }
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
+    var currentIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(unlockedAchievements) {
+        if (unlockedAchievements.isNotEmpty()) {
+            while (true) {
+                delay(3000)
+                currentIndex = (currentIndex + 1) % unlockedAchievements.size
+            }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp)
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
+            Text(
+                text = "Weekly Achievements",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = AppTheme.colors.textPrimary
+            )
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column {
+                if (unlockedAchievements.isEmpty()) {
+                    Text(text = "🌱", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Weekly Highlights",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary
+                        text = "Start Logging!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "$daysLogged days tracked this week",
-                        fontSize = 11.sp,
-                        color = AppTheme.colors.textSecondary
+                        text = "Log your meals to unlock achievements.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.textSecondary,
+                        textAlign = TextAlign.Center
                     )
+                } else {
+                    AnimatedContent(
+                        targetState = unlockedAchievements[currentIndex],
+                        transitionSpec = {
+                            fadeIn() + slideInHorizontally { width -> width } togetherWith
+                                    fadeOut() + slideOutHorizontally { width -> -width }
+                        },
+                        label = "AchievementCarousel"
+                    ) { badge ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.radialGradient(
+                                            listOf(
+                                                badge.color.copy(alpha = 0.3f),
+                                                badge.color.copy(alpha = 0.05f)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = badge.emoji, fontSize = 40.sp)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = badge.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = AppTheme.colors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = badge.description,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppTheme.colors.textSecondary,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp,
+                                modifier = Modifier.height(40.dp)
+                            )
+                        }
+                    }
                 }
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = AppTheme.colors.warmOrange,
-                    modifier = Modifier.size(24.dp)
-                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            LazyRow(
-                state = listState,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                userScrollEnabled = true
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onSeeAllClick)
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f))
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
             ) {
-                items(Int.MAX_VALUE) { index ->
-                    val badge = badges[index % badges.size]
-                    NutritionBadgeItemCompact(badge = badge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "View All Possible Achievements",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.primaryGreen
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.EmojiEvents,
+                        contentDescription = null,
+                        tint = AppTheme.colors.primaryGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -270,70 +336,185 @@ private fun NutritionAchievementsSection(
 }
 
 @Composable
-private fun NutritionBadgeItemCompact(badge: NutritionBadgeData) {
-    val scale by animateFloatAsState(
-        targetValue = if (badge.isUnlocked) 1f else 0.9f,
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = 200f), label = ""
-    )
+fun AllAchievementsScreen(
+    navController: NavController,
+    weeklyCalories: Map<LocalDate, Int>,
+    weeklyProtein: Map<LocalDate, Float>,
+    weeklyMacroPercentages: Map<String, Float>
+    // Note: You should update MainActivity to pass weeklyMicros here too if needed
+) {
+    val stats = remember(weeklyCalories, weeklyProtein) {
+        calculateStats(weeklyCalories, weeklyProtein)
+    }
+    // if not available, or you can update the signature to accept it from navigation.
+    val weeklyMicros = emptyMap<String, Float>()
 
+    val allBadges = AchievementRepository.allAchievements
+    var selectedBadge by remember { mutableStateOf<Achievement?>(null) }
+
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.White)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Surface(shadowElevation = 2.dp) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                    Text(
+                        text = "All Achievements",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 100.dp),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(allBadges) { badge ->
+                    val isUnlocked = badge.condition(stats.daysLogged, stats.avgCals, stats.avgProtein, weeklyMacroPercentages, weeklyMicros)
+                    AchievementGridItem(
+                        badge = badge,
+                        isUnlocked = isUnlocked,
+                        onClick = { selectedBadge = badge }
+                    )
+                }
+            }
+        }
+
+        if (selectedBadge != null) {
+            val isUnlocked = selectedBadge!!.condition(stats.daysLogged, stats.avgCals, stats.avgProtein, weeklyMacroPercentages, weeklyMicros)
+            AchievementDetailDialog(
+                badge = selectedBadge!!,
+                isUnlocked = isUnlocked,
+                onDismiss = { selectedBadge = null }
+            )
+        }
+    }
+}
+
+@Composable
+fun AchievementGridItem(
+    badge: Achievement,
+    isUnlocked: Boolean,
+    onClick: () -> Unit
+) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.width(70.dp)
+        modifier = Modifier.clickable(onClick = onClick).padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier
-                .size(60.dp)
-                .scale(scale)
-                .clip(CircleShape)
-                .background(
-                    if (badge.isUnlocked)
-                        Brush.radialGradient(
-                            listOf(badge.color.copy(alpha = 0.4f), badge.color.copy(alpha = 0.1f))
-                        )
-                    else
-                        Brush.radialGradient(
-                            listOf(Color.Gray.copy(alpha = 0.2f), Color.Gray.copy(alpha = 0.05f))
-                        )
-                ),
+            modifier = Modifier.size(80.dp).clip(CircleShape).background(
+                if (isUnlocked)
+                    Brush.radialGradient(listOf(badge.color.copy(alpha = 0.4f), badge.color.copy(alpha = 0.1f)))
+                else
+                    SolidColor(Color.Gray.copy(alpha = 0.1f))
+            ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = badge.emoji,
-                fontSize = 28.sp,
-                modifier = Modifier.graphicsLayer { alpha = if (badge.isUnlocked) 1f else 0.3f }
+                fontSize = 32.sp,
+                modifier = Modifier.graphicsLayer { alpha = if (isUnlocked) 1f else 0.3f }
             )
-            if (badge.isUnlocked) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.BottomEnd
-                ) {
-                    Text(
-                        text = "✓",
-                        fontSize = 12.sp,
-                        color = badge.color,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(8.dp)
-                    )
+            Box(
+                modifier = Modifier.fillMaxSize().padding(6.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                if (isUnlocked) {
+                    Text("✓", color = badge.color, fontWeight = FontWeight.Bold)
+                } else {
+                    Text("🔒", fontSize = 12.sp, color = Color.Gray)
                 }
             }
         }
-
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = badge.title,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = AppTheme.colors.textPrimary,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            maxLines = 1,
-            lineHeight = 12.sp
+            color = if (isUnlocked) AppTheme.colors.textPrimary else AppTheme.colors.textSecondary
         )
     }
 }
 
-// -----------------------------------------------------------------------------
-// EXISTING COMPONENTS
-// -----------------------------------------------------------------------------
+@Composable
+fun AchievementDetailDialog(
+    badge: Achievement,
+    isUnlocked: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Close",
+                        modifier = Modifier.clickable(onClick = onDismiss)
+                    )
+                }
+                Box(
+                    modifier = Modifier.size(120.dp).clip(CircleShape).background(
+                        if (isUnlocked)
+                            Brush.radialGradient(listOf(badge.color.copy(alpha = 0.4f), badge.color.copy(alpha = 0.1f)))
+                        else
+                            SolidColor(Color.Gray.copy(alpha = 0.1f))
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = badge.emoji,
+                        fontSize = 60.sp,
+                        modifier = Modifier.graphicsLayer { alpha = if (isUnlocked) 1f else 0.3f }
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = badge.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isUnlocked) AppTheme.colors.textPrimary else Color.Gray
+                )
+                if (!isUnlocked) {
+                    Text(
+                        text = "(Locked)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Red.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = badge.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = AppTheme.colors.textSecondary
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
 
 @Composable
 private fun ModernHeader() {
@@ -343,9 +524,7 @@ private fun ModernHeader() {
         shadowElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
             Text(
                 text = "Nutrition Insights",
@@ -372,39 +551,23 @@ private fun CategoryCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.15f)),
+                modifier = Modifier.size(56.dp).clip(CircleShape).background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(28.dp)
-                )
+                Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(28.dp))
             }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = title,
                     fontSize = 18.sp,
@@ -417,7 +580,6 @@ private fun CategoryCard(
                     color = AppTheme.colors.textSecondary
                 )
             }
-
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "View details",
