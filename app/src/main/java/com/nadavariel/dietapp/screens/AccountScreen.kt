@@ -1,6 +1,5 @@
 package com.nadavariel.dietapp.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,7 +14,6 @@ import androidx.compose.material.icons.filled.Lock // Imported Lock icon
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,29 +38,53 @@ import com.nadavariel.dietapp.util.AvatarConstants
 
 // --- NEW HEADER COMPOSABLE ---
 @Composable
-private fun ModernAccountHeader() {
+private fun ModernAccountHeader(onSignOutClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
         shadowElevation = 2.dp
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp)
+                .padding(horizontal = 20.dp, vertical = 20.dp), // Padding applied to the Row itself
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically // This centers items vertically
         ) {
-            Text(
-                text = "Your Account",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.textPrimary
-            )
-            Text(
-                text = "Manage profile and preferences",
-                fontSize = 14.sp,
-                color = AppTheme.colors.textSecondary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            // Left Side: Title and Subtitle
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Your Account",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textPrimary
+                )
+                Text(
+                    text = "Manage profile and preferences",
+                    fontSize = 14.sp,
+                    color = AppTheme.colors.textSecondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Right Side: Sign Out Button
+            // Remove any extra padding here to let Row alignment take over
+            TextButton(
+                onClick = onSignOutClick,
+                colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.softRed)
+            ) {
+                Text(
+                    text = "Sign Out",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = "Sign Out",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
@@ -192,65 +214,6 @@ private fun MenuRow(
     }
 }
 
-@Composable
-private fun SectionDivider(text: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.lightGreyText,
-            modifier = Modifier.padding(end = 12.dp)
-        )
-        HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-        )
-    }
-}
-
-@Composable
-fun AccountActionButtons(
-    onSignOutClick: () -> Unit,
-    // REMOVED: onDeleteClick
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        OutlinedButton(
-            onClick = onSignOutClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = AppTheme.colors.lightGreyText
-            ),
-            border = BorderStroke(1.5.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.5f))
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Logout,
-                contentDescription = "Sign Out",
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Sign Out",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        // REMOVED: Delete Account Button (Moved to Security Screen)
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountScreen(
@@ -263,9 +226,6 @@ fun AccountScreen(
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // REMOVED: showDeleteConfirmationDialog
-    // REMOVED: showReauthDialog
-    // REMOVED: reauthPassword
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
@@ -294,7 +254,7 @@ fun AccountScreen(
             .background(AppTheme.colors.screenBackground)
     ) {
         // Modern Header is placed directly at the top
-        ModernAccountHeader()
+        ModernAccountHeader(onSignOutClick = { showSignOutDialog = true })
 
         Box(modifier = Modifier.weight(1f)) {
             val showLoading = isLoadingProfile
@@ -318,10 +278,6 @@ fun AccountScreen(
                     }
 
                     item {
-                        SectionDivider("PREFERENCES")
-                    }
-
-                    item {
                         MenuRow(
                             title = "Profile",
                             subtitle = "Manage your information",
@@ -333,8 +289,8 @@ fun AccountScreen(
 
                     item {
                         MenuRow(
-                            title = "Personal Quiz", // Clear name
-                            subtitle = "Define your profile & diet plan", // Explains the impact
+                            title = "Personal Quiz",
+                            subtitle = "Define your profile & diet plan",
                             leadingIcon = {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_query_filled),
@@ -370,25 +326,12 @@ fun AccountScreen(
                         )
                     }
 
-                    // --- ADDED: Security & Privacy Button ---
                     item {
                         MenuRow(
                             title = "Security & Privacy",
                             subtitle = "App lock, password & legal",
                             leadingIcon = { Icon(Icons.Filled.Lock, "Security", modifier = Modifier.size(24.dp)) },
                             onClick = { navController.navigate(NavRoutes.SECURITY) }
-                        )
-                    }
-                    // ----------------------------------------
-
-                    item {
-                        SectionDivider("ACCOUNT ACTIONS")
-                    }
-
-                    item {
-                        AccountActionButtons(
-                            onSignOutClick = { showSignOutDialog = true },
-                            // REMOVED: onDeleteClick
                         )
                     }
 
@@ -417,9 +360,6 @@ fun AccountScreen(
             }
         }
     }
-
-    // REMOVED: Delete Confirmation Dialog
-    // REMOVED: Reauth Dialog
 
     if (showSignOutDialog) {
         StyledAlertDialog(
