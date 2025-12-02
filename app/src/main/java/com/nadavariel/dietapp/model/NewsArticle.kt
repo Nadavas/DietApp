@@ -12,10 +12,18 @@ data class NewsArticle(
 
 object NewsSourcesConfig {
     val sources = listOf(
-        "https://www.nutrition.gov/rss/news.xml",
-        "https://nutritionsource.hsph.harvard.edu/feed/",
-        "https://www.eatright.org/rss/xml/news.xml",
-        "https://www.medicalnewstoday.com/rss/nutrition.xml",
-        "https://www.sciencedaily.com/rss/health_medicine/nutrition.xml"
+
+        // ✅ NutritionFacts (Good quality)
+        "https://nutritionfacts.org/feed/",
+
+        // ✅ NY Times Health (Includes nutrition)
+        "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+
+        // ✅ BBC Health: Excellent global coverage, extremely reliable images (media:thumbnail).
+        "http://feeds.bbci.co.uk/news/health/rss.xml",
+
+        // ✅ The Conversation (Health): Academic but accessible news.
+        // Uses ATOM format, but our new parser handles it + extracts images from the HTML.
+        "https://theconversation.com/us/health/articles.atom"
     )
 }
