@@ -256,8 +256,9 @@ fun AccountScreen(
         // Modern Header is placed directly at the top
         ModernAccountHeader(onSignOutClick = { showSignOutDialog = true })
 
-        Box(modifier = Modifier.weight(1f)) {
-            val showLoading = isLoadingProfile
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+
+            val showLoading = isLoadingProfile || currentUser == null
 
             if (showLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = AppTheme.colors.primaryGreen)
@@ -271,7 +272,7 @@ fun AccountScreen(
                     item {
                         AccountHeaderInfo(
                             name = userProfile.name.ifBlank { "User" },
-                            email = currentUser?.email ?: "No email",
+                            email = currentUser.email ?: "No email",
                             avatarId = userProfile.avatarId,
                             onAvatarClick = { navController.navigate(NavRoutes.MY_PROFILE) }
                         )
