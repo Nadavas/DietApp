@@ -460,11 +460,17 @@ fun UserAvatar(
     // 1. Check if it matches one of your pre-defined local avatars (avatar_1, etc.)
     val localDrawable = AvatarConstants.AVATAR_DRAWABLES.find { it.first == avatarId }?.second
 
+    val backgroundColor = if (localDrawable != null || avatarId.isNullOrBlank()) {
+        AppTheme.colors.primaryGreen.copy(alpha = 0.1f)
+    } else {
+        Color.Transparent
+    }
+
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(Color.LightGray) // Background while loading
+            .background(backgroundColor) // Background while loading
     ) {
         if (localDrawable != null) {
             // Case A: It's a built-in avatar (local resource)
