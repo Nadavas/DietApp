@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.nadavariel.dietapp.data.QuestionnaireConstants // <--- 1. Import Constants
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
 
@@ -115,6 +116,9 @@ internal fun EditingContent(
     onEditClick: (Int) -> Unit,
     onSaveAndGenerate: () -> Unit
 ) {
+    // 2. Access the question list from constants
+    val questions = QuestionnaireConstants.questions
+
     Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -131,7 +135,6 @@ internal fun EditingContent(
                 )
             }
             itemsIndexed(questions) { index, question ->
-                // UI REFRESH: Replaced with new QuestionItemCard
                 QuestionItemCard(
                     question = question.text,
                     answer = answers.getOrNull(index),
@@ -201,6 +204,9 @@ internal fun QuizModeContent(
     onNext: () -> Unit,
     canProceed: Boolean
 ) {
+    // 3. Access the question list from constants
+    val questions = QuestionnaireConstants.questions
+
     // UI REFRESH: Animated progress
     val progress by animateFloatAsState(
         targetValue = (currentIndex + 1).toFloat() / questions.size,

@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
+import com.nadavariel.dietapp.data.QuestionnaireConstants // <--- 1. Import Constants
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.questions.*
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -26,8 +27,12 @@ fun QuestionsScreen(
     authViewModel: AuthViewModel,
     startQuiz: Boolean
 ) {
+    // 2. Use the local ScreenState enum defined below
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
+
+    // 3. Use QuestionnaireConstants.questions throughout
+    val questions = QuestionnaireConstants.questions
 
     var quizAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
     var quizCurrentIndex by remember { mutableIntStateOf(0) }
@@ -52,9 +57,6 @@ fun QuestionsScreen(
         }
     }
 
-    // --- 1. REMOVED HandleDietPlanResultDialogs ---
-    // HandleDietPlanResultDialogs(navController, questionsViewModel)
-
     Scaffold(
         containerColor = AppTheme.colors.screenBackground,
         topBar = {
@@ -71,8 +73,6 @@ fun QuestionsScreen(
                     )
                 },
                 navigationIcon = {
-                    // --- LOGIC CHANGE START ---
-                    // Hide back button ONLY if we are at Q1 (index 0) AND currently in the mandatory Sign-Up flow
                     val hideBackButton = startQuiz && screenState == ScreenState.QUIZ_MODE && quizCurrentIndex == 0
 
                     if (!hideBackButton) {
@@ -85,7 +85,6 @@ fun QuestionsScreen(
                                     if (quizCurrentIndex > 0) {
                                         quizCurrentIndex--
                                     } else {
-                                        // If we are here, it means startQuiz is false (manual retake), so go back to Landing
                                         screenState = ScreenState.LANDING
                                     }
                                 }
@@ -101,7 +100,6 @@ fun QuestionsScreen(
                             )
                         }
                     }
-                    // --- LOGIC CHANGE END ---
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AppTheme.colors.screenBackground
@@ -139,11 +137,9 @@ fun QuestionsScreen(
                             questions,
                             editAnswers
                         )
-                        // --- 2. NAVIGATE TO ACCOUNT ---
                         navController.navigate(NavRoutes.ACCOUNT) {
                             popUpTo(navController.graph.id) { inclusive = true }
                         }
-                        // --- END OF FIX ---
                     }
                 )
             }
@@ -168,11 +164,9 @@ fun QuestionsScreen(
                                 questions,
                                 quizAnswers
                             )
-                            // --- 3. NAVIGATE TO ACCOUNT ---
                             navController.navigate(NavRoutes.ACCOUNT) {
                                 popUpTo(navController.graph.id) { inclusive = true }
                             }
-                            // --- END OF FIX ---
                         }
                     },
                     canProceed = !quizAnswers.getOrNull(quizCurrentIndex).isNullOrBlank()
@@ -194,3 +188,5 @@ fun QuestionsScreen(
         }
     }
 }
+
+private enum class ScreenState { LANDING, EDITING, QUIZ_MODE }

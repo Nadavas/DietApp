@@ -9,6 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore // <-- 2. IMPORT
 import com.google.firebase.firestore.ListenerRegistration // <-- 3. IMPORT
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.nadavariel.dietapp.data.QuestionnaireConstants
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,22 +94,12 @@ class GoalsViewModel : ViewModel() {
                             }
                         }
 
-                        // 2. Helper to safely get List<String> from nested ConcretePlan
-                        fun getNestedListField(path: String): List<String> {
-                            val rawValue = snapshot.get(path) // e.g. "concretePlan.trainingAdvice"
-                            return when (rawValue) {
-                                is List<*> -> rawValue.mapNotNull { it?.toString() }
-                                is String -> listOf(rawValue)
-                                else -> emptyList()
-                            }
-                        }
-
-                        // 3. Map top-level fields
+                        // 2. Map top-level fields
                         val healthOverview = getListField("healthOverview")
                         val goalStrategy = getListField("goalStrategy")
                         val disclaimer = snapshot.getString("disclaimer") ?: ""
 
-                        // 4. Map ConcretePlan (Manually to handle trainingAdvice list)
+                        // 3. Map ConcretePlan (Manually to handle trainingAdvice list)
                         val concretePlanMap = snapshot.get("concretePlan") as? Map<String, Any> ?: emptyMap()
                         val targetsMap = concretePlanMap["targets"] as? Map<String, Any> ?: emptyMap()
                         val guidelinesMap = concretePlanMap["mealGuidelines"] as? Map<String, Any> ?: emptyMap()
@@ -186,9 +177,9 @@ class GoalsViewModel : ViewModel() {
         }
 
         val allGoals = listOf(
-            Goal(id = "calories", text = "How many calories a day is your target?"),
-            Goal(id = "protein", text = "How many grams of protein a day is your target?"),
-            Goal(id = "target_weight", text = "Do you have a target weight?")
+            Goal(id = "calories", text = QuestionnaireConstants.CALORIES_GOAL_QUESTION),
+            Goal(id = "protein", text = QuestionnaireConstants.PROTEIN_GOAL_QUESTION),
+            Goal(id = "target_weight", text = QuestionnaireConstants.TARGET_WEIGHT_QUESTION)
         )
 
         // 9. SAVE THE LISTENER

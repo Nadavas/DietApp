@@ -9,6 +9,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
+import com.nadavariel.dietapp.data.QuestionnaireConstants
 import com.nadavariel.dietapp.model.DietPlan
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.model.Gender
@@ -43,14 +44,6 @@ class QuestionsViewModel : ViewModel() {
 
     private val _dietPlanResult = MutableStateFlow<DietPlanResult>(DietPlanResult.Idle)
     val dietPlanResult = _dietPlanResult.asStateFlow()
-
-    companion object {
-        const val DOB_QUESTION = "What is your date of birth?"
-        const val GENDER_QUESTION = "What is your gender?"
-        const val HEIGHT_QUESTION = "What is your height?"
-        const val STARTING_WEIGHT_QUESTION = "What is your weight?"
-        const val TARGET_WEIGHT_QUESTION_GOAL = "Do you have a target weight?"
-    }
 
     private val dobFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -99,7 +92,7 @@ class QuestionsViewModel : ViewModel() {
             val answerText = answerMap["answer"] ?: ""
 
             when (questionText) {
-                STARTING_WEIGHT_QUESTION -> {
+                QuestionnaireConstants.WEIGHT_QUESTION -> {
                     Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'")
                     val numericWeight = answerText.filter { it.isDigit() || it == '.' }
                     numericWeight.toFloatOrNull()?.let {
@@ -107,7 +100,7 @@ class QuestionsViewModel : ViewModel() {
                         Log.d("QuestionsViewModel", "Adding startingWeight update: $it")
                     } ?: Log.w("QuestionsViewModel", "Could not parse weight: '$answerText'")
                 }
-                HEIGHT_QUESTION -> {
+                QuestionnaireConstants.HEIGHT_QUESTION -> {
                     Log.d("QuestionsViewModel", "Received height answer string: '$answerText'")
                     val numericHeight = answerText.filter { it.isDigit() || it == '.' }
                     numericHeight.toFloatOrNull()?.let {
@@ -115,7 +108,7 @@ class QuestionsViewModel : ViewModel() {
                         Log.d("QuestionsViewModel", "Adding height update: $it")
                     } ?: Log.w("QuestionsViewModel", "Could not parse height: '$answerText'")
                 }
-                DOB_QUESTION -> {
+                QuestionnaireConstants.DOB_QUESTION -> {
                     try {
                         dobFormat.parse(answerText)?.let {
                             val timestamp = com.google.firebase.Timestamp(it)
@@ -126,12 +119,12 @@ class QuestionsViewModel : ViewModel() {
                         Log.w("QuestionsViewModel", "Could not parse DOB: '$answerText'. Expected format yyyy-MM-dd", e)
                     }
                 }
-                GENDER_QUESTION -> {
+                QuestionnaireConstants.GENDER_QUESTION -> {
                     val genderEnum = Gender.fromString(answerText)
                     profileUpdates["gender"] = genderEnum.name
                     Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}")
                 }
-                TARGET_WEIGHT_QUESTION_GOAL -> {
+                QuestionnaireConstants.TARGET_WEIGHT_QUESTION -> {
                     targetWeightAnswer = answerText
                     Log.d("QuestionsViewModel", "Found target weight answer: $answerText")
                 }
@@ -173,7 +166,7 @@ class QuestionsViewModel : ViewModel() {
             } else { mutableListOf() }
             val aiGenerated = snapshot.getBoolean("aiGenerated") == true
 
-            val targetWeightQuestionTextForGoal = TARGET_WEIGHT_QUESTION_GOAL
+            val targetWeightQuestionTextForGoal = QuestionnaireConstants.TARGET_WEIGHT_QUESTION
 
             val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
 
