@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.ui.components
 
+import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -54,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -66,6 +68,8 @@ import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.AvatarConstants
+import com.yalantis.ucrop.UCrop
+import java.io.File
 
 @Composable
 fun HoveringNotificationCard(
@@ -343,16 +347,53 @@ fun AvatarSelectionDialog(
     onAvatarSelected: (String) -> Unit,
     onCustomImageSelected: (Uri) -> Unit // NEW: Callback for custom photo
 ) {
-    // Launcher for the Photo Picker
+    val context = LocalContext.current
+
+    // 1. Launcher to crop after picking
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { activityResult ->
+        if (activityResult.resultCode == Activity.RESULT_OK) {
+            val dataIntent = activityResult.data
+            val resultUri = dataIntent?.let { UCrop.getOutput(it) }
+            if (resultUri != null) {
+                onCustomImageSelected(resultUri)
+                onDismiss()
+            }
+        }
+    }
+
+// 2. Launcher to pick the image, then open crop UI
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
             if (uri != null) {
-                onCustomImageSelected(uri)
-                onDismiss()
+                // Prepare temp destination file
+                val destination = Uri.fromFile(
+                    File(
+                        context.cacheDir,
+                        "cropped_${System.currentTimeMillis()}.jpg"
+                    )
+                )
+
+                val options = UCrop.Options().apply {
+                    setCircleDimmedLayer(true)   // 🔥 Make crop area circular
+                    setShowCropGrid(false)       // optional, cleaner look
+                    setShowCropFrame(false)      // optional, removes square frame
+                }
+
+                // Launch uCrop
+                val cropIntent = UCrop.of(uri, destination)
+                    .withAspectRatio(1f, 1f)            // Square crop (same as avatar)
+                    .withOptions(options)
+                    .withMaxResultSize(1080, 1080)
+                    .getIntent(context)
+
+                cropLauncher.launch(cropIntent)
             }
         }
     )
+
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(

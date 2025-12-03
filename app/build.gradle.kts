@@ -77,6 +77,8 @@ dependencies {
     implementation(libs.mpandroidchart)
     implementation(libs.androidx.room.runtime.android)
     implementation("com.google.firebase:firebase-storage-ktx")
+    implementation ("com.github.yalantis:ucrop:2.2.8")
+    implementation ("androidx.appcompat:appcompat:1.6.1")
 
     // Testing dependencies
     testImplementation(libs.junit)
