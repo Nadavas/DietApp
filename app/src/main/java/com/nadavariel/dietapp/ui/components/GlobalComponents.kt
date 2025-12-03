@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -69,6 +70,7 @@ import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.AvatarConstants
 import com.yalantis.ucrop.UCrop
+import com.yalantis.ucrop.UCropActivity
 import java.io.File
 
 @Composable
@@ -348,6 +350,8 @@ fun AvatarSelectionDialog(
     onCustomImageSelected: (Uri) -> Unit // NEW: Callback for custom photo
 ) {
     val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+    val appColor = AppTheme.colors
 
     // 1. Launcher to crop after picking
     val cropLauncher = rememberLauncherForActivityResult(
@@ -377,9 +381,35 @@ fun AvatarSelectionDialog(
                 )
 
                 val options = UCrop.Options().apply {
-                    setCircleDimmedLayer(true)   // 🔥 Make crop area circular
-                    setShowCropGrid(false)       // optional, cleaner look
-                    setShowCropFrame(false)      // optional, removes square frame
+
+                    // Material3 Colors
+                    setToolbarColor(scheme.surface.toArgb())
+                    setStatusBarColor(scheme.surfaceVariant.toArgb())
+                    setToolbarWidgetColor(scheme.onSurface.toArgb())
+                    setActiveControlsWidgetColor(appColor.primaryGreen.toArgb())
+                    setDimmedLayerColor(scheme.surface.copy(alpha = 0.85f).toArgb())
+
+                    // Circle crop
+                    setCircleDimmedLayer(true)
+                    setShowCropGrid(false)
+                    setShowCropFrame(false)
+
+                    // Material-like behavior
+                    setHideBottomControls(false)
+                    setFreeStyleCropEnabled(false)
+                    setAllowedGestures(
+                        UCropActivity.SCALE,
+                        UCropActivity.ROTATE,
+                        UCropActivity.ALL
+                    )
+
+                    // Grid/frame
+                    setCropFrameColor(scheme.primary.toArgb())
+                    setCropGridColor(scheme.outlineVariant.toArgb())
+                    setCropGridColumnCount(0)
+                    setCropGridRowCount(0)
+
+                    setCompressionQuality(95)
                 }
 
                 // Launch uCrop
