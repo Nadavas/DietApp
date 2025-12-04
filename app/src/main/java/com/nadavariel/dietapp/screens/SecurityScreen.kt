@@ -155,13 +155,13 @@ fun SecurityScreen(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(AppTheme.colors.accentTeal.copy(alpha = 0.1f), CircleShape),
+                                    .background(AppTheme.colors.softBlue.copy(alpha = 0.1f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LockReset,
                                     contentDescription = null,
-                                    tint = AppTheme.colors.accentTeal,
+                                    tint = AppTheme.colors.softBlue,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -271,7 +271,7 @@ fun SecurityScreen(
                                     },
                                     modifier = Modifier.fillMaxWidth().height(48.dp),
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.primaryGreen)
+                                    colors = ButtonDefaults.buttonColors(containerColor = AppTheme.colors.softBlue)
                                 ) {
                                     if (authResult is AuthResult.Loading) {
                                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
