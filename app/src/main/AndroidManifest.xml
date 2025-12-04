@@ -73,11 +73,11 @@
             </intent-filter>
         </receiver>
 
-        <activity
-            android:name="com.yalantis.ucrop.UCropActivity"
-            android:screenOrientation="fullSensor"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            tools:ignore="DiscouragedApi" />
+<!--        <activity-->
+<!--            android:name="com.yalantis.ucrop.UCropActivity"-->
+<!--            android:screenOrientation="fullSensor"-->
+<!--            android:theme="@style/Theme.AppCompat.Light.NoActionBar"-->
+<!--            tools:ignore="DiscouragedApi" />-->
 
     </application>
 

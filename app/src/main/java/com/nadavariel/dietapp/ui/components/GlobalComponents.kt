@@ -1,11 +1,6 @@
 package com.nadavariel.dietapp.ui.components
 
-import android.app.Activity
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -58,9 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -73,10 +66,6 @@ import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.AvatarConstants
-import com.yalantis.ucrop.UCrop
-import com.yalantis.ucrop.UCropActivity
-import java.io.File
-import java.io.FileOutputStream
 
 @Composable
 fun HoveringNotificationCard(
@@ -354,87 +343,16 @@ fun AvatarSelectionDialog(
     onAvatarSelected: (String) -> Unit,
     onCustomImageSelected: (Uri) -> Unit // NEW: Callback for custom photo
 ) {
-    val context = LocalContext.current
-    val scheme = MaterialTheme.colorScheme
-    val appColor = AppTheme.colors
-
-    // 1. Launcher to crop after picking
-    val cropLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { activityResult ->
-        if (activityResult.resultCode == Activity.RESULT_OK) {
-            val dataIntent = activityResult.data
-            val resultUri = dataIntent?.let { UCrop.getOutput(it) }
-            if (resultUri != null) {
-                onCustomImageSelected(resultUri)
-                onDismiss()
-            }
-        }
-    }
-
-// 2. Launcher to pick the image, then open crop UI
+    // Launcher for the Photo Picker
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
             if (uri != null) {
-                // --- Step 1: Safe resize / guard ---
-                val safeUri = resizeImageIfNeeded(context, uri)
-                if (safeUri != null) {
-                    // Prepare temp destination file
-                    val destination = Uri.fromFile(
-                        File(
-                            context.cacheDir,
-                            "cropped_${System.currentTimeMillis()}.jpg"
-                        )
-                    )
-
-                    // --- Step 2: UCrop Options with Material3 and circle crop ---
-                    val options = UCrop.Options().apply {
-
-                        // Material3 Colors
-                        setToolbarColor(scheme.surface.toArgb())
-                        setStatusBarColor(scheme.surfaceVariant.toArgb())
-                        setToolbarWidgetColor(scheme.onSurface.toArgb())
-                        setActiveControlsWidgetColor(appColor.primaryGreen.toArgb())
-                        setDimmedLayerColor(scheme.surface.copy(alpha = 0.85f).toArgb())
-
-                        // Circle crop
-                        setCircleDimmedLayer(true)
-                        setShowCropGrid(false)
-                        setShowCropFrame(false)
-
-                        // Material-like behavior
-                        setHideBottomControls(false)
-                        setFreeStyleCropEnabled(false)
-                        setAllowedGestures(
-                            UCropActivity.SCALE,
-                            UCropActivity.ROTATE,
-                            UCropActivity.ALL
-                        )
-
-                        // Grid/frame colors
-                        setCropFrameColor(scheme.primary.toArgb())
-                        setCropGridColor(scheme.outlineVariant.toArgb())
-                        setCropGridColumnCount(0)
-                        setCropGridRowCount(0)
-
-                        setCompressionQuality(95)
-                    }
-
-                    // --- Step 3: Launch uCrop with safeUri ---
-                    val cropIntent = UCrop.of(safeUri, destination)
-                        .withAspectRatio(1f, 1f) // Square crop (same as avatar)
-                        .withOptions(options)
-                        .withMaxResultSize(1080, 1080)
-                        .getIntent(context)
-
-                    cropLauncher.launch(cropIntent)
-                }
+                onCustomImageSelected(uri)
+                onDismiss()
             }
         }
     )
-
-
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -579,45 +497,5 @@ fun UserAvatar(
                 modifier = Modifier.fillMaxSize()
             )
         }
-    }
-}
-
-private fun resizeImageIfNeeded(context: Context, sourceUri: Uri): Uri? {
-    return try {
-        // First, check the image size without loading full bitmap
-        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(sourceUri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, options)
-        }
-
-        // If image is too large, reject
-        if (options.outWidth > 5000 || options.outHeight > 5000) {
-            Toast.makeText(context, "Selected image is too large", Toast.LENGTH_SHORT).show()
-            return null
-        }
-
-        // Load bitmap with reasonable sampling if needed
-        val maxDimension = 1080
-        var scale = 1
-        while (options.outWidth / scale > maxDimension || options.outHeight / scale > maxDimension) {
-            scale *= 2
-        }
-
-        val decodeOptions = BitmapFactory.Options().apply { inSampleSize = scale }
-        val bitmap = context.contentResolver.openInputStream(sourceUri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, decodeOptions)
-        } ?: return null
-
-        // Create temp file
-        val tempFile = File(context.cacheDir, "cropped_${System.currentTimeMillis()}.jpg")
-        FileOutputStream(tempFile).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
-        }
-
-        Uri.fromFile(tempFile)
-    } catch (e: Exception) {
-        e.printStackTrace()
-        Toast.makeText(context, "Failed to process image", Toast.LENGTH_SHORT).show()
-        null
     }
 }
