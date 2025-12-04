@@ -16,7 +16,7 @@ import java.util.regex.Pattern
 
 class NewsRepository {
 
-    private val TAG = "NewsRepository"
+    private val tag = "NewsRepository"
 
     // FETCH LOGIC
     suspend fun fetchLatestArticles(totalLimit: Int = 20): List<NewsArticle> = withContext(Dispatchers.IO) {
@@ -34,7 +34,7 @@ class NewsRepository {
 
                 allArticles.addAll(limited)
             } catch (e: Exception) {
-                Log.e(TAG, "Error fetching $feedUrl", e)
+                Log.e(tag, "Error fetching $feedUrl", e)
             }
         }
 
@@ -66,7 +66,7 @@ class NewsRepository {
                 return connection.inputStream.bufferedReader().use { it.readText() }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Network error: ${e.message}")
+            Log.e(tag, "Network error: ${e.message}")
         }
         return null
     }
@@ -145,7 +145,7 @@ class NewsRepository {
     }
 
     // UTILS
-    private fun safeNextText(parser: XmlPullParser) = try { parser.nextText() ?: "" } catch (e: Exception) { "" }
+    private fun safeNextText(parser: XmlPullParser) = try { parser.nextText() ?: "" } catch (_: Exception) { "" }
 
     private fun extractSourceName(url: String): String = when {
         url.contains("bbc") -> "BBC Health"
@@ -166,7 +166,7 @@ class NewsRepository {
     private fun parseDate(dateString: String): Long {
         if (dateString.isEmpty()) return System.currentTimeMillis()
         val formats = listOf(SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US), SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US))
-        for (f in formats) { try { return f.parse(dateString)?.time ?: continue } catch (e: Exception) {} }
+        for (f in formats) { try { return f.parse(dateString)?.time ?: continue } catch (_: Exception) {} }
         return System.currentTimeMillis()
     }
 }

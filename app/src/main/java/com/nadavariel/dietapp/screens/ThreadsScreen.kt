@@ -1,8 +1,6 @@
 package com.nadavariel.dietapp.screens
 
 import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -17,12 +15,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,9 +47,7 @@ import java.util.Date
 import java.util.Locale
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material.icons.rounded.Newspaper
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.AccessTime
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -208,7 +202,7 @@ fun CommunityHomeContent(
                 NewsHighlightCard(
                     article = articles.first(),
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articles.first().url))
+                        val intent = Intent(Intent.ACTION_VIEW, articles.first().url.toUri())
                         context.startActivity(intent)
                     }
                 )
@@ -220,7 +214,7 @@ fun CommunityHomeContent(
                 NewsCardInternal(
                     article = article,
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(article.url))
+                        val intent = Intent(Intent.ACTION_VIEW, article.url.toUri())
                         context.startActivity(intent)
                     }
                 )
@@ -520,8 +514,8 @@ fun ThreadCardModern(
     topic: Topic,
     navController: NavController,
     threadViewModel: ThreadViewModel,
-    isFeatured: Boolean = false,
-    modifier: Modifier = Modifier // Added modifier param
+    modifier: Modifier = Modifier, // Added modifier param
+    isFeatured: Boolean = false
 ) {
     val likeCount by produceState(initialValue = 0, thread.id) {
         threadViewModel.getLikeCountForThread(thread.id) { count -> value = count }
@@ -815,6 +809,6 @@ fun getNewsSourceStyle(source: String): Pair<Color, ImageVector> {
         source.contains("Medical", true) -> Pair(AppTheme.colors.softBlue, Icons.Default.LocalHospital)
         source.contains("Science", true) -> Pair(AppTheme.colors.accentTeal, Icons.Default.Science)
         source.contains("Eat", true) -> Pair(AppTheme.colors.warmOrange, Icons.Default.Restaurant)
-        else -> Pair(AppTheme.colors.textSecondary, Icons.Default.Article)
+        else -> Pair(AppTheme.colors.textSecondary, Icons.AutoMirrored.Filled.Article)
     }
 }

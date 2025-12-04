@@ -93,14 +93,11 @@ fun WeightScreen(
         (progressAmount / totalGoal * 100f).coerceIn(0f, 100f)
     } else 0f
 
-    val isGainingGoal = targetWeight > userProfile.startingWeight
-
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             PersonalizedHeader(
                 navController = navController,
-                userName = userProfile.name,
                 progressPercentage = progressPercentage
             )
 
@@ -124,7 +121,6 @@ fun WeightScreen(
                             currentWeight = currentWeight,
                             targetWeight = targetWeight,
                             progressPercentage = progressPercentage,
-                            isGainingGoal = isGainingGoal,
                             daysTracking = weightHistory.size
                         )
                     }
@@ -276,7 +272,6 @@ fun WeightScreen(
 @Composable
 private fun PersonalizedHeader(
     navController: NavController,
-    userName: String,
     progressPercentage: Float
 ) {
     Surface(
@@ -333,7 +328,6 @@ private fun JourneyStoryCard(
     currentWeight: Float,
     targetWeight: Float,
     progressPercentage: Float,
-    isGainingGoal: Boolean,
     daysTracking: Int
 ) {
     val rawDiff = currentWeight - startingWeight

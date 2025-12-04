@@ -5,7 +5,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.font.FontWeight
-import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
 

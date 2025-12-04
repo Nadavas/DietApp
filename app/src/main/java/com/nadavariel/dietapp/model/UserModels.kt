@@ -59,7 +59,7 @@ data class Goal(
 
 // --- Questions ---
 
-enum class InputType { DOB, HEIGHT, WEIGHT, TEXT, TARGET_WEIGHT, EXERCISE_TYPE }
+enum class InputType { DOB, HEIGHT, WEIGHT, TARGET_WEIGHT, EXERCISE_TYPE }
 data class Question(
     val text: String,
     val options: List<String>? = null,
