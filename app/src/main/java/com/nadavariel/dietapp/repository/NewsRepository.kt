@@ -16,34 +16,39 @@ import java.util.regex.Pattern
 
 class NewsRepository {
 
-    private val tag = "NewsRepository"
+    private val TAG = "NewsRepository"
 
-    // FETCH LOGIC
+    // FETCH LOGIC - STRICT FAIRNESS: Max 2 articles per source
     suspend fun fetchLatestArticles(totalLimit: Int = 20): List<NewsArticle> = withContext(Dispatchers.IO) {
         val allArticles = mutableListOf<NewsArticle>()
 
         NewsSourcesConfig.sources.forEach { feedUrl ->
             try {
-                // 1. Fetch
+                // 1. Fetch and parse articles from each source
                 val fetched = fetchAndParse(feedUrl)
 
-                // 2. "STRICT FAIRNESS" LOGIC:
-                // Limit each source to exactly 2 articles max.
-                // This ensures "The Conversation" (or any other) can never take more than 2 slots.
+                // 2. STRICT FAIRNESS ENFORCEMENT:
+                // Take EXACTLY 2 articles max per source to ensure fair representation
+                // With 5 sources × 2 articles = 10 articles max, no source can dominate
                 val limited = fetched.take(2)
 
                 allArticles.addAll(limited)
+
+                Log.d(TAG, "Added ${limited.size} articles from ${extractSourceName(feedUrl)}")
             } catch (e: Exception) {
-                Log.e(tag, "Error fetching $feedUrl", e)
+                Log.e(TAG, "Error fetching $feedUrl", e)
             }
         }
 
-        // 3. Sort by date to keep it fresh
-        // Since we already limited the quantity, this sort won't result in flooding.
-        allArticles
-            .distinctBy { it.title }
-            .sortedByDescending { it.publishedDate }
-            .take(totalLimit)
+        // 3. Sort by date to show the freshest articles first
+        // Since each source contributes max 2 articles, we maintain fairness
+        val result = allArticles
+            .distinctBy { it.title } // Remove any duplicate titles
+            .sortedByDescending { it.publishedDate } // Newest first
+            .take(totalLimit) // Take requested number
+
+        Log.d(TAG, "Returning ${result.size} total articles")
+        result
     }
 
     private fun fetchAndParse(feedUrl: String): List<NewsArticle> {
@@ -64,14 +69,16 @@ class NewsRepository {
 
             if (connection.responseCode == 200) {
                 return connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                Log.w(TAG, "HTTP ${connection.responseCode} for $urlString")
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error: ${e.message}")
+            Log.e(TAG, "Network error downloading $urlString: ${e.message}")
         }
         return null
     }
 
-    // PARSER (Includes your Image Extraction Logic)
+    // PARSER (Includes Image Extraction Logic)
     private fun parseXml(xmlContent: String, sourceName: String): List<NewsArticle> {
         val articles = mutableListOf<NewsArticle>()
         try {
@@ -101,22 +108,37 @@ class NewsRepository {
                             currentImage = null
                         } else if (insideItem) {
                             when {
-                                tagName.equals("title", true) -> currentTitle = safeNextText(parser)
-                                tagName.equals("description", true) || tagName.equals("summary", true) || tagName.equals("content", true) -> {
+                                tagName.equals("title", true) -> {
+                                    currentTitle = safeNextText(parser)
+                                }
+                                tagName.equals("description", true) ||
+                                        tagName.equals("summary", true) ||
+                                        tagName.equals("content", true) -> {
                                     val content = safeNextText(parser)
                                     currentDescription = content
                                     // Try extracting image from HTML if not found yet
-                                    if (currentImage == null) currentImage = extractImageFromHtml(content)
+                                    if (currentImage == null) {
+                                        currentImage = extractImageFromHtml(content)
+                                    }
                                 }
                                 tagName.equals("link", true) -> {
                                     val href = parser.getAttributeValue(null, "href")
-                                    if (!href.isNullOrEmpty()) currentLink = href else {
+                                    if (!href.isNullOrEmpty()) {
+                                        currentLink = href
+                                    } else {
                                         val text = safeNextText(parser)
                                         if (text.isNotEmpty()) currentLink = text
                                     }
                                 }
-                                tagName.contains("date", true) || tagName.equals("published", true) -> {
-                                    currentDate = safeNextText(parser)
+                                // DATE PARSING - Support multiple date tag names
+                                tagName.contains("date", true) ||
+                                        tagName.equals("published", true) ||
+                                        tagName.equals("pubDate", true) ||
+                                        tagName.equals("updated", true) -> {
+                                    val dateText = safeNextText(parser)
+                                    if (dateText.isNotEmpty() && currentDate.isEmpty()) {
+                                        currentDate = dateText
+                                    }
                                 }
                                 // IMAGE EXTRACTION
                                 tagName.contains("thumbnail", true) ||
@@ -124,7 +146,9 @@ class NewsRepository {
                                         tagName.equals("image", true) ||
                                         tagName.equals("media:content", true) -> {
                                     val url = parser.getAttributeValue(null, "url")
-                                    if (!url.isNullOrEmpty()) currentImage = url
+                                    if (!url.isNullOrEmpty() && currentImage == null) {
+                                        currentImage = url
+                                    }
                                 }
                             }
                         }
@@ -133,26 +157,44 @@ class NewsRepository {
                         if (tagName.equals("item", true) || tagName.equals("entry", true)) {
                             insideItem = false
                             if (currentTitle.isNotEmpty() && currentLink.isNotEmpty()) {
-                                articles.add(NewsArticle(UUID.randomUUID().toString(), cleanText(currentTitle), cleanHtml(currentDescription), currentLink, sourceName, parseDate(currentDate), currentImage))
+                                val parsedDate = parseDate(currentDate)
+                                articles.add(
+                                    NewsArticle(
+                                        UUID.randomUUID().toString(),
+                                        cleanText(currentTitle),
+                                        cleanHtml(currentDescription),
+                                        currentLink,
+                                        sourceName,
+                                        parsedDate,
+                                        currentImage
+                                    )
+                                )
                             }
                         }
                     }
                 }
                 eventType = parser.next()
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing XML for $sourceName: ${e.message}", e)
+        }
         return articles
     }
 
     // UTILS
-    private fun safeNextText(parser: XmlPullParser) = try { parser.nextText() ?: "" } catch (_: Exception) { "" }
+    private fun safeNextText(parser: XmlPullParser) = try {
+        parser.nextText() ?: ""
+    } catch (e: Exception) {
+        ""
+    }
 
     private fun extractSourceName(url: String): String = when {
-        url.contains("bbc") -> "BBC Health"
-        url.contains("nutritionfacts") -> "NutritionFacts"
-        url.contains("theconversation") -> "The Conversation"
-        url.contains("nytimes") -> "NY Times"
-        else -> "Health News"
+        url.contains("nutritionfacts", true) -> "NutritionFacts.org"
+        url.contains("skinnytaste", true) -> "Skinnytaste" // ✅ Added this
+        url.contains("precisionnutrition", true) -> "Precision Nutrition"
+        url.contains("sharonpalmer", true) -> "Sharon Palmer"
+        url.contains("eatingwell", true) -> "EatingWell"   // ✅ Added this
+        else -> "Nutrition News"
     }
 
     private fun extractImageFromHtml(html: String): String? {
@@ -160,13 +202,81 @@ class NewsRepository {
         return if (matcher.find()) matcher.group(1) else null
     }
 
-    private fun cleanHtml(html: String) = html.replace(Regex("<[^>]*>"), "").replace("&nbsp;", " ").trim().take(200)
-    private fun cleanText(text: String) = text.replace("\n", " ").trim()
+    private fun cleanHtml(html: String) = html
+        .replace(Regex("<[^>]*>"), "") // Remove HTML tags
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .trim()
+        .take(200)
 
+    private fun cleanText(text: String) = text
+        .replace("\n", " ")
+        .replace("  ", " ")
+        .trim()
+
+    /**
+     * Parse date strings from RSS feeds with comprehensive format support.
+     * CRITICAL: This must correctly parse dates or all articles will show as "Just now"
+     */
     private fun parseDate(dateString: String): Long {
-        if (dateString.isEmpty()) return System.currentTimeMillis()
-        val formats = listOf(SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US), SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US))
-        for (f in formats) { try { return f.parse(dateString)?.time ?: continue } catch (_: Exception) {} }
+        if (dateString.isEmpty()) {
+            Log.w(TAG, "Empty date string, using current time")
+            return System.currentTimeMillis()
+        }
+
+        // Remove any timezone abbreviations that SimpleDateFormat struggles with
+        val cleanedDate = dateString
+            .replace("GMT", "+0000")
+            .replace("UTC", "+0000")
+            .trim()
+
+        // Try multiple common RSS date formats
+        val formats = listOf(
+            // RSS 2.0 format: "Fri, 05 Dec 2024 10:30:00 +0000"
+            SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US),
+            SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US),
+
+            // ISO 8601 / Atom format: "2024-12-05T10:30:00Z"
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US),
+
+            // Alternative formats
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US),
+            SimpleDateFormat("dd MMM yyyy HH:mm:ss Z", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd", Locale.US) // Date only
+        )
+
+        for (format in formats) {
+            try {
+                format.isLenient = false
+                format.timeZone = TimeZone.getTimeZone("UTC")
+
+                val parsedDate = format.parse(cleanedDate)
+                if (parsedDate != null) {
+                    val now = System.currentTimeMillis()
+                    val parsedTime = parsedDate.time
+
+                    // Sanity check: date shouldn't be in the future or too old (>2 years)
+                    if (parsedTime <= now && (now - parsedTime) < (730L * 24 * 60 * 60 * 1000)) {
+                        Log.d(TAG, "✓ Parsed date: '$dateString' -> ${Date(parsedTime)}")
+                        return parsedTime
+                    } else {
+                        Log.w(TAG, "Date outside valid range: $parsedTime")
+                    }
+                }
+            } catch (e: Exception) {
+                // Try next format
+            }
+        }
+
+        // If all parsing fails, log warning and use current time
+        Log.w(TAG, "⚠ Failed to parse date: '$dateString' - defaulting to current time")
         return System.currentTimeMillis()
     }
 }

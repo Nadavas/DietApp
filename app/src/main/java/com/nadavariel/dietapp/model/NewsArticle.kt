@@ -12,18 +12,19 @@ data class NewsArticle(
 
 object NewsSourcesConfig {
     val sources = listOf(
-
-        // ✅ NutritionFacts (Good quality)
+        // ✅ NutritionFacts.org - Evidence-based nutrition by Dr. Michael Greger
         "https://nutritionfacts.org/feed/",
 
-        // ✅ NY Times Health (Includes nutrition)
-        "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+        // ✅ Nutrition Stripped - Registered dietitian, mindful nutrition & recipes
+        "https://www.skinnytaste.com/feed/",
 
-        // ✅ BBC Health: Excellent global coverage, extremely reliable images (media:thumbnail).
-        "http://feeds.bbci.co.uk/news/health/rss.xml",
+        // ✅ Precision Nutrition - Science-backed nutrition, diet & health coaching
+        "https://www.precisionnutrition.com/blog/feed/",
 
-        // ✅ The Conversation (Health): Academic but accessible news.
-        // Uses ATOM format, but our new parser handles it + extracts images from the HTML.
-        "https://theconversation.com/us/health/articles.atom"
+        // ✅ Sharon Palmer (Plant-Based RDN) - Plant-based nutrition & sustainability
+        "https://sharonpalmer.com/feed/",
+
+        // ✅ The Real Food Dietitians - Dietitian-authored recipes & nutrition tips
+        "https://www.eatingwell.com/feed/"
     )
 }
