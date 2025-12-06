@@ -1,5 +1,6 @@
 package com.nadavariel.dietapp.data
 
+import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 
@@ -18,7 +19,9 @@ object QuestionnaireConstants {
     // The Master List
     val questions = listOf(
         Question(DOB_QUESTION, inputType = InputType.DOB),
-        Question(GENDER_QUESTION, options = listOf("Male", "Female", "Other / Prefer not to say")),
+        Question(GENDER_QUESTION, options = Gender.entries
+            .filter { it != Gender.UNKNOWN } // Exclude "Not Set" from UI options
+            .map { it.displayName }),
         Question(HEIGHT_QUESTION, inputType = InputType.HEIGHT),
         Question(WEIGHT_QUESTION, inputType = InputType.WEIGHT),
         Question("What is your primary fitness goal?", options = listOf("Lose weight", "Gain muscle", "Maintain current weight", "Improve overall health")),

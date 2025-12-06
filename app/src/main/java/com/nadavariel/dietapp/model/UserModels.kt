@@ -21,20 +21,16 @@ data class UserProfile(
 enum class Gender(val displayName: String) {
     MALE("Male"),
     FEMALE("Female"),
-    PREFER_NOT_TO_SAY("Prefer not to say"),
-    UNKNOWN("Not Set"); // Removed NON_BINARY
+    PREFER_NOT_TO_SAY("Other / Prefer not to say"),
+    UNKNOWN("Not Set");
 
     companion object {
         /**
-         * Parses a string answer from the questionnaire into a Gender enum.
+         * Dynamic lookup: Finds the Gender where the displayName matches the answer.
+         * This ensures Single Source of Truth.
          */
         fun fromString(answerText: String): Gender {
-            return when (answerText) {
-                "Male" -> MALE
-                "Female" -> FEMALE
-                "Other / Prefer not to say" -> PREFER_NOT_TO_SAY
-                else -> UNKNOWN
-            }
+            return entries.find { it.displayName.equals(answerText, ignoreCase = true) } ?: UNKNOWN
         }
     }
 }
