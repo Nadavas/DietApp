@@ -3,7 +3,6 @@
 package com.nadavariel.dietapp.viewmodel
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -26,8 +25,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.ktx.storage
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.Gender
@@ -43,7 +40,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
-import androidx.core.net.toUri
 
 sealed class AuthResult {
     data object Success : AuthResult()
@@ -61,7 +57,6 @@ enum class GoogleSignInFlowResult {
 class AuthViewModel(private val preferencesRepository: UserPreferencesRepository) : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
-    private val storage: FirebaseStorage = Firebase.storage
 
     val nameState = mutableStateOf("")
     val emailState = mutableStateOf("")
@@ -185,41 +180,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         userProfileListener?.remove()
     }
 
-    // --- NEW: Handle UI selection of custom image ---
-    fun handleCustomImageSelection(uri: Uri) {
-        selectedAvatarId.value = uri.toString()
-    }
-
-    // --- NEW: Helper to upload image if it's a local URI ---
-    private suspend fun uploadAvatarImage(userId: String, avatarString: String?): String? {
-        if (avatarString.isNullOrBlank()) return null
-
-        // 1. If it's a pre-defined asset (e.g., "avatar_1"), return as is.
-        if (avatarString.startsWith("avatar_")) return avatarString
-
-        // 2. If it's already a remote URL (http/https), return as is.
-        if (avatarString.startsWith("http")) return avatarString
-
-        // 3. If it is a local content URI, upload it to Firebase Storage.
-        return try {
-            val uri = avatarString.toUri()
-            // Save to: profile_images/<USER_ID>.jpg
-            val storageRef = storage.reference.child("profile_images/$userId.jpg")
-
-            // Upload
-            storageRef.putFile(uri).await()
-
-            // Get download URL
-            val downloadUrl = storageRef.downloadUrl.await()
-            Log.d("AuthViewModel", "Avatar uploaded successfully. URL: $downloadUrl")
-            downloadUrl.toString()
-        } catch (e: Exception) {
-            Log.e("AuthViewModel", "Failed to upload avatar image", e)
-            // Return null if upload fails, or you could return the original string if you prefer logic to handle broken URIs
-            null
-        }
-    }
-
     suspend fun saveUserProfile(profile: UserProfile) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
@@ -270,12 +230,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
         val emailForPrefs = emailState.value
 
-        // 1. Create the user first to get the UID
-        val authResult = auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim()).await()
-        val userId = authResult.user?.uid ?: throw Exception("User ID missing after creation")
-
-        // 2. Upload Avatar (if it's a local URI)
-        val finalAvatarId = uploadAvatarImage(userId, selectedAvatarId.value)
+        // Just await the creation. We don't need the result variable since saveUserProfile gets the user internally.
+        auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim()).await()
 
         _authResult.value = AuthResult.Success
 
@@ -285,13 +241,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             preferencesRepository.clearUserPreferences()
         }
 
-        // 3. Save profile with the final avatar ID (URL or Resource String)
+        // Save profile
         val newProfile = UserProfile(
             name = newName,
             startingWeight = 0f,
             height = 0f,
             dateOfBirth = null,
-            avatarId = finalAvatarId,
+            avatarId = selectedAvatarId.value,
             gender = Gender.UNKNOWN
         )
         saveUserProfile(newProfile)
@@ -303,12 +259,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     suspend fun createGoogleUserAndProfile() {
         // Get the account details we stored in handleGoogleSignIn
         val account = _googleAccount.value ?: throw Exception("Google account not found.")
-        val userId = auth.currentUser?.uid ?: throw Exception("User not signed in")
 
         _authResult.value = AuthResult.Loading
 
-        // 1. Upload Avatar (if it's a local URI from custom selection)
-        val finalAvatarId = uploadAvatarImage(userId, selectedAvatarId.value)
+        // Note: auth.currentUser is already set because we signed in during handleGoogleSignIn
 
         _authResult.value = AuthResult.Success
 
@@ -326,14 +280,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             startingWeight = 0f,
             height = 0f,
             dateOfBirth = null,
-            avatarId = finalAvatarId, // Use the processed ID
+            avatarId = selectedAvatarId.value,
             gender = Gender.UNKNOWN
         )
 
         Log.d("AuthViewModel", "Saving Google Profile: Name='${newProfile.name}', Avatar='${newProfile.avatarId}'")
         saveUserProfile(newProfile)
 
-        // Clear the temporary sign-up state (this sets _googleAccount.value to null)
+        // Clear the temporary sign-up state
         clearInputFields()
     }
 
@@ -470,15 +424,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         viewModelScope.launch {
             val userId = auth.currentUser?.uid
             if (userId != null) {
-                // 1. Try to upload
-                var finalAvatarId = uploadAvatarImage(userId, avatarId)
-
-                // 2. SAFETY CHECK: If upload failed (returned null), but we were trying to set a new image (avatarId wasn't null),
-                // fallback to the existing avatar from the current profile so we don't wipe it out.
-                if (finalAvatarId == null && !avatarId.isNullOrBlank()) {
-                    Log.e("AuthViewModel", "Upload failed. Reverting to previous avatar.")
-                    finalAvatarId = _userProfile.value.avatarId
-                }
+                // Determine the avatar ID. If a new one is passed, use it; otherwise keep existing.
+                // Since we removed upload logic, we just treat avatarId as a simple string.
+                val finalAvatarId = if (!avatarId.isNullOrBlank()) avatarId else _userProfile.value.avatarId
 
                 val parsedStartingWeight = weight.toFloatOrNull() ?: _userProfile.value.startingWeight
                 val parsedHeight = height.toFloatOrNull() ?: _userProfile.value.height
@@ -488,7 +436,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     startingWeight = parsedStartingWeight,
                     height = parsedHeight,
                     dateOfBirth = dateOfBirth,
-                    avatarId = finalAvatarId, // Use the processed ID
+                    avatarId = finalAvatarId,
                     gender = gender,
                 )
                 saveUserProfile(updatedProfile)

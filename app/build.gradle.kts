@@ -76,7 +76,7 @@ dependencies {
     // For graphics
     implementation(libs.mpandroidchart)
     implementation(libs.androidx.room.runtime.android)
-    implementation("com.google.firebase:firebase-storage-ktx")
+//    implementation("com.google.firebase:firebase-storage-ktx")
 //    implementation ("com.github.yalantis:ucrop:2.2.8")
 //    implementation ("androidx.appcompat:appcompat:1.6.1")
 
@@ -95,6 +95,6 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.reorderable)
-    implementation("io.coil-kt:coil-compose:2.5.0")
+//    implementation("io.coil-kt:coil-compose:2.5.0")
 
 }

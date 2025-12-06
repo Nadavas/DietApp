@@ -395,12 +395,6 @@ fun EditProfileScreen(
             onDismiss = { showAvatarDialog = false },
             onAvatarSelected = { newId ->
                 selectedAvatarId = newId
-            },
-            onCustomImageSelected = { uri ->
-                // FIX: Update the LOCAL variable so the UI updates immediately
-                selectedAvatarId = uri.toString()
-
-                authViewModel.handleCustomImageSelection(uri)
             }
         )
     }

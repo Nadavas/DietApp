@@ -373,10 +373,6 @@ fun SignUpScreen(
             onDismiss = { showAvatarDialog = false },
             onAvatarSelected = { newId ->
                 authViewModel.selectedAvatarId.value = newId
-            },
-            onCustomImageSelected = { uri ->
-                // TODO: Handle the URI
-                authViewModel.handleCustomImageSelection(uri)
             }
         )
     }
