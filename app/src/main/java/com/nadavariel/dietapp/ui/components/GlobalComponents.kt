@@ -1,8 +1,16 @@
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp.ui.components
 
+import android.app.Activity
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -23,8 +31,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,19 +57,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.util.AvatarConstants
+import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun HoveringNotificationCard(
@@ -487,3 +508,186 @@ fun StyledAlertDialog(
         }
     )
 }
+
+// --- SIGN IN AND UP COMPOSABLES ---
+
+
+// --- 1. SHARED GOOGLE SIGN-IN LOGIC ---
+@Composable
+fun rememberGoogleSignInLauncher(
+    authViewModel: AuthViewModel,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    onAuthSuccess: (isNewUser: Boolean) -> Unit
+): Pair<ManagedActivityResultLauncher<android.content.Intent, ActivityResult>, GoogleSignInClient> {
+    val context = LocalContext.current
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember(context) {
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                authViewModel.handleGoogleSignIn(account) { flowResult ->
+                    when (flowResult) {
+                        GoogleSignInFlowResult.GoToHome -> onAuthSuccess(false)
+                        GoogleSignInFlowResult.GoToSignUp -> onAuthSuccess(true)
+                        GoogleSignInFlowResult.Error -> {}
+                    }
+                }
+            } catch (e: ApiException) {
+                scope.launch { snackbarHostState.showSnackbar("Google Sign-In failed: ${e.message}") }
+            } catch (e: Exception) {
+                scope.launch { snackbarHostState.showSnackbar("An unexpected error occurred: ${e.message}") }
+            }
+        } else {
+            scope.launch { snackbarHostState.showSnackbar("Google Sign-In cancelled or failed.") }
+        }
+    }
+
+    return Pair(launcher, googleSignInClient)
+}
+
+// --- 2. SHARED LAYOUT WRAPPER ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuthScreenWrapper(
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    content: @Composable BoxScope.(PaddingValues) -> Unit
+) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = AppTheme.colors.textPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = AppTheme.colors.textPrimary
+                )
+            )
+        },
+        containerColor = Color.Transparent
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(AppTheme.colors.homeGradient))
+                .padding(paddingValues)
+        ) {
+            content(paddingValues)
+        }
+    }
+}
+
+// --- 3. STYLED TEXT FIELD ---
+@Composable
+fun AppTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    enabled: Boolean = true
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        singleLine = true,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        enabled = enabled,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = AppTheme.colors.primaryGreen,
+            focusedLabelColor = AppTheme.colors.primaryGreen,
+            cursorColor = AppTheme.colors.primaryGreen
+        )
+    )
+}
+
+// --- 4. PRIMARY BUTTON (SIGN IN / NEXT) ---
+@Composable
+fun AppPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        enabled = !isLoading,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = AppTheme.colors.primaryGreen,
+            contentColor = Color.White
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = Color.White
+            )
+        } else {
+            Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// --- 5. GOOGLE SIGN IN BUTTON ---
+@Composable
+fun GoogleSignInButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    text: String = "Continue with Google"
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        enabled = enabled,
+        border = BorderStroke(1.dp, AppTheme.colors.textSecondary.copy(alpha = 0.5f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = AppTheme.colors.textPrimary
+        )
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.google_logo),
+            contentDescription = "Google Logo",
+            modifier = Modifier.size(24.dp),
+            tint = Color.Unspecified
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(text = text, fontSize = 16.sp)
+    }
+}
+
+// --- END OF SIGN IN AND UP COMPOSABLES
