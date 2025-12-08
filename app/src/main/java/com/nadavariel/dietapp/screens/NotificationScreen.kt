@@ -49,7 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.NotificationPreference
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.account.StyledAlertDialog
+import com.nadavariel.dietapp.ui.components.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.NotificationViewModel
 import java.util.Calendar
 import androidx.core.net.toUri

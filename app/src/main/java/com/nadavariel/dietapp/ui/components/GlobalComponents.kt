@@ -448,3 +448,42 @@ fun UserAvatar(
         }
     }
 }
+
+@Composable
+fun StyledAlertDialog(
+    onDismissRequest: () -> Unit,
+    title: String,
+    text: String,
+    confirmButtonText: String,
+    dismissButtonText: String,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text(confirmButtonText)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = AppTheme.colors.textSecondary
+                )
+            ) {
+                Text(dismissButtonText)
+            }
+        }
+    )
+}

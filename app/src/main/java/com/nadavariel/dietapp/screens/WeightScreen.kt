@@ -42,7 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.WeightEntry
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.account.StyledAlertDialog
+import com.nadavariel.dietapp.ui.components.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import java.text.SimpleDateFormat

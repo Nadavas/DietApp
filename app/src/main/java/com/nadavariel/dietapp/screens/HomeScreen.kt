@@ -38,7 +38,7 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.ui.account.StyledAlertDialog
+import com.nadavariel.dietapp.ui.components.StyledAlertDialog
 import com.nadavariel.dietapp.ui.home.*
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.AuthViewModel

@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.account.StyledAlertDialog
+import com.nadavariel.dietapp.ui.components.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 
@@ -577,7 +577,6 @@ fun ReauthDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    // FIX: Green App Theme styling
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AppTheme.colors.primaryGreen,
                         focusedLabelColor = AppTheme.colors.primaryGreen,
@@ -590,10 +589,9 @@ fun ReauthDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                // FIX: Green button
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AppTheme.colors.primaryGreen,
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
                 ),
                 shape = RoundedCornerShape(12.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
