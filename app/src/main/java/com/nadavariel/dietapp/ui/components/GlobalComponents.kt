@@ -76,7 +76,7 @@ import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.util.AvatarConstants
+import com.nadavariel.dietapp.data.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
 import kotlinx.coroutines.CoroutineScope

@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.util
+package com.nadavariel.dietapp.data
 
 import com.nadavariel.dietapp.R
 
