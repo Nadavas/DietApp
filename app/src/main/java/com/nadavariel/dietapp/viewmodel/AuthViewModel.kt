@@ -90,6 +90,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     private var userProfileListener: ListenerRegistration? = null
 
+    // New State for the Tip Card
+    private val _hasDismissedPlanTip = MutableStateFlow(true) // Default to true until loaded to prevent flash
+    val hasDismissedPlanTip: StateFlow<Boolean> = _hasDismissedPlanTip.asStateFlow()
+
+    private val _isPreferencesLoaded = MutableStateFlow(false)
+    val isPreferencesLoaded: StateFlow<Boolean> = _isPreferencesLoaded.asStateFlow()
+
     init {
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
@@ -105,6 +112,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         viewModelScope.launch {
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
+
+            // Load the dismissal state
+            preferencesRepository.hasDismissedPlanTipFlow.collect { dismissed ->
+                _hasDismissedPlanTip.value = dismissed
+                _isPreferencesLoaded.value = true
+            }
         }
 
         _userProfile.combine(snapshotFlow { currentUser }) { profile, user ->
@@ -121,6 +134,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             .distinctUntilChanged()
             .onEach { hasMissing -> _hasMissingPrimaryProfileDetails.value = hasMissing }
             .launchIn(viewModelScope)
+    }
+
+    // New function to handle dismissal
+    fun dismissPlanTip() {
+        viewModelScope.launch {
+            _hasDismissedPlanTip.value = true
+            preferencesRepository.setHasDismissedPlanTip(true)
+        }
     }
 
     private fun attachUserProfileListener() {

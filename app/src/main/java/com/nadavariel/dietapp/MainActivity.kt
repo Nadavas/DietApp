@@ -153,11 +153,16 @@ class MainActivity : ComponentActivity() {
                         is DietPlanResult.Success -> {
                             planReadyMessage = "Your plan is ready! Click to view."
 
-                            delay(3000L)
-
-                            if (planReadyMessage != null) {
-                                planReadyMessage = null
+                            try {
+                                delay(3000L)
+                                // If we reach here, the timer finished naturally.
+                                // We reset the result state so the logic is clean for next time.
                                 questionsViewModel.resetDietPlanResult()
+                            } finally {
+                                // This block runs whether the timer finished OR if the user
+                                // reset data (cancelling this coroutine).
+                                // This guarantees the message disappears.
+                                planReadyMessage = null
                             }
                         }
                         is DietPlanResult.Error -> {
@@ -169,7 +174,11 @@ class MainActivity : ComponentActivity() {
                                 questionsViewModel.resetDietPlanResult()
                             }
                         }
-                        else -> { /* Do nothing for Idle/Loading */ }
+                        else -> {
+                            // Safety: If state changes to Idle/Loading (like during reset),
+                            // ensure message is gone.
+                            planReadyMessage = null
+                        }
                     }
                 }
 

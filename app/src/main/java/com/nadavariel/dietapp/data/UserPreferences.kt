@@ -17,6 +17,8 @@ class UserPreferencesRepository(private val context: Context) {
     private object PreferencesKeys {
         val USER_EMAIL = stringPreferencesKey("user_email")
         val REMEMBER_ME = booleanPreferencesKey("remember_me")
+        // New Key
+        val HAS_DISMISSED_PLAN_TIP = booleanPreferencesKey("has_dismissed_plan_tip")
     }
 
     val userEmailFlow: Flow<String> = context.dataStore.data
@@ -29,10 +31,23 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.REMEMBER_ME] == true
         }
 
+    // New Flow
+    val hasDismissedPlanTipFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.HAS_DISMISSED_PLAN_TIP] == true
+        }
+
     suspend fun saveUserPreferences(email: String, rememberMe: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.USER_EMAIL] = email
             preferences[PreferencesKeys.REMEMBER_ME] = rememberMe
+        }
+    }
+
+    // New Function
+    suspend fun setHasDismissedPlanTip(dismissed: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.HAS_DISMISSED_PLAN_TIP] = dismissed
         }
     }
 

@@ -74,7 +74,10 @@ fun QuestionsScreen(
                     )
                 },
                 navigationIcon = {
-                    val hideBackButton = startQuiz && screenState == ScreenState.QUIZ_MODE && quizCurrentIndex == 0
+                    val hideBackButton = startQuiz
+                            && screenState == ScreenState.QUIZ_MODE
+                            && quizCurrentIndex == 0
+                            && source == "onboarding"
 
                     if (!hideBackButton) {
                         IconButton(onClick = {
@@ -86,7 +89,13 @@ fun QuestionsScreen(
                                     if (quizCurrentIndex > 0) {
                                         quizCurrentIndex--
                                     } else {
-                                        screenState = ScreenState.LANDING
+                                        // FIX 2: If we forced 'startQuiz', going back from Q1 should exit the screen,
+                                        // instead of showing the Landing page they skipped.
+                                        if (startQuiz) {
+                                            navController.popBackStack()
+                                        } else {
+                                            screenState = ScreenState.LANDING
+                                        }
                                     }
                                 }
                                 else -> {

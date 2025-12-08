@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,7 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
+import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.ui.home.*
 import com.nadavariel.dietapp.ui.AppTheme
@@ -57,6 +59,10 @@ fun HomeScreen(
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
     val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
 
+    // New states for dismissal logic
+    val hasDismissedPlanTip by authViewModel.hasDismissedPlanTip.collectAsStateWithLifecycle()
+    val isPreferencesLoaded by authViewModel.isPreferencesLoaded.collectAsStateWithLifecycle()
+
     val selectedDate by foodLogViewModel.selectedDateState.collectAsState()
     val currentWeekStartDate by foodLogViewModel.currentWeekStartDateState.collectAsState()
     val mealsForSelectedDate by foodLogViewModel.mealsForSelectedDate.collectAsState()
@@ -67,7 +73,8 @@ fun HomeScreen(
     val dietPlan by goalViewModel.currentDietPlan.collectAsStateWithLifecycle()
     val isLoadingPlan by goalViewModel.isLoadingPlan.collectAsStateWithLifecycle()
 
-    val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan
+    // Added isPreferencesLoaded to the loading check
+    val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan || !isPreferencesLoaded
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
@@ -127,6 +134,73 @@ fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+
+                    // --- LOGIC: Show Tip Card if Plan Exists + Not Dismissed ---
+                    if (dietPlan != null && !hasDismissedPlanTip) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.1f)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_diet_plan), // Ensure you have this icon or use a default
+                                            contentDescription = null,
+                                            tint = AppTheme.colors.primaryGreen,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = "Your Plan is Ready!",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AppTheme.colors.darkGreyText
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(
+                                        text = "You can access your personalized diet plan anytime in the Account tab.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = AppTheme.colors.textSecondary
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(onClick = { authViewModel.dismissPlanTip() }) {
+                                            Text("Got it", color = AppTheme.colors.textSecondary)
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = {
+                                                // Dismiss AND Navigate
+                                                authViewModel.dismissPlanTip()
+                                                navController.navigate(NavRoutes.DIET_PLAN)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = AppTheme.colors.primaryGreen
+                                            )
+                                        ) {
+                                            Text("View Plan")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // --- MISSING ALERT SECTION ---
                     // Show this card if no diet plan exists and we aren't loading one.
@@ -518,7 +592,8 @@ fun WeightStatusCard(
                     text = if (isDataReady) {
                         if (isSetback) "⚠️ $formattedProgress kg $progressText" else "$formattedProgress kg $progressText"
                     } else {
-                        "Loading..."
+                        // Check specifically why it's not ready
+                        if (targetWeight <= 0f) "No goal set" else "Loading..."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isSetback) AppTheme.colors.warmOrange else AppTheme.colors.textSecondary,

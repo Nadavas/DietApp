@@ -395,7 +395,11 @@ fun DietPlanScreen(
             // Empty state - Enhanced
             if (dietPlan == null) {
                 EmptyDietPlanState(
-                    onNavigateToQuestions = { navController.navigate("questions") }
+                    onNavigateToQuestions = {
+                        // UPDATE: Pass startQuiz=true and source=account
+                        // This ensures they go back to the Account section after finishing
+                        navController.navigate("questions?startQuiz=true&source=account")
+                    }
                 )
             }
 
