@@ -367,7 +367,12 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onSignInSuccess = { isNewUser ->
-                                        val route = if (isNewUser) "${NavRoutes.QUESTIONS}?startQuiz=true" else NavRoutes.HOME
+                                        // UPDATE: Pass source=onboarding for new users
+                                        val route = if (isNewUser) {
+                                            "${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding"
+                                        } else {
+                                            NavRoutes.HOME
+                                        }
                                         navController.navigate(route) {
                                             popUpTo(NavRoutes.LANDING) { inclusive = true }
                                             launchSingleTop = true
@@ -389,7 +394,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onSignUpSuccess = { isNewUser ->
                                         if (isNewUser) {
-                                            navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true")
+                                            // UPDATE: Pass source=onboarding
+                                            navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding")
                                         } else {
                                             navController.navigate(NavRoutes.HOME) {
                                                 popUpTo(NavRoutes.LANDING) { inclusive = true }
@@ -500,20 +506,29 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(
-                                route = "${NavRoutes.QUESTIONS}?startQuiz={startQuiz}",
+                                // 1. Update route to include source
+                                route = "${NavRoutes.QUESTIONS}?startQuiz={startQuiz}&source={source}",
                                 arguments = listOf(
                                     navArgument("startQuiz") {
                                         type = NavType.BoolType
                                         defaultValue = false
+                                    },
+                                    // 2. Add source argument (default is "home")
+                                    navArgument("source") {
+                                        type = NavType.StringType
+                                        defaultValue = "home"
                                     }
                                 )
                             ) { backStackEntry ->
                                 val startQuiz = backStackEntry.arguments?.getBoolean("startQuiz") == true
+                                val source = backStackEntry.arguments?.getString("source") ?: "home"
+
                                 QuestionsScreen(
                                     navController = navController,
                                     questionsViewModel = questionsViewModel,
                                     authViewModel = authViewModel,
-                                    startQuiz = startQuiz
+                                    startQuiz = startQuiz,
+                                    source = source // 3. Pass source to screen
                                 )
                             }
 

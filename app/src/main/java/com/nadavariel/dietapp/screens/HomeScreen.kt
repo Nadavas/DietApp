@@ -134,7 +134,9 @@ fun HomeScreen(
                     if (dietPlan == null && !isGeneratingPlan) {
                         item {
                             Card(
-                                onClick = { navController.navigate(NavRoutes.QUESTIONS) },
+                                onClick = {
+                                    navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=home")
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(
@@ -410,9 +412,13 @@ fun WeightStatusCard(
     targetWeight: Float,
     onClick: () -> Unit
 ) {
-    // 1. Math Logic (Same as WeightScreen)
+    // 1. Check if data is fully loaded to prevent flickering
+    // If targetWeight is 0, the goals haven't loaded yet, so we can't determine the direction.
+    val isDataReady = targetWeight > 0f && startWeight > 0f
+
+    // 2. Math Logic (Same as WeightScreen)
     val totalGoalDiff = abs(targetWeight - startWeight)
-    val isWeightLossGoal = targetWeight < startWeight
+    val isWeightLossGoal = if (isDataReady) targetWeight < startWeight else true // Default to true if not ready, but we won't show text yet
 
     val progressAmount = if (isWeightLossGoal) {
         startWeight - currentWeight
@@ -425,16 +431,28 @@ fun WeightStatusCard(
         (progressAmount / totalGoalDiff * 100f).coerceIn(0f, 100f)
     } else 0f
 
-    // 2. Text & Status Logic
+    // 3. Text & Status Logic
     val rawDiff = currentWeight - startWeight
-    val actuallyGained = rawDiff > 0
-    val progressText = if (actuallyGained) "gained" else "lost"
+
+    // FIX: specific handling for 0.0 case based on the goal type
+    val progressText = if (isDataReady) {
+        when {
+            rawDiff > 0 -> "gained"
+            rawDiff < 0 -> "lost"
+            else -> if (isWeightLossGoal) "lost" else "gained"
+        }
+    } else {
+        ""
+    }
+
     val formattedProgress = "%.1f".format(abs(rawDiff))
 
     // Check for Setback (Moved wrong way) to highlight text
-    val isSetback = progressPercentage == 0f && abs(rawDiff) > 0.1f
+    val isSetback = if (isDataReady) {
+        if (isWeightLossGoal) rawDiff > 0 else rawDiff < 0
+    } else false
 
-    // 3. Updated Badges (Matches WeightScreen)
+    // 4. Updated Badges (Matches WeightScreen)
     val badge = when {
         progressPercentage >= 100f -> "🏆"
         progressPercentage >= 75f -> "🥇"
@@ -495,9 +513,13 @@ fun WeightStatusCard(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Status text (Orange if setback)
+                // FIX: If data not ready, show "Loading..." or just the number without "lost/gained"
                 Text(
-                    text = if (isSetback) "⚠️ $formattedProgress kg $progressText" else "$formattedProgress kg $progressText",
+                    text = if (isDataReady) {
+                        if (isSetback) "⚠️ $formattedProgress kg $progressText" else "$formattedProgress kg $progressText"
+                    } else {
+                        "Loading..."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isSetback) AppTheme.colors.warmOrange else AppTheme.colors.textSecondary,
                     fontWeight = if (isSetback) FontWeight.Medium else FontWeight.Normal

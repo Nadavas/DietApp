@@ -25,7 +25,8 @@ fun QuestionsScreen(
     navController: NavController,
     questionsViewModel: QuestionsViewModel = viewModel(),
     authViewModel: AuthViewModel,
-    startQuiz: Boolean
+    startQuiz: Boolean,
+    source: String // 1. Receive source parameter
 ) {
     // 2. Use the local ScreenState enum defined below
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
@@ -137,8 +138,16 @@ fun QuestionsScreen(
                             questions,
                             editAnswers
                         )
-                        navController.navigate(NavRoutes.ACCOUNT) {
-                            popUpTo(navController.graph.id) { inclusive = true }
+                        // 2. Conditional Navigation for Edit Mode
+                        if (source == "account") {
+                            navController.navigate(NavRoutes.ACCOUNT) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(NavRoutes.HOME) {
+                                popUpTo(NavRoutes.LANDING) { inclusive = true }
+                                launchSingleTop = true
+                            }
                         }
                     }
                 )
@@ -164,8 +173,16 @@ fun QuestionsScreen(
                                 questions,
                                 quizAnswers
                             )
-                            navController.navigate(NavRoutes.ACCOUNT) {
-                                popUpTo(navController.graph.id) { inclusive = true }
+                            // 3. Conditional Navigation for Quiz Mode
+                            if (source == "account") {
+                                navController.navigate(NavRoutes.ACCOUNT) {
+                                    popUpTo(navController.graph.id) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(NavRoutes.HOME) {
+                                    popUpTo(NavRoutes.LANDING) { inclusive = true }
+                                    launchSingleTop = true
+                                }
                             }
                         }
                     },

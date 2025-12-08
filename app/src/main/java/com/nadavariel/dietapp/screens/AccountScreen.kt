@@ -293,7 +293,10 @@ fun AccountScreen(
                                     modifier = Modifier.size(24.dp)
                                 )
                             },
-                            onClick = { navController.navigate(NavRoutes.QUESTIONS) }
+                            // UPDATE: Pass source=account
+                            onClick = {
+                                navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=false&source=account")
+                            }
                         )
                     }
 
