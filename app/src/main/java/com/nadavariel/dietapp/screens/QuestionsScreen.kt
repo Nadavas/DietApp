@@ -25,14 +25,14 @@ fun QuestionsScreen(
     navController: NavController,
     questionsViewModel: QuestionsViewModel = viewModel(),
     authViewModel: AuthViewModel,
+    // --- 1. ADD THIS PARAMETER ---
+    foodLogViewModel: com.nadavariel.dietapp.viewmodel.FoodLogViewModel,
     startQuiz: Boolean,
-    source: String // 1. Receive source parameter
+    source: String
 ) {
-    // 2. Use the local ScreenState enum defined below
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
 
-    // 3. Use QuestionnaireConstants.questions throughout
     val questions = QuestionnaireConstants.questions
 
     var quizAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
@@ -41,6 +41,22 @@ fun QuestionsScreen(
     var editAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
 
     var questionToEditIndex by remember { mutableStateOf<Int?>(null) }
+
+    // Helper function to extract and update weight
+    fun updateOptimisticWeight(answers: List<String?>) {
+        val questions = QuestionnaireConstants.questions
+        val weightQuestionIndex = questions.indexOfFirst { it.text == QuestionnaireConstants.TARGET_WEIGHT_QUESTION }
+
+        if (weightQuestionIndex != -1) {
+            val weightAnswer = answers.getOrNull(weightQuestionIndex)
+            // Extract number from string like "75 kg"
+            val weightVal = weightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull()
+
+            if (weightVal != null && weightVal > 0f) {
+                foodLogViewModel.setTargetWeightOptimistically(weightVal)
+            }
+        }
+    }
 
     LaunchedEffect(savedAnswers, screenState) {
         if (screenState != ScreenState.QUIZ_MODE && savedAnswers.isNotEmpty()) {
@@ -89,8 +105,6 @@ fun QuestionsScreen(
                                     if (quizCurrentIndex > 0) {
                                         quizCurrentIndex--
                                     } else {
-                                        // FIX 2: If we forced 'startQuiz', going back from Q1 should exit the screen,
-                                        // instead of showing the Landing page they skipped.
                                         if (startQuiz) {
                                             navController.popBackStack()
                                         } else {
@@ -147,7 +161,9 @@ fun QuestionsScreen(
                             questions,
                             editAnswers
                         )
-                        // 2. Conditional Navigation for Edit Mode
+                        // FIX: Update weight immediately so Home screen doesn't flicker
+                        updateOptimisticWeight(editAnswers)
+
                         if (source == "account") {
                             navController.navigate(NavRoutes.ACCOUNT) {
                                 popUpTo(navController.graph.id) { inclusive = true }
@@ -182,7 +198,9 @@ fun QuestionsScreen(
                                 questions,
                                 quizAnswers
                             )
-                            // 3. Conditional Navigation for Quiz Mode
+                            // FIX: Update weight immediately so Home screen doesn't flicker
+                            updateOptimisticWeight(quizAnswers)
+
                             if (source == "account") {
                                 navController.navigate(NavRoutes.ACCOUNT) {
                                     popUpTo(navController.graph.id) { inclusive = true }

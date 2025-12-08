@@ -536,6 +536,7 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     questionsViewModel = questionsViewModel,
                                     authViewModel = authViewModel,
+                                    foodLogViewModel = foodLogViewModel,
                                     startQuiz = startQuiz,
                                     source = source // 3. Pass source to screen
                                 )

@@ -70,6 +70,9 @@ class FoodLogViewModel : ViewModel() {
     private val _targetWeight = MutableStateFlow(0f)
     val targetWeight = _targetWeight.asStateFlow()
 
+    // --- NEW: Explicit loading state for target weight ---
+    private val _isTargetWeightLoaded = MutableStateFlow(false)
+    val isTargetWeightLoaded = _isTargetWeightLoaded.asStateFlow()
 
     private val _weeklyCalories = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyCalories = _weeklyCalories.asStateFlow()
@@ -185,6 +188,7 @@ class FoodLogViewModel : ViewModel() {
         _isFutureTimeSelected.value = false
         _weightHistory.value = emptyList()
         _targetWeight.value = 0f
+        _isTargetWeightLoaded.value = false // Reset this too
     }
 
     fun updateDateTimeCheck(selectedTime: Date) {
@@ -336,12 +340,15 @@ class FoodLogViewModel : ViewModel() {
         targetWeightListener?.remove()
         val userId = auth.currentUser?.uid ?: return
 
+        Log.d("DEBUG_WEIGHT", "VM: Starting to listen for target weight...")
+
         targetWeightListener = firestore.collection("users").document(userId)
             .collection("user_answers").document("goals")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e("FoodLogViewModel", "Error listening to target weight", e)
                     _targetWeight.value = 0f
+                    _isTargetWeightLoaded.value = true // Stop loading on error
                     return@addSnapshotListener
                 }
 
@@ -353,11 +360,30 @@ class FoodLogViewModel : ViewModel() {
                         it["question"] == QuestionnaireConstants.TARGET_WEIGHT_QUESTION
                     }?.get("answer")
 
-                    _targetWeight.value = targetWeightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull() ?: 0f
+                    val parsedWeight = targetWeightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull() ?: 0f
+
+                    Log.d("DEBUG_WEIGHT", "VM: Snapshot received. Found weight: $parsedWeight (Raw answer: $targetWeightAnswer)")
+                    _targetWeight.value = parsedWeight
                 } else {
-                    _targetWeight.value = 0f
+                    // CRITICAL FIX: Do not overwrite optimistic data with 0
+                    if (_targetWeight.value > 0f) {
+                        Log.d("DEBUG_WEIGHT", "VM: Ignoring empty snapshot (Optimistic data exists)")
+                    } else {
+                        _targetWeight.value = 0f
+                    }
                 }
+
+                // --- NEW: Signal that we are done loading ---
+                _isTargetWeightLoaded.value = true
+                Log.d("DEBUG_WEIGHT", "VM: isTargetWeightLoaded set to TRUE")
             }
+    }
+
+    // --- NEW FUNCTION ---
+    fun setTargetWeightOptimistically(weight: Float) {
+        Log.d("DEBUG_WEIGHT", "VM: Setting optimistic weight: $weight")
+        _targetWeight.value = weight
+        _isTargetWeightLoaded.value = true
     }
 
     fun addWeightEntry(weight: Float, date: Calendar) {

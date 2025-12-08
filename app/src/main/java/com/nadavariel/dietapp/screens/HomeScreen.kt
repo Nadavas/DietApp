@@ -2,6 +2,7 @@ package com.nadavariel.dietapp.screens
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,12 +70,17 @@ fun HomeScreen(
     val weightHistory by foodLogViewModel.weightHistory.collectAsState()
     val isLoadingLogs by foodLogViewModel.isLoadingLogs.collectAsStateWithLifecycle()
 
+    val targetWeight by foodLogViewModel.targetWeight.collectAsState()
+
+    // --- NEW: Collect the explicit loading flag ---
+    val isTargetWeightLoaded by foodLogViewModel.isTargetWeightLoaded.collectAsState()
+
     val goals by goalViewModel.goals.collectAsState()
     val dietPlan by goalViewModel.currentDietPlan.collectAsStateWithLifecycle()
     val isLoadingPlan by goalViewModel.isLoadingPlan.collectAsStateWithLifecycle()
 
     // Added isPreferencesLoaded to the loading check
-    val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan || !isPreferencesLoaded
+    val isScreenLoading = isLoadingProfile || isLoadingLogs || isLoadingPlan || !isPreferencesLoaded || !isTargetWeightLoaded // FIX: Simply wait until the VM says target weight is checked.
 
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var mealToDelete by remember { mutableStateOf<Meal?>(null) }
@@ -91,6 +97,11 @@ fun HomeScreen(
     }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    // --- DEBUG LOGS ---
+    LaunchedEffect(targetWeight, isTargetWeightLoaded) {
+        Log.d("DEBUG_WEIGHT", "UI: Screen Recomposed. Loaded=$isTargetWeightLoaded, Weight=$targetWeight")
+    }
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -266,7 +277,7 @@ fun HomeScreen(
                     item {
                         val currentWeight = weightHistory.lastOrNull()?.weight ?: userProfile.startingWeight
                         val startWeight = userProfile.startingWeight
-                        val targetWeight by foodLogViewModel.targetWeight.collectAsState()
+
 
                         WeightStatusCard(
                             currentWeight = currentWeight,

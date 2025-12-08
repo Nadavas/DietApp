@@ -571,17 +571,25 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     onSuccess()
 
                 } catch (e: Exception) {
-                    val errorMessage = e.message ?: "Failed to delete account."
-                    Log.e("AuthViewModel", "Error deleting account: $errorMessage", e)
-                    _authResult.value = AuthResult.Error(errorMessage)
+                    val rawErrorMessage = e.message ?: "Failed to delete account."
+                    Log.e("AuthViewModel", "Error deleting account: $rawErrorMessage", e)
 
+                    // --- FIX START ---
+                    // Check the exception type FIRST.
+                    // If it requires re-auth, set the specific key "re-authenticate-required"
+                    // so the AccountScreen knows to hide the red error card.
                     if (e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                        _authResult.value = AuthResult.Error("re-authenticate-required")
                         onError("re-authenticate-required")
                     } else if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                        _authResult.value = AuthResult.Error("Permission denied.")
                         onError("Permission denied. Could not delete user data.")
                     } else {
-                        onError(errorMessage)
+                        // For other errors, show the raw message
+                        _authResult.value = AuthResult.Error(rawErrorMessage)
+                        onError(rawErrorMessage)
                     }
+                    // --- FIX END ---
                 }
             }
         } else {
@@ -616,9 +624,9 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     .collection("user_answers").document("diet_habits")
                     .delete().await()
 
-                firestore.collection("users").document(userId)
-                    .collection("user_answers").document("goals")
-                    .delete().await()
+//                firestore.collection("users").document(userId)
+//                    .collection("user_answers").document("goals")
+//                    .delete().await()
 
                 Log.d("AuthViewModel", "Successfully reset user data and plan.")
                 _authResult.value = AuthResult.Success

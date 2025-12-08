@@ -541,8 +541,11 @@ private fun EditableGoalField(
         OutlinedTextField(
             value = textValue,
             onValueChange = { newValue ->
-                textValue = newValue
-                onValueChange(newValue)
+                // FIX: Only allow digits and one decimal point
+                if (newValue.all { it.isDigit() || it == '.' } && newValue.count { it == '.' } <= 1) {
+                    textValue = newValue
+                    onValueChange(newValue)
+                }
             },
             label = {
                 Text(
