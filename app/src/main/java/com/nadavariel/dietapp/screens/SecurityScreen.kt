@@ -1,5 +1,10 @@
+@file:Suppress("DEPRECATION")
+
 package com.nadavariel.dietapp.screens
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -23,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,10 +37,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.nadavariel.dietapp.NavRoutes
+import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.components.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +56,10 @@ fun SecurityScreen(
     authViewModel: AuthViewModel,
     questionsViewModel: com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val currentUser = authViewModel.currentUser
 
@@ -54,13 +71,51 @@ fun SecurityScreen(
 
     // Dialog State
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
-    var showReauthDialog by remember { mutableStateOf(false) }
+    var showPasswordReauthDialog by remember { mutableStateOf(false) } // Renamed for clarity
+    var showGoogleReauthDialog by remember { mutableStateOf(false) }   // New Google Dialog
+
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
     var showResetConfirmationDialog by remember { mutableStateOf(false) }
+
+    // --- GOOGLE LAUNCHER FOR RE-AUTH ---
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember(context) { GoogleSignIn.getClient(context, gso) }
+
+    val reAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                // Perform Re-auth with the fresh account
+                authViewModel.reauthenticateWithGoogle(
+                    account = account,
+                    onSuccess = {
+                        // If re-auth succeeds, try deleting again immediately
+                        authViewModel.deleteCurrentUser(
+                            onSuccess = { navController.navigate(NavRoutes.LANDING) },
+                            onError = { /* Error is handled by LaunchedEffect below */ }
+                        )
+                    },
+                    onError = { msg ->
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                )
+            } catch (e: Exception) {
+                scope.launch { snackbarHostState.showSnackbar("Google Re-auth failed: ${e.message}") }
+            }
+        }
+    }
 
     // Handle authentication results
     LaunchedEffect(authResult) {
@@ -74,16 +129,23 @@ fun SecurityScreen(
                     confirmNewPassword = ""
                     errorMessage = null // Clear error on success
                 }
-                // If success came from deleting account, the VM usually signs out,
-                // creating a side effect in MainActivity that navigates away.
+                // If success came from deleting account, the VM usually signs out
                 authViewModel.resetAuthResult()
             }
             is AuthResult.Error -> {
-                errorMessage = if (result.message == "re-authenticate-required") {
-                    showReauthDialog = true
-                    "Please re-enter your password to confirm deletion."
+                if (result.message == "re-authenticate-required") {
+                    // Logic to show correct dialog
+                    if (authViewModel.isEmailPasswordUser) {
+                        showPasswordReauthDialog = true
+                        errorMessage = "Please re-enter your password to confirm deletion."
+                    } else {
+                        showGoogleReauthDialog = true
+                    }
+                    authViewModel.resetAuthResult() // Clear error so it doesn't loop
                 } else {
-                    result.message
+                    errorMessage = result.message
+                    // Show generic errors in snackbar too
+                    scope.launch { snackbarHostState.showSnackbar(result.message) }
                 }
             }
             else -> { /* Idle or Loading */ }
@@ -91,6 +153,7 @@ fun SecurityScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = AppTheme.colors.screenBackground,
         topBar = {
             TopAppBar(
@@ -371,7 +434,7 @@ fun SecurityScreen(
         }
     }
 
-    // --- Dialogs copied from AccountScreen ---
+    // --- Dialogs ---
 
     if (showResetConfirmationDialog) {
         StyledAlertDialog(
@@ -413,7 +476,7 @@ fun SecurityScreen(
         )
     }
 
-    if (showReauthDialog) {
+    if (showPasswordReauthDialog) {
         ReauthDialog(
             errorMessage = errorMessage,
             password = reauthPassword,
@@ -423,18 +486,41 @@ fun SecurityScreen(
                 if (currentEmail != null && reauthPassword.isNotBlank()) {
                     errorMessage = null
                     authViewModel.signIn(currentEmail, reauthPassword) {
-                        showReauthDialog = false
+                        showPasswordReauthDialog = false
                         reauthPassword = ""
-                        authViewModel.deleteCurrentUser(onSuccess = {}, onError = {})
+                        // After re-auth, try deleting again
+                        authViewModel.deleteCurrentUser(
+                            onSuccess = { navController.navigate(NavRoutes.LANDING) },
+                            onError = { /* Handled by LaunchedEffect */ }
+                        )
                     }
                 } else {
                     errorMessage = "Please enter your password."
                 }
             },
             onDismiss = {
-                showReauthDialog = false
+                showPasswordReauthDialog = false
                 reauthPassword = ""
                 authViewModel.resetAuthResult()
+            }
+        )
+    }
+
+    // --- GOOGLE RE-AUTH DIALOG ---
+    if (showGoogleReauthDialog) {
+        StyledAlertDialog(
+            onDismissRequest = { showGoogleReauthDialog = false },
+            title = "Verify it's you",
+            text = "For security, please sign in with Google again to confirm account deletion.",
+            confirmButtonText = "Verify with Google",
+            dismissButtonText = "Cancel",
+            onConfirm = {
+                showGoogleReauthDialog = false
+                // Trigger the Google Launcher
+                scope.launch {
+                    try { googleSignInClient.signOut().await() } catch (_: Exception) {}
+                    reAuthLauncher.launch(googleSignInClient.signInIntent)
+                }
             }
         )
     }
@@ -562,11 +648,11 @@ fun ReauthDialog(
         containerColor = Color.White,
         title = { Text("Re-authentication Required", fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     errorMessage ?: "Please re-enter your password to proceed.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (errorMessage != null) MaterialTheme.colorScheme.error else LocalContentColor.current
+                    color = if (errorMessage != null) MaterialTheme.colorScheme.error else AppTheme.colors.textSecondary
                 )
                 OutlinedTextField(
                     value = password,
@@ -589,6 +675,7 @@ fun ReauthDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
+                // FIX: Changed to Error/Red for destructive action
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError

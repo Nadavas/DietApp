@@ -516,6 +516,28 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
+    // NEW: Handle Google Re-authentication
+    fun reauthenticateWithGoogle(
+        account: GoogleSignInAccount,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val user = auth.currentUser ?: return
+        // Create credential from the new Google Account token
+        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+
+        user.reauthenticate(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d("AuthViewModel", "Google re-auth successful.")
+                    onSuccess()
+                } else {
+                    Log.e("AuthViewModel", "Google re-auth failed", task.exception)
+                    onError(task.exception?.message ?: "Re-authentication failed")
+                }
+            }
+    }
+
     private suspend fun deleteSubCollection(userId: String, collectionName: String) {
         try {
             val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
