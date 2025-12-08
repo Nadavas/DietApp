@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.account.ReauthDialog
 import com.nadavariel.dietapp.ui.account.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -547,4 +546,70 @@ private fun SecurityOptionRow(
             )
         }
     }
+}
+
+@Composable
+fun ReauthDialog(
+    errorMessage: String?,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = Color.White,
+        title = { Text("Re-authentication Required", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    errorMessage ?: "Please re-enter your password to proceed.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (errorMessage != null) MaterialTheme.colorScheme.error else LocalContentColor.current
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    // FIX: Green App Theme styling
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppTheme.colors.primaryGreen,
+                        focusedLabelColor = AppTheme.colors.primaryGreen,
+                        cursorColor = AppTheme.colors.primaryGreen,
+                        unfocusedBorderColor = AppTheme.colors.textSecondary.copy(alpha = 0.5f)
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                // FIX: Green button
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppTheme.colors.primaryGreen,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            ) {
+                Text("Confirm & Delete", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = AppTheme.colors.textSecondary
+                )
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Medium)
+            }
+        }
+    )
 }
