@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.components.UserAvatar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -48,6 +49,84 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.max
+
+@Composable
+fun ModernHomeHeader(
+    userName: String,
+    avatarId: String?,
+    onAvatarClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            HeaderSection(
+                userName = userName,
+                avatarId = avatarId,
+                onAvatarClick = onAvatarClick
+            )
+        }
+    }
+}
+
+@Composable
+fun HeaderSection(userName: String, avatarId: String?, onAvatarClick: () -> Unit) {
+    Row(
+        // FIX 1: Added fillMaxWidth() to ensure SpaceBetween pushes elements to edges
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = "Welcome back,",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppTheme.colors.textSecondary,
+                fontSize = 14.sp
+            )
+            Text(
+                text = userName.ifBlank { "User" },
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = AppTheme.colors.textPrimary,
+                fontSize = 24.sp
+            )
+        }
+
+        // Spacer is less critical now with SpaceBetween + fillMaxWidth, but keeps safe distance
+        Spacer(Modifier.width(16.dp))
+
+        // --- UPDATED AVATAR CODE ---
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(60.dp) // FIX 2: Increased from 52.dp to 60.dp
+                .clickable(onClick = onAvatarClick)
+        ) {
+            // Background Circle
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
+            )
+            // FIX: Replaced manual Image with UserAvatar to support URLs/URIs
+            UserAvatar(
+                avatarId = avatarId,
+                size = 60.dp,
+                modifier = Modifier.clickable(onClick = onAvatarClick)
+            )
+        }
+        // --- END OF UPDATED CODE ---
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
