@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.util.Base64
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -22,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,8 +47,11 @@ import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
+import com.nadavariel.dietapp.model.NutrientData
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.meals.*
+import com.nadavariel.dietapp.ui.components.AppDatePickerDialog
+import com.nadavariel.dietapp.ui.components.AppTimePickerDialog
+import com.nadavariel.dietapp.ui.components.DateTimePickerRow
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
 import kotlinx.coroutines.Dispatchers
@@ -94,10 +98,7 @@ fun AddEditMealScreen(
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
 
-    // State to toggle nutrition details (defined here for this scope)
     var showNutrients by remember { mutableStateOf(false) }
-
-    // Image & Time
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var imageFile by remember { mutableStateOf<File?>(null) }
@@ -106,8 +107,6 @@ fun AddEditMealScreen(
 
     val geminiResult by foodLogViewModel.geminiResult.collectAsState()
     val isFutureTimeSelected by foodLogViewModel.isFutureTimeSelected.collectAsState()
-
-    // --- Helper Functions ---
 
     fun clearImageState() {
         imageUri = null
@@ -127,8 +126,7 @@ fun AddEditMealScreen(
                 val bytes = inputStream.readBytes()
                 Base64.encodeToString(bytes, Base64.NO_WRAP)
             }
-        } catch (e: Exception) {
-            Log.e("AddEditMealScreen", "Error converting URI to Base64: ${e.message}")
+        } catch (_: Exception) {
             null
         }
     }
@@ -140,8 +138,6 @@ fun AddEditMealScreen(
             imageFile = this
         }
     }
-
-    // --- Launchers ---
 
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
@@ -160,22 +156,16 @@ fun AddEditMealScreen(
             val file = createImageFile(context)
             val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
             takePictureLauncher.launch(uri)
-        } else {
-            Log.e("AddEditMealScreen", "Camera permission denied.")
         }
     }
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        // clearImageAndText() // Optional: Clear text if they pick a new image
         imageUri = uri
     }
 
-    // --- Actions ---
-
     val onTakePhoto: () -> Unit = {
-        // clearImageAndText()
         if (ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.CAMERA
@@ -190,11 +180,8 @@ fun AddEditMealScreen(
     }
 
     val onUploadPhoto: () -> Unit = {
-        // clearImageAndText()
         pickImageLauncher.launch("image/*")
     }
-
-    // --- Side Effects ---
 
     LaunchedEffect(selectedDateTimeState.time) {
         foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
@@ -235,10 +222,8 @@ fun AddEditMealScreen(
                 foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
             }
         } else {
-            // Reset for Add Mode
             foodName = ""
             caloriesText = ""
-            // ... reset other macros if needed
             selectedDateTimeState = Calendar.getInstance()
             clearImageAndText()
             foodLogViewModel.updateDateTimeCheck(selectedDateTimeState.time)
@@ -252,11 +237,9 @@ fun AddEditMealScreen(
             .fillMaxSize()
             .background(AppTheme.colors.screenBackground)
     ) {
-        // We split UI based on whether we are Editing (Full Form) or Adding (New Hub Flow)
+        // --- EDIT MODE ---
         if (isEditMode) {
-            // ================= EDIT MODE (Original Form Layout - Refreshed Header) =================
             Column(modifier = Modifier.fillMaxSize()) {
-                // Modern Header with Back Button INLINE
                 TopAppBar(
                     title = {
                         Text(
@@ -287,16 +270,14 @@ fun AddEditMealScreen(
                 ) {
                     item {
                         Column {
-                            // --- ADDED THIS TEXT ---
                             Text(
                                 text = "* Indicates required fields",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = AppTheme.colors.textSecondary,
                                 modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                             )
-                            // -----------------------
 
-                            SectionHeader(title = "Meal Details")
+                            AddMealSectionHeader(title = "Meal Details")
                             FormCard {
                                 ThemedOutlinedTextField(
                                     value = foodName,
@@ -304,7 +285,7 @@ fun AddEditMealScreen(
                                     label = "Meal Name*",
                                     modifier = Modifier.fillMaxWidth(),
                                     leadingIcon = Icons.Default.EditNote,
-                                    singleLine = true, // Force single line
+                                    singleLine = true,
                                     keyboardOptions = KeyboardOptions(
                                         capitalization = KeyboardCapitalization.Sentences,
                                         imeAction = ImeAction.Done
@@ -393,8 +374,8 @@ fun AddEditMealScreen(
                 }
             }
 
+        // --- ADD MODE ---
         } else {
-            // ================= ADD MODE (New Hub Design) =================
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header
                 Surface(
@@ -427,7 +408,7 @@ fun AddEditMealScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // 1. Date & Time Section
+                    // Date & Time Section
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -472,7 +453,7 @@ fun AddEditMealScreen(
                         }
                     }
 
-                    // 2. Mode Selection Header
+                    // Mode Selection Header
                     item {
                         Text(
                             text = "How would you like to add this meal?",
@@ -483,7 +464,7 @@ fun AddEditMealScreen(
                         )
                     }
 
-                    // 3. Mode Selection Cards
+                    // Mode Selection Cards
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -516,7 +497,7 @@ fun AddEditMealScreen(
                         }
                     }
 
-                    // 4. Content based on selected mode
+                    // Content based on selected mode
                     when (selectedMode) {
                         AddMealMode.PHOTO -> {
                             item {
@@ -542,7 +523,6 @@ fun AddEditMealScreen(
                                         )
 
                                         if (imageUri != null) {
-                                            // Image Selected View
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -650,7 +630,6 @@ fun AddEditMealScreen(
                                             color = AppTheme.colors.textSecondary
                                         )
 
-                                        // State to track focus
                                         var isFocused by remember { mutableStateOf(false) }
 
                                         OutlinedTextField(
@@ -659,12 +638,11 @@ fun AddEditMealScreen(
                                             label = { Text("E.g., Grilled chicken with rice") },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .onFocusChanged { isFocused = it.isFocused }, // Update state
+                                                .onFocusChanged { isFocused = it.isFocused },
                                             leadingIcon = {
                                                 Icon(
                                                     Icons.Default.AutoAwesome,
                                                     contentDescription = null,
-                                                    // Teal when focused, Grey when not
                                                     tint = if (isFocused) AppTheme.colors.accentTeal else AppTheme.colors.textSecondary.copy(alpha = 0.5f)
                                                 )
                                             },
@@ -709,19 +687,16 @@ fun AddEditMealScreen(
                             }
                         }
                         AddMealMode.MANUAL -> {
-                            // Meal Name Section (Always Visible)
                             item {
                                 Column {
-                                    // --- ADDED THIS TEXT ---
                                     Text(
                                         text = "* Indicates required fields",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = AppTheme.colors.textSecondary,
                                         modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                                     )
-                                    // -----------------------
 
-                                    SectionHeader(title = "Meal Details")
+                                    AddMealSectionHeader(title = "Meal Details")
                                     FormCard {
                                         ThemedOutlinedTextField(
                                             value = foodName,
@@ -739,7 +714,6 @@ fun AddEditMealScreen(
                                 }
                             }
 
-                            // Serving & Calories Section (Always Visible)
                             item {
                                 ServingAndCaloriesSection(
                                     servingAmountText, { servingAmountText = it },
@@ -748,7 +722,7 @@ fun AddEditMealScreen(
                                 )
                             }
 
-                            // --- Show/Hide Toggle Button ---
+                            // --- Show/Hide Button ---
                             item {
                                 Box(
                                     modifier = Modifier
@@ -832,7 +806,6 @@ fun AddEditMealScreen(
                                             vitaminA = vitaminAText.toDoubleOrNull(),
                                             vitaminB12 = vitaminB12Text.toDoubleOrNull()
                                         )
-                                        // Go back to Home
                                         navController.popBackStack(NavRoutes.HOME, inclusive = false)
                                     },
                                     modifier = Modifier
@@ -883,7 +856,6 @@ fun AddEditMealScreen(
                         }
                     }
 
-                    // Bottom Spacer
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
@@ -891,7 +863,10 @@ fun AddEditMealScreen(
     }
 }
 
-// --- Helper Composable to fix the cut-off code ---
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
 private fun ModeSelectionCard(
     title: String,
@@ -967,7 +942,7 @@ fun SubmitMealButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
-        shape = RoundedCornerShape(50), // Pill shape
+        shape = RoundedCornerShape(50),
         colors = ButtonDefaults.buttonColors(
             containerColor = AppTheme.colors.primaryGreen,
             contentColor = Color.White,
@@ -992,5 +967,268 @@ fun SubmitMealButton(
                 Text("Analyze and Add Meal", fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+fun AddMealSectionHeader(title: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.padding(start = 4.dp, top = 16.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(AppTheme.colors.primaryGreen, CircleShape)
+        )
+        Text(
+            text = title.uppercase(Locale.ROOT),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = AppTheme.colors.lightGreyText,
+            letterSpacing = 1.2.sp
+        )
+    }
+}
+
+@Composable
+fun FormCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun ThemedOutlinedTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    singleLine: Boolean = false,
+    minLines: Int = 1
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier,
+        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = AppTheme.colors.lightGreyText) } },
+        keyboardOptions = keyboardOptions,
+        singleLine = singleLine,
+        minLines = minLines,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = AppTheme.colors.primaryGreen,
+            focusedLabelColor = AppTheme.colors.primaryGreen,
+            cursorColor = AppTheme.colors.primaryGreen,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+        )
+    )
+}
+
+@Composable
+fun ServingAndCaloriesSection(
+    servingAmountText: String, onServingAmountChange: (String) -> Unit,
+    servingUnitText: String, onServingUnitChange: (String) -> Unit,
+    caloriesText: String, onCaloriesChange: (String) -> Unit
+) {
+    Column {
+        AddMealSectionHeader(title = "Serving & Calories")
+        FormCard {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemedOutlinedTextField(
+                    value = servingAmountText,
+                    onValueChange = onServingAmountChange,
+                    label = "Amount",
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                ThemedOutlinedTextField(
+                    value = servingUnitText,
+                    onValueChange = onServingUnitChange,
+                    label = "Unit (e.g. g, ml)",
+                    modifier = Modifier.weight(1.5f),
+                    singleLine = true
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            ThemedOutlinedTextField(
+                value = caloriesText,
+                onValueChange = { if (it.all(Char::isDigit)) onCaloriesChange(it) },
+                label = "Total Calories (kcal)*",
+                leadingIcon = Icons.Outlined.LocalFireDepartment,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+    }
+}
+
+@Composable
+fun MacronutrientsSection(
+    proteinText: String, onProteinChange: (String) -> Unit,
+    carbsText: String, onCarbsChange: (String) -> Unit,
+    fatText: String, onFatChange: (String) -> Unit
+) {
+    Column {
+        AddMealSectionHeader(title = "Macronutrients")
+        FormCard {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val commonModifier = Modifier.weight(1f)
+
+                ThemedOutlinedTextField(
+                    value = proteinText,
+                    onValueChange = onProteinChange,
+                    label = "Protein (g)",
+                    leadingIcon = null,
+                    modifier = commonModifier,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                ThemedOutlinedTextField(
+                    value = carbsText,
+                    onValueChange = onCarbsChange,
+                    label = "Carbs (g)",
+                    leadingIcon = null,
+                    modifier = commonModifier,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                ThemedOutlinedTextField(
+                    value = fatText,
+                    onValueChange = onFatChange,
+                    label = "Fat (g)",
+                    leadingIcon = null,
+                    modifier = commonModifier,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MicronutrientsSection(
+    fiberText: String, onFiberChange: (String) -> Unit, sugarText: String, onSugarChange: (String) -> Unit,
+    sodiumText: String, onSodiumChange: (String) -> Unit, potassiumText: String, onPotassiumChange: (String) -> Unit,
+    calciumText: String, onCalciumChange: (String) -> Unit, ironText: String, onIronChange: (String) -> Unit,
+    vitaminCText: String, onVitaminCChange: (String) -> Unit,
+    vitaminAText: String, onVitaminAChange: (String) -> Unit,
+    vitaminB12Text: String, onVitaminB12Change: (String) -> Unit
+) {
+
+    val micros = listOf(
+        NutrientData("Fiber (g)", fiberText, onFiberChange),
+        NutrientData("Sugar (g)", sugarText, onSugarChange),
+        NutrientData("Sodium (mg)", sodiumText, onSodiumChange),
+        NutrientData("Potassium (mg)", potassiumText, onPotassiumChange),
+        NutrientData("Calcium (mg)", calciumText, onCalciumChange),
+        NutrientData("Iron (mg)", ironText, onIronChange),
+        NutrientData("Vitamin C (mg)", vitaminCText, onVitaminCChange),
+        NutrientData("Vitamin A (mcg)", vitaminAText, onVitaminAChange),
+        NutrientData("Vitamin B12 (mcg)", vitaminB12Text, onVitaminB12Change)
+    )
+
+    Column {
+        AddMealSectionHeader(title = "Micronutrients & Fiber")
+        FormCard {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                micros.chunked(2).forEach { rowItems ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowItems.forEach { item ->
+                            NutrientTextField(
+                                label = item.label,
+                                value = item.value,
+                                onValueChange = item.onChange,
+                                modifier = Modifier.weight(1f) // Equal width for all
+                            )
+                        }
+                        // If the last row has only 1 item, add a spacer to keep the grid structure
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NutrientTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ThemedOutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun DateTimePickerSection(
+    selectedDateTimeState: Calendar,
+    onDateTimeUpdate: (Calendar) -> Unit
+) {
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    Column {
+        AddMealSectionHeader(title = "Date & Time")
+        FormCard {
+            DateTimePickerRow(
+                icon = Icons.Default.CalendarMonth,
+                label = "Date",
+                value = dateFormat.format(selectedDateTimeState.time)
+            ) {
+                showDatePicker = true
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            DateTimePickerRow(
+                icon = Icons.Default.Schedule,
+                label = "Time",
+                value = timeFormat.format(selectedDateTimeState.time)
+            ) {
+                showTimePicker = true
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        AppDatePickerDialog(
+            initialDate = selectedDateTimeState,
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { newCal -> onDateTimeUpdate(newCal) }
+        )
+    }
+
+    if (showTimePicker) {
+        AppTimePickerDialog(
+            initialTime = selectedDateTimeState,
+            onDismiss = { showTimePicker = false },
+            onTimeSelected = { newCal -> onDateTimeUpdate(newCal) }
+        )
     }
 }

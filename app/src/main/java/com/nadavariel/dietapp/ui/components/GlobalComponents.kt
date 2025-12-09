@@ -28,12 +28,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material3.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -59,12 +63,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,6 +85,7 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.data.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
+import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -691,3 +698,193 @@ fun GoogleSignInButton(
 }
 
 // --- END OF SIGN IN AND UP COMPOSABLES
+
+// --- DATE & TIME ---
+
+@Composable
+fun DateTimePickerRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = AppTheme.colors.primaryGreen,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppDatePickerDialog(
+    initialDate: Calendar,
+    onDismiss: () -> Unit,
+    onDateSelected: (Calendar) -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate.timeInMillis
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val newDate = Calendar.getInstance().apply { timeInMillis = millis }
+                        // Create a clone to modify
+                        val updatedCal = (initialDate.clone() as Calendar).apply {
+                            set(Calendar.YEAR, newDate.get(Calendar.YEAR))
+                            set(Calendar.MONTH, newDate.get(Calendar.MONTH))
+                            set(Calendar.DAY_OF_MONTH, newDate.get(Calendar.DAY_OF_MONTH))
+                        }
+
+                        // Internal Validation: Prevent future dates
+                        val now = Calendar.getInstance()
+                        if (updatedCal.after(now)) {
+                            onDateSelected(now)
+                        } else {
+                            onDateSelected(updatedCal)
+                        }
+                    }
+                    onDismiss()
+                }
+            ) {
+                Text("OK", color = AppTheme.colors.primaryGreen)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = AppTheme.colors.textSecondary)
+            }
+        },
+        colors = DatePickerDefaults.colors(containerColor = Color.White)
+    ) {
+        DatePicker(
+            state = datePickerState,
+            colors = DatePickerDefaults.colors(
+                selectedDayContainerColor = AppTheme.colors.primaryGreen,
+                selectedDayContentColor = Color.White,
+                todayDateBorderColor = AppTheme.colors.primaryGreen,
+                todayContentColor = AppTheme.colors.primaryGreen
+            )
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTimePickerDialog(
+    initialTime: Calendar,
+    onDismiss: () -> Unit,
+    onTimeSelected: (Calendar) -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialTime.get(Calendar.HOUR_OF_DAY),
+        initialMinute = initialTime.get(Calendar.MINUTE),
+        is24Hour = true
+    )
+
+    var showTimeInput by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val updatedCal = (initialTime.clone() as Calendar).apply {
+                        set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        set(Calendar.MINUTE, timePickerState.minute)
+                    }
+
+                    // Internal Validation: Prevent future time
+                    val now = Calendar.getInstance()
+                    if (updatedCal.after(now)) {
+                        onTimeSelected(now)
+                    } else {
+                        onTimeSelected(updatedCal)
+                    }
+                    onDismiss()
+                }
+            ) {
+                Text("OK", color = AppTheme.colors.primaryGreen)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = AppTheme.colors.textSecondary)
+            }
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                if (showTimeInput) {
+                    TimeInput(
+                        state = timePickerState,
+                        colors = TimePickerDefaults.colors(
+                            timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                            timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                            timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                        )
+                    )
+                } else {
+                    TimePicker(
+                        state = timePickerState,
+                        colors = TimePickerDefaults.colors(
+                            clockDialSelectedContentColor = Color.White,
+                            clockDialUnselectedContentColor = AppTheme.colors.textPrimary,
+                            selectorColor = AppTheme.colors.primaryGreen,
+                            containerColor = Color.White,
+                            periodSelectorBorderColor = AppTheme.colors.primaryGreen,
+                            periodSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            periodSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                            periodSelectorUnselectedContainerColor = Color.Transparent,
+                            periodSelectorUnselectedContentColor = AppTheme.colors.textSecondary,
+                            timeSelectorSelectedContainerColor = AppTheme.colors.primaryGreen.copy(alpha = 0.2f),
+                            timeSelectorSelectedContentColor = AppTheme.colors.primaryGreen,
+                            timeSelectorUnselectedContainerColor = AppTheme.colors.textSecondary.copy(alpha = 0.1f),
+                            timeSelectorUnselectedContentColor = AppTheme.colors.textPrimary
+                        )
+                    )
+                }
+
+                IconButton(onClick = { showTimeInput = !showTimeInput }) {
+                    Icon(
+                        imageVector = if (showTimeInput) Icons.Rounded.AccessTime else Icons.Filled.Keyboard,
+                        contentDescription = "Toggle Input Mode",
+                        tint = AppTheme.colors.primaryGreen
+                    )
+                }
+            }
+        },
+        containerColor = Color.White
+    )
+}

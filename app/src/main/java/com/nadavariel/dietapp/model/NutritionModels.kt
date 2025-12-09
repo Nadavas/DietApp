@@ -112,6 +112,12 @@ data class NutrientDef(
     val selector: (Meal) -> Double? // Function to get the value from a Meal
 )
 
+data class NutrientData(
+    val label: String,
+    val value: String,
+    val onChange: (String) -> Unit
+)
+
 // --- FoodNutritionalInfo (Your existing class) ---
 // (This is unchanged)
 data class FoodNutritionalInfo(
