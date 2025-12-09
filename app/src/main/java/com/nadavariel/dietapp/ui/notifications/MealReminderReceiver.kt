@@ -17,39 +17,54 @@ import com.nadavariel.dietapp.MainActivity
 import com.nadavariel.dietapp.R
 import java.util.Calendar
 
-class MealReminderReceiver : BroadcastReceiver() {
+class UniversalReminderReceiver : BroadcastReceiver() {
 
     companion object {
-        const val NOTIFICATION_CHANNEL_ID = "meal_reminder_channel"
-        const val NOTIFICATION_ID_EXTRA = "notification_id_extra"
-        const val NOTIFICATION_MESSAGE_EXTRA = "notification_message_extra"
-        const val NOTIFICATION_REPETITION_EXTRA = "notification_repetition_extra"
+        // Shared Keys
+        const val EXTRA_NOTIFICATION_ID = "notification_id"
+        const val EXTRA_MESSAGE = "notification_message"
+        const val EXTRA_REPETITION = "notification_repetition"
+        const val EXTRA_TYPE = "notification_type" // "MEAL" or "WEIGHT"
+        const val EXTRA_FIRESTORE_ID = "notification_firestore_id"
+        const val EXTRA_DAYS_OF_WEEK = "days_of_week"
+        const val EXTRA_HOUR = "hour"
+        const val EXTRA_MINUTE = "minute"
+
+        // Channel IDs
+        const val CHANNEL_ID_MEAL = "meal_reminder_channel"
+        const val CHANNEL_ID_WEIGHT = "weight_reminder_channel"
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        val notificationId = intent?.getIntExtra(NOTIFICATION_ID_EXTRA, 0) ?: 0
-        val message = intent?.getStringExtra(NOTIFICATION_MESSAGE_EXTRA) ?: "Time to log your meal!"
-        val repetition = intent?.getStringExtra(NOTIFICATION_REPETITION_EXTRA) ?: "DAILY"
-        val firestoreId = intent?.getStringExtra("NOTIFICATION_FIRESTORE_ID")
-        val daysOfWeek = intent?.getIntegerArrayListExtra("DAYS_OF_WEEK")
-        val hour = intent?.getIntExtra("HOUR", -1) ?: -1
-        val minute = intent?.getIntExtra("MINUTE", -1) ?: -1
+        if (intent == null) return
+
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
+        val message = intent.getStringExtra(EXTRA_MESSAGE) ?: "Time to log!"
+        val repetition = intent.getStringExtra(EXTRA_REPETITION) ?: "DAILY"
+        val type = intent.getStringExtra(EXTRA_TYPE) ?: "MEAL"
+        val firestoreId = intent.getStringExtra(EXTRA_FIRESTORE_ID)
+        val daysOfWeek = intent.getIntegerArrayListExtra(EXTRA_DAYS_OF_WEEK)
+        val hour = intent.getIntExtra(EXTRA_HOUR, -1)
+        val minute = intent.getIntExtra(EXTRA_MINUTE, -1)
 
         if (notificationId == 0) return
 
-        // --- RESCHEDULE LOGIC ---
-        if (repetition == "DAILY" && hour != -1 && minute != -1 && intent != null) {
+        // --- 1. RESCHEDULE LOGIC (For Daily) ---
+        // We reschedule immediately to ensure the next alarm is set even if the app isn't opened
+        if (repetition == "DAILY" && hour != -1 && minute != -1) {
             scheduleNextOccurrence(context, notificationId, intent, hour, minute)
         }
 
-        // --- Check Day of Week ---
+        // --- 2. CHECK DAY OF WEEK ---
         if (repetition == "DAILY" && daysOfWeek != null && daysOfWeek.isNotEmpty()) {
             val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
+            // Calendar.SUNDAY is 1, SATURDAY is 7. Ensure your saving logic matches this.
             if (!daysOfWeek.contains(today)) {
-                return
+                return // Skip showing notification today, but alarm was already rescheduled for tomorrow above
             }
         }
 
+        // --- 3. DISABLE "ONCE" ALARMS IN FIRESTORE ---
         if (repetition == "ONCE" && !firestoreId.isNullOrEmpty()) {
             val userId = Firebase.auth.currentUser?.uid
             if (userId != null) {
@@ -61,11 +76,27 @@ class MealReminderReceiver : BroadcastReceiver() {
             }
         }
 
-        createNotificationChannel(context)
+        // --- 4. DETERMINE CHANNEL AND DEEP LINK BASED ON TYPE ---
+        val channelId: String
+        val deepLinkUri: String
+        val title: String
 
-        val addMealIntent = Intent(
+        if (type == "WEIGHT") {
+            channelId = CHANNEL_ID_WEIGHT
+            deepLinkUri = "dietapp://weight_tracker?openWeightLog=true"
+            title = "Weight Log Reminder"
+        } else {
+            channelId = CHANNEL_ID_MEAL
+            deepLinkUri = "dietapp://add_meal"
+            title = "Meal Logging Reminder"
+        }
+
+        createNotificationChannel(context, type)
+
+        // --- 5. SHOW NOTIFICATION ---
+        val appIntent = Intent(
             Intent.ACTION_VIEW,
-            "dietapp://add_meal".toUri(),
+            deepLinkUri.toUri(),
             context,
             MainActivity::class.java
         ).apply {
@@ -75,13 +106,13 @@ class MealReminderReceiver : BroadcastReceiver() {
         val pendingIntent = PendingIntent.getActivity(
             context,
             notificationId,
-            addMealIntent,
+            appIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val notification = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Meal Logging Reminder")
+            .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
@@ -100,10 +131,10 @@ class MealReminderReceiver : BroadcastReceiver() {
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            add(Calendar.DAY_OF_YEAR, 1)
+            add(Calendar.DAY_OF_YEAR, 1) // Add 1 day
         }
 
-        val nextIntent = Intent(context, MealReminderReceiver::class.java).apply {
+        val nextIntent = Intent(context, UniversalReminderReceiver::class.java).apply {
             if (oldIntent.extras != null) putExtras(oldIntent.extras!!)
         }
 
@@ -125,12 +156,15 @@ class MealReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun createNotificationChannel(context: Context) {
+    private fun createNotificationChannel(context: Context, type: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Meal Reminders"
+            val id = if (type == "WEIGHT") CHANNEL_ID_WEIGHT else CHANNEL_ID_MEAL
+            val name = if (type == "WEIGHT") "Weight Reminders" else "Meal Reminders"
+            val desc = if (type == "WEIGHT") "Reminders to log your weight" else "Reminders to log your daily meals"
+
             val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
-                description = "Reminders to log your daily meals"
+            val channel = NotificationChannel(id, name, importance).apply {
+                description = desc
             }
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)

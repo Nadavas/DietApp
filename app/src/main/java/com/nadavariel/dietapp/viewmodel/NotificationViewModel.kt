@@ -13,9 +13,8 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.toObject
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.NotificationPreference
-import com.nadavariel.dietapp.ui.notifications.MealReminderReceiver
+// REMOVED: Old Receiver Imports
 import com.nadavariel.dietapp.ui.notifications.NotificationScheduler
-import com.nadavariel.dietapp.ui.notifications.WeightReminderReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -80,8 +79,8 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
             }
 
             if (prefToSave.isEnabled) {
-                val receiverClass = if (prefToSave.type == "WEIGHT") WeightReminderReceiver::class.java else MealReminderReceiver::class.java
-                scheduler.schedule(prefToSave, receiverClass)
+                // CHANGED: No need to pass receiver class anymore
+                scheduler.schedule(prefToSave)
             }
         } catch (e: Exception) {
             Log.e("NotifVM", "Error saving notification: ${e.message}")
@@ -92,8 +91,8 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         val collection = getPreferencesCollection() ?: return@launch
         if (preference.id.isBlank()) return@launch
         try {
-            val receiverClass = if (preference.type == "WEIGHT") WeightReminderReceiver::class.java else MealReminderReceiver::class.java
-            scheduler.cancel(preference, receiverClass)
+            // CHANGED: No need to pass receiver class anymore
+            scheduler.cancel(preference)
             collection.document(preference.id).delete().await()
         } catch (e: Exception) {
             Log.e("NotifVM", "Error deleting notification: ${e.message}")
@@ -104,27 +103,24 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         val collection = getPreferencesCollection() ?: return
 
         val updatedPref = preference.copy(isEnabled = isEnabled)
-        val receiverClass = if (updatedPref.type == "WEIGHT") WeightReminderReceiver::class.java else MealReminderReceiver::class.java
 
         // 1. Schedule/Cancel Alarm locally
         try {
             if (isEnabled) {
-                scheduler.schedule(updatedPref, receiverClass)
+                scheduler.schedule(updatedPref)
             } else {
-                scheduler.cancel(updatedPref, receiverClass)
+                scheduler.cancel(updatedPref)
             }
         } catch (e: Exception) {
             Log.e("NotifVM", "Error updating alarm: ${e.message}")
         }
 
-        // 2. Update Firestore (Fire and Forget)
-        // We use .update to avoid overwriting other fields/race conditions
+        // 2. Update Firestore
         viewModelScope.launch {
             try {
                 collection.document(preference.id).update("isEnabled", isEnabled).await()
             } catch (e: Exception) {
                 Log.e("NotifVM", "Error toggling notification in DB: ${e.message}")
-                // If DB fails, we might want to revert alarm, but generally fine to leave until next sync
             }
         }
     }

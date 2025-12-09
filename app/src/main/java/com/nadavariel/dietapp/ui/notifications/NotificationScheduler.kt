@@ -13,28 +13,18 @@ class NotificationScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    private fun getPendingIntent(
-        preference: NotificationPreference,
-        receiverClass: Class<*>
-    ): PendingIntent {
-
-        val intent = Intent(context, receiverClass).apply {
-            putExtra("NOTIFICATION_FIRESTORE_ID", preference.id)
-            putIntegerArrayListExtra("DAYS_OF_WEEK", ArrayList(preference.daysOfWeek))
-
-            // Pass Hour/Minute for rescheduling
-            putExtra("HOUR", preference.hour)
-            putExtra("MINUTE", preference.minute)
-
-            if (preference.type == "WEIGHT") {
-                putExtra(WeightReminderReceiver.WEIGHT_NOTIF_ID_EXTRA, preference.uniqueId)
-                putExtra(WeightReminderReceiver.WEIGHT_MESSAGE_EXTRA, preference.message)
-                putExtra(WeightReminderReceiver.WEIGHT_REPETITION_EXTRA, preference.repetition)
-            } else {
-                putExtra(MealReminderReceiver.NOTIFICATION_ID_EXTRA, preference.uniqueId)
-                putExtra(MealReminderReceiver.NOTIFICATION_MESSAGE_EXTRA, preference.message)
-                putExtra(MealReminderReceiver.NOTIFICATION_REPETITION_EXTRA, preference.repetition)
-            }
+    private fun getPendingIntent(preference: NotificationPreference): PendingIntent {
+        // ALWAYS use UniversalReminderReceiver
+        val intent = Intent(context, UniversalReminderReceiver::class.java).apply {
+            putExtra(UniversalReminderReceiver.EXTRA_NOTIFICATION_ID, preference.uniqueId)
+            putExtra(UniversalReminderReceiver.EXTRA_MESSAGE, preference.message)
+            putExtra(UniversalReminderReceiver.EXTRA_REPETITION, preference.repetition)
+            // Pass the type ("MEAL" or "WEIGHT")
+            putExtra(UniversalReminderReceiver.EXTRA_TYPE, preference.type)
+            putExtra(UniversalReminderReceiver.EXTRA_FIRESTORE_ID, preference.id)
+            putIntegerArrayListExtra(UniversalReminderReceiver.EXTRA_DAYS_OF_WEEK, ArrayList(preference.daysOfWeek))
+            putExtra(UniversalReminderReceiver.EXTRA_HOUR, preference.hour)
+            putExtra(UniversalReminderReceiver.EXTRA_MINUTE, preference.minute)
         }
 
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -47,22 +37,21 @@ class NotificationScheduler(private val context: Context) {
         )
     }
 
-    fun schedule(preference: NotificationPreference, receiverClass: Class<*>) {
+    // Removed the 'receiverClass' parameter
+    fun schedule(preference: NotificationPreference) {
         if (!preference.isEnabled) return
 
-        val pendingIntent = getPendingIntent(preference, receiverClass)
-
+        val pendingIntent = getPendingIntent(preference)
         val calendar = preference.getNextScheduledCalendar()
 
-        // Zero out seconds for exact timing
+        // Zero out seconds
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
 
         var triggerTime = calendar.timeInMillis
         val currentTime = System.currentTimeMillis()
 
-        // Grace period: if time is > 60s in the past, schedule for tomorrow.
-        // If it's within 60s (just clicked save), fire immediately.
+        // Grace period logic
         if (triggerTime <= currentTime - 60_000) {
             triggerTime += AlarmManager.INTERVAL_DAY
         }
@@ -70,34 +59,22 @@ class NotificationScheduler(private val context: Context) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 } else {
-                    // Fallback if permission revoked
-                    alarmManager.setAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
                 }
             } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
             }
         } catch (e: SecurityException) {
             e.printStackTrace()
         }
     }
 
-    fun cancel(preference: NotificationPreference, receiverClass: Class<*>) {
+    // Removed the 'receiverClass' parameter
+    fun cancel(preference: NotificationPreference) {
         try {
-            val pendingIntent = getPendingIntent(preference, receiverClass)
+            val pendingIntent = getPendingIntent(preference)
             alarmManager.cancel(pendingIntent)
         } catch (e: Exception) {
             e.printStackTrace()

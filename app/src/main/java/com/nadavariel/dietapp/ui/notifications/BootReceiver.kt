@@ -27,7 +27,6 @@ class BootReceiver : BroadcastReceiver() {
             }
 
             val firestore = Firebase.firestore
-            // Reads from the single "notifications" collection
             val preferencesCollection = firestore
                 .collection("users")
                 .document(userId)
@@ -43,14 +42,10 @@ class BootReceiver : BroadcastReceiver() {
 
                     val scheduler = NotificationScheduler(context)
 
-                    // Check the type and schedule with the correct receiver
+                    // Simplified: We don't need to check type here anymore.
+                    // The scheduler handles everything via UniversalReminderReceiver.
                     preferencesToSchedule.forEach { pref ->
-                        if (pref.type == "WEIGHT") {
-                            scheduler.schedule(pref, WeightReminderReceiver::class.java)
-                        } else {
-                            // Default to Meal
-                            scheduler.schedule(pref, MealReminderReceiver::class.java)
-                        }
+                        scheduler.schedule(pref)
                     }
                     Log.d("BootReceiver", "Rescheduled ${preferencesToSchedule.size} alarms.")
 

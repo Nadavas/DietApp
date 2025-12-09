@@ -55,12 +55,7 @@
         </activity>
 
         <receiver
-            android:name=".ui.notifications.MealReminderReceiver"
-            android:enabled="true"
-            android:exported="false" />
-
-        <receiver
-            android:name=".ui.notifications.WeightReminderReceiver"
+            android:name=".ui.notifications.UniversalReminderReceiver"
             android:enabled="true"
             android:exported="false" />
 
@@ -72,12 +67,6 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
-<!--        <activity-->
-<!--            android:name="com.yalantis.ucrop.UCropActivity"-->
-<!--            android:screenOrientation="fullSensor"-->
-<!--            android:theme="@style/Theme.AppCompat.Light.NoActionBar"-->
-<!--            tools:ignore="DiscouragedApi" />-->
 
     </application>
 
