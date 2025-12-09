@@ -929,7 +929,7 @@ private fun ModeSelectionCard(
 }
 
 @Composable
-fun SubmitMealButton(
+private fun SubmitMealButton(
     isEditMode: Boolean,
     geminiResult: GeminiResult,
     isButtonEnabled: Boolean,
@@ -971,7 +971,7 @@ fun SubmitMealButton(
 }
 
 @Composable
-fun AddMealSectionHeader(title: String, modifier: Modifier = Modifier) {
+private fun AddMealSectionHeader(title: String, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.padding(start = 4.dp, top = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -993,7 +993,7 @@ fun AddMealSectionHeader(title: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun FormCard(content: @Composable ColumnScope.() -> Unit) {
+private fun FormCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -1007,7 +1007,7 @@ fun FormCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-fun ThemedOutlinedTextField(
+private fun ThemedOutlinedTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -1037,7 +1037,7 @@ fun ThemedOutlinedTextField(
 }
 
 @Composable
-fun ServingAndCaloriesSection(
+private fun ServingAndCaloriesSection(
     servingAmountText: String, onServingAmountChange: (String) -> Unit,
     servingUnitText: String, onServingUnitChange: (String) -> Unit,
     caloriesText: String, onCaloriesChange: (String) -> Unit
@@ -1077,7 +1077,7 @@ fun ServingAndCaloriesSection(
 }
 
 @Composable
-fun MacronutrientsSection(
+private fun MacronutrientsSection(
     proteinText: String, onProteinChange: (String) -> Unit,
     carbsText: String, onCarbsChange: (String) -> Unit,
     fatText: String, onFatChange: (String) -> Unit
@@ -1121,7 +1121,7 @@ fun MacronutrientsSection(
 }
 
 @Composable
-fun MicronutrientsSection(
+private fun MicronutrientsSection(
     fiberText: String, onFiberChange: (String) -> Unit, sugarText: String, onSugarChange: (String) -> Unit,
     sodiumText: String, onSodiumChange: (String) -> Unit, potassiumText: String, onPotassiumChange: (String) -> Unit,
     calciumText: String, onCalciumChange: (String) -> Unit, ironText: String, onIronChange: (String) -> Unit,
@@ -1185,7 +1185,7 @@ private fun NutrientTextField(
 }
 
 @Composable
-fun DateTimePickerSection(
+private fun DateTimePickerSection(
     selectedDateTimeState: Calendar,
     onDateTimeUpdate: (Calendar) -> Unit
 ) {
