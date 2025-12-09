@@ -2,7 +2,6 @@ package com.nadavariel.dietapp
 
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -185,7 +184,6 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(geminiResult) {
                     when(val result = geminiResult) {
                         is GeminiResult.Success -> {
-                            Log.d("MainActivity", "Gemini success detected. Showing dialog.")
                             showGeminiDialog = result.foodInfoList
                         }
                         is GeminiResult.Error -> {
@@ -204,7 +202,6 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentUser, isLoadingProfile) {
                     if (!isLoadingProfile) {
                         if (currentUser == null) {
-                            // FIX: Reset results to hide hovering messages/abort processes immediately upon sign out
                             questionsViewModel.resetDietPlanResult()
                             foodLogViewModel.resetGeminiResult()
 
@@ -376,7 +373,6 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onSignInSuccess = { isNewUser ->
-                                        // UPDATE: Pass source=onboarding for new users
                                         val route = if (isNewUser) {
                                             "${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding"
                                         } else {
@@ -403,7 +399,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onSignUpSuccess = { isNewUser ->
                                         if (isNewUser) {
-                                            // UPDATE: Pass source=onboarding
                                             navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding")
                                         } else {
                                             navController.navigate(NavRoutes.HOME) {
@@ -421,7 +416,6 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(NavRoutes.HOME) {
-                                // Check if QuestionsViewModel is currently loading (generating)
                                 val isGenerating by remember(dietPlanResult) {
                                     mutableStateOf(dietPlanResult is DietPlanResult.Loading)
                                 }
@@ -515,14 +509,12 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(
-                                // 1. Update route to include source
                                 route = "${NavRoutes.QUESTIONS}?startQuiz={startQuiz}&source={source}",
                                 arguments = listOf(
                                     navArgument("startQuiz") {
                                         type = NavType.BoolType
                                         defaultValue = false
                                     },
-                                    // 2. Add source argument (default is "home")
                                     navArgument("source") {
                                         type = NavType.StringType
                                         defaultValue = "home"
@@ -538,7 +530,7 @@ class MainActivity : ComponentActivity() {
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
                                     startQuiz = startQuiz,
-                                    source = source // 3. Pass source to screen
+                                    source = source
                                 )
                             }
 
@@ -607,7 +599,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // --- NEW: Create/Edit Thread Route with Arguments ---
                             composable(
                                 route = NavRoutes.CREATE_THREAD,
                                 arguments = listOf(navArgument("threadId") {
@@ -624,7 +615,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // --- NEW: My Threads Screen ---
                             composable(NavRoutes.MY_THREADS) {
                                 MyThreadsScreen(
                                     navController = navController,

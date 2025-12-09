@@ -2,6 +2,13 @@ package com.nadavariel.dietapp.model
 
 import androidx.compose.ui.graphics.Color
 
+data class BadgeData(
+    val threshold: Float,
+    val title: String,
+    val emoji: String,
+    val color: Color
+)
+
 data class Achievement(
     val id: String,
     val title: String,

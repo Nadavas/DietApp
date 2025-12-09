@@ -40,7 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.nadavariel.dietapp.model.BadgeData
 import com.nadavariel.dietapp.model.WeightEntry
+import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -82,7 +84,6 @@ fun WeightScreen(
     val totalGoal = abs(targetWeight - userProfile.startingWeight)
     val isWeightLossGoal = targetWeight < userProfile.startingWeight
 
-    // Progress Logic
     val progressAmount = if (isWeightLossGoal) {
         userProfile.startingWeight - currentWeight
     } else {
@@ -265,9 +266,9 @@ fun WeightScreen(
     }
 }
 
-// -----------------------------------------------------------------------------
-// UI COMPONENTS
-// -----------------------------------------------------------------------------
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
 
 @Composable
 private fun PersonalizedHeader(
@@ -651,18 +652,13 @@ private fun MotivationalTrophySection(
         BadgeData(100f, "Champion", "🏆", AppTheme.colors.primaryGreen)
     )
 
-    // Start in the middle of the infinite list so it feels truly cyclic
-    // We calculate the offset to ensure we start exactly at the beginning of the list sequence
     val startIndex = Int.MAX_VALUE / 2 - (Int.MAX_VALUE / 2 % badges.size)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
 
-    // Auto-scrolling Logic
+    // Auto scroll
     LaunchedEffect(Unit) {
         while (true) {
-            // Scroll by 1.5 pixels
             listState.scrollBy(1.5f)
-            // Wait 20ms (approx 50fps) - adjust this delay to control speed
-            // Higher delay = Slower speed
             kotlinx.coroutines.delay(20)
         }
     }
@@ -728,13 +724,6 @@ private fun MotivationalTrophySection(
         }
     }
 }
-
-private data class BadgeData(
-    val threshold: Float,
-    val title: String,
-    val emoji: String,
-    val color: Color
-)
 
 @Composable
 private fun MotivationalBadgeItemCompact(badge: BadgeData, isUnlocked: Boolean) {
@@ -955,7 +944,6 @@ fun EnhancedWeightLineChart(
 ) {
     val density = LocalDensity.current
     val primaryColor = AppTheme.colors.primaryGreen
-    val targetColor = Color(0xFF4CAF50)
     val grayColor = AppTheme.colors.textSecondary
     val gradientColors = listOf(
         primaryColor.copy(alpha = 0.3f),
@@ -1019,22 +1007,17 @@ fun EnhancedWeightLineChart(
             return yAxisPadding + (index * xSpacing)
         }
 
-        // --- ADD THIS BLOCK ---
         val currentWeight = allPointsWithStart.lastOrNull()?.first ?: startingWeight
-
-        // Define the specific Y-axis values you want to display
         val yValuesToShow = listOf(startingWeight, targetWeight, currentWeight)
             .filter { it > 0 } // Remove invalid values
             .distinct()        // Remove exact duplicates
             .sortedDescending() // Sort to process from top to bottom
 
-        // To prevent text overlap, we track where we drew the last label
         val drawnYPositions = mutableListOf<Float>()
         val minTextSeparation = with(density) { 14.sp.toPx() } // Minimum spacing between labels
 
         yValuesToShow.forEach { weight ->
             val yPos = getY(weight)
-            // Only draw if it doesn't overlap with a previously drawn label
             val isOverlapping = drawnYPositions.any { abs(it - yPos) < minTextSeparation }
 
             if (!isOverlapping) {
@@ -1047,12 +1030,11 @@ fun EnhancedWeightLineChart(
                 drawnYPositions.add(yPos)
             }
         }
-        // ----------------------
 
         if (targetWeight > 0) {
             val targetY = getY(targetWeight)
             drawLine(
-                color = targetColor,
+                color = primaryColor,
                 start = Offset(yAxisPadding, targetY),
                 end = Offset(size.width, targetY),
                 strokeWidth = with(density) { 2.dp.toPx() },
@@ -1292,49 +1274,13 @@ fun LogWeightDialog(
     )
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.timeInMillis
+        AppDatePickerDialog(
+            initialDate = selectedDate,
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { newDate ->
+                selectedDate = newDate
+                showDatePicker = false
+            }
         )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val newDate = Calendar.getInstance().apply { timeInMillis = millis }
-                            // Prevent future dates
-                            selectedDate = if (newDate.after(Calendar.getInstance())) {
-                                Calendar.getInstance()
-                            } else {
-                                newDate
-                            }
-                        }
-                        showDatePicker = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDatePicker = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
-                ) {
-                    Text("Cancel")
-                }
-            },
-            colors = DatePickerDefaults.colors(containerColor = Color.White)
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = AppTheme.colors.primaryGreen,
-                    todayContentColor = AppTheme.colors.primaryGreen
-                )
-            )
-        }
     }
 }
