@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model // You can place this in your 'model' package
+package com.nadavariel.dietapp.model
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -7,8 +7,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.firebase.Timestamp
 import java.util.Date
-
-// --- Thread ---
 
 data class Thread(
     val id: String = "",
@@ -21,8 +19,6 @@ data class Thread(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-// --- Comment ---
-
 data class Comment(
     val id: String = "",
     val threadId: String = "",
@@ -32,15 +28,11 @@ data class Comment(
     val createdAt: Timestamp = Timestamp(Date())
 )
 
-// --- Like ---
-
 data class Like(
     val userId: String = "",
     val authorName: String = "",
     val timestamp: Timestamp = Timestamp.now()
 )
-
-// --- Topic (from DataSource) ---
 
 data class Topic(
     val key: String,

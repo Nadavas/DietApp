@@ -23,17 +23,4 @@ object AvatarConstants {
         Pair("avatar_17", R.drawable.ic_adventurer_mason),
         Pair("avatar_18", R.drawable.ic_adventurer_avery),
     )
-
-    // A default avatar to show if none is selected or if the selected one is invalid
-//    @DrawableRes
-//    fun getDefaultAvatarResId(): Int {
-//        return R.drawable.ic_person_filled
-//    }
-
-    // Function to get the resource ID from an avatar Id (the string key)
-//    @DrawableRes
-//    fun getAvatarResId(avatarId: String?): Int {
-//        return AVATAR_DRAWABLES.firstOrNull { it.first == avatarId }?.second
-//            ?: getDefaultAvatarResId()
-//    }
 }

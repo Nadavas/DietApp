@@ -158,15 +158,12 @@ fun GeminiConfirmationDialog(
     onAccept: (List<FoodNutritionalInfo>) -> Unit,
     onCancel: () -> Unit
 ) {
-    // --- SET UP INTERNAL STATE FOR EDITING ---
     var isEditing by remember { mutableStateOf(false) }
     val editableFoodList = remember { mutableStateListOf(*foodInfoList.toTypedArray()) }
 
-    // Calculate total calories based on the *editable* list
     val totalCalories = remember(editableFoodList.sumOf { it.calories?.toIntOrNull() ?: 0 }) {
         editableFoodList.sumOf { it.calories?.toIntOrNull() ?: 0 }
     }
-    // --- END OF STATE SETUP ---
 
     AlertDialog(
         onDismissRequest = { /* Do nothing (blocking) */ },
@@ -194,7 +191,6 @@ fun GeminiConfirmationDialog(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // --- RENDER BASED ON isEditing STATE ---
                     itemsIndexed(editableFoodList, key = { index, item -> item.foodName ?: index }) { index, foodInfo ->
                         if (isEditing) {
                             // --- EDITING VIEW ---
@@ -263,7 +259,6 @@ fun GeminiConfirmationDialog(
     )
 }
 
-// --- 4. NEW COMPOSABLE FOR READ-ONLY ITEM ---
 @Composable
 private fun ReadOnlyFoodItem(index: Int, foodInfo: FoodNutritionalInfo) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -307,7 +302,6 @@ private fun ReadOnlyFoodItem(index: Int, foodInfo: FoodNutritionalInfo) {
     }
 }
 
-// --- 5. NEW COMPOSABLE FOR EDITABLE ITEM ---
 @Composable
 private fun EditableFoodItem(
     item: FoodNutritionalInfo,
@@ -368,10 +362,7 @@ fun AvatarSelectionDialog(
     currentAvatarId: String,
     onDismiss: () -> Unit,
     onAvatarSelected: (String) -> Unit
-    // Removed: onCustomImageSelected callback
 ) {
-    // Removed: Photo Picker Launcher
-
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -398,9 +389,6 @@ fun AvatarSelectionDialog(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Removed: The "Upload Photo" Button (First Item)
-
-                    // Existing Avatars
                     items(AvatarConstants.AVATAR_DRAWABLES) { (avatarId, drawableResId) ->
                         val isSelected = currentAvatarId == avatarId
 
@@ -452,14 +440,12 @@ fun UserAvatar(
     size: Dp,
     modifier: Modifier = Modifier
 ) {
-    // 1. Check if it matches one of your pre-defined local avatars
     val localDrawable = AvatarConstants.AVATAR_DRAWABLES.find { it.first == avatarId }?.second
 
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            // Optional: Background color for the default icon if you want it
             .background(if (localDrawable == null) AppTheme.colors.primaryGreen.copy(alpha = 0.1f) else Color.Transparent)
     ) {
         if (localDrawable != null) {
@@ -523,8 +509,6 @@ fun StyledAlertDialog(
 
 // --- SIGN IN AND UP COMPOSABLES ---
 
-
-// --- 1. SHARED GOOGLE SIGN-IN LOGIC ---
 @Composable
 fun rememberGoogleSignInLauncher(
     authViewModel: AuthViewModel,
@@ -571,7 +555,6 @@ fun rememberGoogleSignInLauncher(
     return Pair(launcher, googleSignInClient)
 }
 
-// --- 2. SHARED LAYOUT WRAPPER ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreenWrapper(
@@ -612,7 +595,6 @@ fun AuthScreenWrapper(
     }
 }
 
-// --- 3. STYLED TEXT FIELD ---
 @Composable
 fun AppTextField(
     value: String,
@@ -642,7 +624,6 @@ fun AppTextField(
     )
 }
 
-// --- 4. PRIMARY BUTTON (SIGN IN / NEXT) ---
 @Composable
 fun AppPrimaryButton(
     text: String,
@@ -673,7 +654,6 @@ fun AppPrimaryButton(
     }
 }
 
-// --- 5. GOOGLE SIGN IN BUTTON ---
 @Composable
 fun GoogleSignInButton(
     onClick: () -> Unit,
@@ -762,14 +742,12 @@ fun AppDatePickerDialog(
                 onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         val newDate = Calendar.getInstance().apply { timeInMillis = millis }
-                        // Create a clone to modify
                         val updatedCal = (initialDate.clone() as Calendar).apply {
                             set(Calendar.YEAR, newDate.get(Calendar.YEAR))
                             set(Calendar.MONTH, newDate.get(Calendar.MONTH))
                             set(Calendar.DAY_OF_MONTH, newDate.get(Calendar.DAY_OF_MONTH))
                         }
 
-                        // Internal Validation: Prevent future dates
                         val now = Calendar.getInstance()
                         if (updatedCal.after(now)) {
                             onDateSelected(now)
@@ -827,7 +805,6 @@ fun AppTimePickerDialog(
                         set(Calendar.MINUTE, timePickerState.minute)
                     }
 
-                    // Internal Validation: Prevent future time
                     val now = Calendar.getInstance()
                     if (updatedCal.after(now)) {
                         onTimeSelected(now)

@@ -10,7 +10,7 @@ object QuestionnaireConstants {
     const val GENDER_QUESTION = "What is your gender?"
     const val HEIGHT_QUESTION = "What is your height?"
     const val WEIGHT_QUESTION = "What is your weight?"
-    const val TARGET_WEIGHT_QUESTION = "What is your target weight?" // Updated phrasing
+    const val TARGET_WEIGHT_QUESTION = "What is your target weight?"
 
     // AI/Goal Specific Questions
     const val CALORIES_GOAL_QUESTION = "How many calories a day is your target?"

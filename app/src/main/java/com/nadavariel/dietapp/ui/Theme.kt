@@ -15,8 +15,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// --- 1. DEFINE YOUR CUSTOM COLORS ---
-// This class unifies all your colors from HomeColors, QuestionColors, etc.
+// --- CUSTOM COLORS ---
 data class AppColors(
     val primaryGreen: Color,
     val textPrimary: Color,
@@ -54,8 +53,6 @@ data class AppColors(
     val axisText: Color,
 )
 
-// --- 2. CREATE THE SINGLE (LIGHT) PALETTE ---
-// Since you don't use dark mode, we only define one.
 private val LightAppColors = AppColors(
     primaryGreen = Color(0xFF4CAF50),
     textPrimary = Color(0xFF1A1A1A),
@@ -93,11 +90,10 @@ private val LightAppColors = AppColors(
     axisText = Color(0xFF616161),
 )
 
-// --- 3. CREATE THE COMPOSITION LOCAL ---
+// --- CREATE THE COMPOSITION LOCAL ---
 // This "provides" the colors to the rest of the app.
 private val LocalAppColors = staticCompositionLocalOf { LightAppColors }
 
-// --- 4. CREATE THE SINGLE THEME OBJECT (THE PART YOU IMPORT) ---
 /**
  * This is the single object you will import in your screens.
  *
@@ -160,23 +156,22 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40
 )
 
-// --- 5. UPDATED THEME FUNCTION ---
+// --- THEME FUNCTION ---
+
 @Composable
 fun DietAppTheme(
-    // darkTheme: Boolean = isSystemInDarkTheme(), // Removed as requested
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            // Always use light dynamic color
             dynamicLightColorScheme(context)
         }
         else -> LightColorScheme
     }
 
-    // This is the key: We provide your new custom colors to the app
+    // This is the key: provide new custom colors to the app
     CompositionLocalProvider(LocalAppColors provides LightAppColors) {
         MaterialTheme(
             colorScheme = colorScheme,

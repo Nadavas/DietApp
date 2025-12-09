@@ -9,7 +9,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Date
 
-// --- Meal (Your existing class for logging) ---
 data class Meal(
     val id: String = "", // Document ID from Firestore
     val foodName: String = "",
@@ -63,8 +62,8 @@ data class CalculatedStats(
 )
 
 data class DietPlan(
-    val healthOverview: List<String> = emptyList(), // Changed to List
-    val goalStrategy: List<String> = emptyList(),   // Changed to List
+    val healthOverview: List<String> = emptyList(),
+    val goalStrategy: List<String> = emptyList(),
     val concretePlan: ConcretePlan = ConcretePlan(),
     val exampleMealPlan: ExampleMealPlan = ExampleMealPlan(),
     val disclaimer: String = ""
@@ -73,10 +72,9 @@ data class DietPlan(
 data class ConcretePlan(
     val targets: Targets = Targets(),
     val mealGuidelines: MealGuidelines = MealGuidelines(),
-    val trainingAdvice: List<String> = emptyList() // Changed to List
+    val trainingAdvice: List<String> = emptyList()
 )
 
-// The rest remain the same, but included for context:
 data class Targets(
     val dailyCalories: Int = 0,
     val proteinGrams: Int = 0,
@@ -115,8 +113,6 @@ data class NutrientData(
     val onChange: (String) -> Unit
 )
 
-// --- FoodNutritionalInfo (Your existing class) ---
-// (This is unchanged)
 data class FoodNutritionalInfo(
     @SerializedName("food_name") val foodName: String?,
     @SerializedName("serving_unit") val servingUnit: String?,
@@ -132,8 +128,6 @@ data class FoodNutritionalInfo(
     @SerializedName("calcium") val calcium: String?,
     @SerializedName("iron") val iron: String?,
     @SerializedName("vitamin_c") val vitaminC: String?,
-    // START: Added for Vitamin A and B12
     @SerializedName("vitamin_a") val vitaminA: String?,
     @SerializedName("vitamin_b12") val vitaminB12: String?
-    // END: Added for Vitamin A and B12
 )

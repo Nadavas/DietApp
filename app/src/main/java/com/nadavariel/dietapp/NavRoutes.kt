@@ -10,15 +10,11 @@ object NavRoutes {
     const val SECURITY = "security"
     const val QUESTIONS = "questions"
     const val THREADS = "threads"
-
-    // --- UPDATED ROUTES ---
     const val MY_THREADS = "my_threads"
-    // The definition for the NavHost
     const val CREATE_THREAD = "create_thread?threadId={threadId}"
-    const val THREAD_TOPIC = "thread_topic/{topicId}"
     const val THREAD_DETAIL_WITH_ARG = "thread_detail/{threadId}"
 
-    // --- HELPER FUNCTIONS (CRITICAL FIX) ---
+    // --- HELPER FUNCTIONS ---
     // Use this when navigating TO the screen
     fun createThread(threadId: String? = null): String {
         return if (threadId != null) {

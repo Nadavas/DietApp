@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model // You can place this in your 'model' package
+package com.nadavariel.dietapp.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
@@ -10,8 +10,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 
-// --- UserProfile ---
-
 data class UserProfile(
     val name: String = "",
     val startingWeight: Float = 0f,
@@ -21,7 +19,6 @@ data class UserProfile(
     val gender: Gender = Gender.UNKNOWN
 )
 
-// --- Gender ---
 enum class Gender(val displayName: String) {
     MALE("Male"),
     FEMALE("Female"),
@@ -39,8 +36,6 @@ enum class Gender(val displayName: String) {
     }
 }
 
-// --- WeightEntry ---
-
 data class WeightEntry(
     @DocumentId
     val id: String = "",
@@ -49,15 +44,11 @@ data class WeightEntry(
     val timestamp: Timestamp? = null
 )
 
-// --- Goal ---
-
 data class Goal(
     val text: String,
     val value: String? = null,
     val id: String = UUID.randomUUID().toString()
 )
-
-// --- Questions ---
 
 enum class InputType { DOB, HEIGHT, WEIGHT, TARGET_WEIGHT, EXERCISE_TYPE }
 data class Question(
@@ -65,8 +56,6 @@ data class Question(
     val options: List<String>? = null,
     val inputType: InputType? = null
 )
-
-// --- ReminderPreference ---
 
 @IgnoreExtraProperties
 data class ReminderPreference(
