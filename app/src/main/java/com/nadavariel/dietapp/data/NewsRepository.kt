@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.repository
+package com.nadavariel.dietapp.data
 
 import android.util.Log
 import com.nadavariel.dietapp.model.NewsArticle
@@ -11,45 +11,49 @@ import java.io.StringReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import java.util.UUID
 import java.util.regex.Pattern
 
 class NewsRepository {
 
-    private val TAG = "NewsRepository"
+    private val tag = "NewsRepository"
 
     // FETCH LOGIC - STRICT FAIRNESS: Max 2 articles per source
-    suspend fun fetchLatestArticles(totalLimit: Int = 20): List<NewsArticle> = withContext(Dispatchers.IO) {
-        val allArticles = mutableListOf<NewsArticle>()
+    suspend fun fetchLatestArticles(totalLimit: Int = 20): List<NewsArticle> =
+        withContext(Dispatchers.IO) {
+            val allArticles = mutableListOf<NewsArticle>()
 
-        NewsSourcesConfig.sources.forEach { feedUrl ->
-            try {
-                // 1. Fetch and parse articles from each source
-                val fetched = fetchAndParse(feedUrl)
+            NewsSourcesConfig.sources.forEach { feedUrl ->
+                try {
+                    // 1. Fetch and parse articles from each source
+                    val fetched = fetchAndParse(feedUrl)
 
-                // 2. STRICT FAIRNESS ENFORCEMENT:
-                // Take EXACTLY 2 articles max per source to ensure fair representation
-                // With 5 sources × 2 articles = 10 articles max, no source can dominate
-                val limited = fetched.take(2)
+                    // 2. STRICT FAIRNESS ENFORCEMENT:
+                    // Take EXACTLY 2 articles max per source to ensure fair representation
+                    // With 5 sources × 2 articles = 10 articles max, no source can dominate
+                    val limited = fetched.take(2)
 
-                allArticles.addAll(limited)
+                    allArticles.addAll(limited)
 
-                Log.d(TAG, "Added ${limited.size} articles from ${extractSourceName(feedUrl)}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error fetching $feedUrl", e)
+                    Log.d(tag, "Added ${limited.size} articles from ${extractSourceName(feedUrl)}")
+                } catch (e: Exception) {
+                    Log.e(tag, "Error fetching $feedUrl", e)
+                }
             }
+
+            // 3. Sort by date to show the freshest articles first
+            // Since each source contributes max 2 articles, we maintain fairness
+            val result = allArticles
+                .distinctBy { it.title } // Remove any duplicate titles
+                .sortedByDescending { it.publishedDate } // Newest first
+                .take(totalLimit) // Take requested number
+
+            Log.d(tag, "Returning ${result.size} total articles")
+            result
         }
-
-        // 3. Sort by date to show the freshest articles first
-        // Since each source contributes max 2 articles, we maintain fairness
-        val result = allArticles
-            .distinctBy { it.title } // Remove any duplicate titles
-            .sortedByDescending { it.publishedDate } // Newest first
-            .take(totalLimit) // Take requested number
-
-        Log.d(TAG, "Returning ${result.size} total articles")
-        result
-    }
 
     private fun fetchAndParse(feedUrl: String): List<NewsArticle> {
         val xmlContent = downloadXml(feedUrl) ?: return emptyList()
@@ -70,10 +74,10 @@ class NewsRepository {
             if (connection.responseCode == 200) {
                 return connection.inputStream.bufferedReader().use { it.readText() }
             } else {
-                Log.w(TAG, "HTTP ${connection.responseCode} for $urlString")
+                Log.w(tag, "HTTP ${connection.responseCode} for $urlString")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Network error downloading $urlString: ${e.message}")
+            Log.e(tag, "Network error downloading $urlString: ${e.message}")
         }
         return null
     }
@@ -176,7 +180,7 @@ class NewsRepository {
                 eventType = parser.next()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing XML for $sourceName: ${e.message}", e)
+            Log.e(tag, "Error parsing XML for $sourceName: ${e.message}", e)
         }
         return articles
     }
@@ -184,7 +188,7 @@ class NewsRepository {
     // UTILS
     private fun safeNextText(parser: XmlPullParser) = try {
         parser.nextText() ?: ""
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         ""
     }
 
@@ -224,7 +228,7 @@ class NewsRepository {
      */
     private fun parseDate(dateString: String): Long {
         if (dateString.isEmpty()) {
-            Log.w(TAG, "Empty date string, using current time")
+            Log.w(tag, "Empty date string, using current time")
             return System.currentTimeMillis()
         }
 
@@ -264,19 +268,19 @@ class NewsRepository {
 
                     // Sanity check: date shouldn't be in the future or too old (>2 years)
                     if (parsedTime <= now && (now - parsedTime) < (730L * 24 * 60 * 60 * 1000)) {
-                        Log.d(TAG, "✓ Parsed date: '$dateString' -> ${Date(parsedTime)}")
+                        Log.d(tag, "✓ Parsed date: '$dateString' -> ${Date(parsedTime)}")
                         return parsedTime
                     } else {
-                        Log.w(TAG, "Date outside valid range: $parsedTime")
+                        Log.w(tag, "Date outside valid range: $parsedTime")
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Try next format
             }
         }
 
         // If all parsing fails, log warning and use current time
-        Log.w(TAG, "⚠ Failed to parse date: '$dateString' - defaulting to current time")
+        Log.w(tag, "⚠ Failed to parse date: '$dateString' - defaulting to current time")
         return System.currentTimeMillis()
     }
 }

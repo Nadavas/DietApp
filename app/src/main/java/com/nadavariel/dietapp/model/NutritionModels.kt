@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model // Your correct package
+package com.nadavariel.dietapp.model
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -10,7 +10,6 @@ import java.time.ZoneId
 import java.util.Date
 
 // --- Meal (Your existing class for logging) ---
-// (This is unchanged)
 data class Meal(
     val id: String = "", // Document ID from Firestore
     val foodName: String = "",
@@ -25,17 +24,13 @@ data class Meal(
     val calcium: Double? = null,
     val iron: Double? = null,
     val vitaminC: Double? = null,
-    // START: Added for Vitamin A and B12
     val vitaminA: Double? = null,
     val vitaminB12: Double? = null,
-    // END: Added for Vitamin A and B12
     val servingAmount: String? = null,
     val servingUnit: String? = null,
     val timestamp: Timestamp = Timestamp(Date())
 )
 
-// --- MealSection (Your existing enum) ---
-// (This is unchanged)
 val MorningSectionColor = Color(0xFFFFA726)
 val NoonSectionColor = Color(0xFF66BB6A)
 val EveningSectionColor = Color(0xFF42A5F5)
@@ -61,9 +56,11 @@ enum class MealSection(val sectionName: String, val color: Color) {
     }
 }
 
-// ---
-// --- !!! THIS PART IS NEW AND REPLACES YOUR OLD DietPlan !!! ---
-// ---
+data class CalculatedStats(
+    val daysLogged: Int,
+    val avgCals: Int,
+    val avgProtein: Int
+)
 
 data class DietPlan(
     val healthOverview: List<String> = emptyList(), // Changed to List

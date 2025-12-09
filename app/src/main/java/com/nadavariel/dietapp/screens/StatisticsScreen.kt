@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Achievement
 import com.nadavariel.dietapp.model.AchievementRepository
+import com.nadavariel.dietapp.model.CalculatedStats
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import kotlinx.coroutines.delay
@@ -51,10 +52,7 @@ fun StatisticsScreen(
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
     val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsState()
     val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsState()
-
-    // NOTE: Ensure your ViewModel exposes this. Defaulting to empty map if not yet implemented.
-    // val weeklyMicros by foodLogViewModel.weeklyMicros.collectAsState(initial = emptyMap())
-    val weeklyMicros = emptyMap<String, Float>() // Replace with actual ViewModel collection above
+    val weeklyMicros = emptyMap<String, Float>()
 
     LaunchedEffect(Unit) {
         foodLogViewModel.refreshStatistics()
@@ -66,7 +64,6 @@ fun StatisticsScreen(
             .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Header
             ModernHeader()
 
             LazyColumn(
@@ -74,7 +71,6 @@ fun StatisticsScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ACHIEVEMENT CAROUSEL
                 item {
                     WeeklyAchievementsCarousel(
                         weeklyCalories = weeklyCalories,
@@ -99,8 +95,6 @@ fun StatisticsScreen(
                         color = AppTheme.colors.textPrimary
                     )
                 }
-
-                // CATEGORY CARDS
                 item {
                     CategoryCard(
                         title = "Energy & Protein",
@@ -153,17 +147,11 @@ fun StatisticsScreen(
     }
 }
 
-// -----------------------------------------------------------------------------
-// HELPER: CALCULATE STATS
-// -----------------------------------------------------------------------------
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
 
-data class CalculatedStats(
-    val daysLogged: Int,
-    val avgCals: Int,
-    val avgProtein: Int
-)
-
-fun calculateStats(
+private fun calculateStats(
     weeklyCalories: Map<LocalDate, Int>,
     weeklyProtein: Map<LocalDate, Float>
 ): CalculatedStats {
@@ -177,12 +165,8 @@ fun calculateStats(
     return CalculatedStats(daysLogged, avgCals, avgProtein)
 }
 
-// -----------------------------------------------------------------------------
-// COMPONENTS
-// -----------------------------------------------------------------------------
-
 @Composable
-fun WeeklyAchievementsCarousel(
+private fun WeeklyAchievementsCarousel(
     weeklyCalories: Map<LocalDate, Int>,
     weeklyProtein: Map<LocalDate, Float>,
     weeklyMacroPercentages: Map<String, Float>,
@@ -335,15 +319,14 @@ fun AllAchievementsScreen(
     weeklyCalories: Map<LocalDate, Int>,
     weeklyProtein: Map<LocalDate, Float>,
     weeklyMacroPercentages: Map<String, Float>
-    // Note: You should update MainActivity to pass weeklyMicros here too if needed
 ) {
     val stats = remember(weeklyCalories, weeklyProtein) {
         calculateStats(weeklyCalories, weeklyProtein)
     }
-    // if not available, or you can update the signature to accept it from navigation.
-    val weeklyMicros = emptyMap<String, Float>()
 
+    val weeklyMicros = emptyMap<String, Float>()
     val allBadges = AchievementRepository.allAchievements
+
     var selectedBadge by remember { mutableStateOf<Achievement?>(null) }
 
     Box(
@@ -396,7 +379,7 @@ fun AllAchievementsScreen(
 }
 
 @Composable
-fun AchievementGridItem(
+private fun AchievementGridItem(
     badge: Achievement,
     isUnlocked: Boolean,
     onClick: () -> Unit
@@ -442,7 +425,7 @@ fun AchievementGridItem(
 }
 
 @Composable
-fun AchievementDetailDialog(
+private fun AchievementDetailDialog(
     badge: Achievement,
     isUnlocked: Boolean,
     onDismiss: () -> Unit

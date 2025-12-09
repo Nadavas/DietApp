@@ -14,7 +14,7 @@ import com.nadavariel.dietapp.model.Comment
 import com.nadavariel.dietapp.model.Like
 import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.model.NewsArticle
-import com.nadavariel.dietapp.repository.NewsRepository
+import com.nadavariel.dietapp.data.NewsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
