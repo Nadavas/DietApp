@@ -43,7 +43,7 @@ import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.components.StyledAlertDialog
+import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch

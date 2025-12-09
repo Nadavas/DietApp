@@ -47,20 +47,23 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="dietapp" android:host="add_meal" />
-                <data android:scheme="dietapp" android:host="home" />
-                <data android:scheme="dietapp" android:host="weight_tracker" />
+                <data android:scheme="dietapp" />
+                <data android:host="add_meal" />
+                <data android:scheme="dietapp" />
+                <data android:host="home" />
+                <data android:scheme="dietapp" />
+                <data android:host="weight_tracker" />
             </intent-filter>
 
         </activity>
 
         <receiver
-            android:name=".ui.notifications.UniversalReminderReceiver"
+            android:name=".scheduling.UniversalReminderReceiver"
             android:enabled="true"
             android:exported="false" />
 
         <receiver
-            android:name=".ui.notifications.BootReceiver"
+            android:name=".scheduling.BootReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>

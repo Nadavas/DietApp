@@ -32,8 +32,8 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.components.AvatarSelectionDialog
-import com.nadavariel.dietapp.ui.components.UserAvatar
+import com.nadavariel.dietapp.ui.AvatarSelectionDialog
+import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import java.text.SimpleDateFormat

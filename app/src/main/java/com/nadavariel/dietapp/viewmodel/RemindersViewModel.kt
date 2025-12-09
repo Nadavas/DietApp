@@ -12,23 +12,22 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.toObject
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.model.NotificationPreference
-// REMOVED: Old Receiver Imports
-import com.nadavariel.dietapp.ui.notifications.NotificationScheduler
+import com.nadavariel.dietapp.model.ReminderPreference
+import com.nadavariel.dietapp.scheduling.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-class NotificationViewModel(application: Application) : AndroidViewModel(application) {
+class RemindersViewModel(application: Application) : AndroidViewModel(application) {
 
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
-    private val scheduler = NotificationScheduler(application.applicationContext)
+    private val scheduler = ReminderScheduler(application.applicationContext)
 
     private var notificationsListener: ListenerRegistration? = null
 
-    private val _allNotifications = MutableStateFlow<List<NotificationPreference>>(emptyList())
+    private val _allNotifications = MutableStateFlow<List<ReminderPreference>>(emptyList())
     val allNotifications = _allNotifications.asStateFlow()
 
     init {
@@ -60,13 +59,13 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
                 return@addSnapshotListener
             }
             val fetchedList = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject<NotificationPreference>()?.copy(id = doc.id)
+                doc.toObject<ReminderPreference>()?.copy(id = doc.id)
             } ?: emptyList()
             _allNotifications.value = fetchedList
         }
     }
 
-    fun saveNotification(preference: NotificationPreference) = viewModelScope.launch {
+    fun saveNotification(preference: ReminderPreference) = viewModelScope.launch {
         val collection = getPreferencesCollection() ?: return@launch
         try {
             var prefToSave = preference
@@ -87,7 +86,7 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun deleteNotification(preference: NotificationPreference) = viewModelScope.launch {
+    fun deleteNotification(preference: ReminderPreference) = viewModelScope.launch {
         val collection = getPreferencesCollection() ?: return@launch
         if (preference.id.isBlank()) return@launch
         try {
@@ -99,7 +98,7 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun toggleNotification(preference: NotificationPreference, isEnabled: Boolean) {
+    fun toggleNotification(preference: ReminderPreference, isEnabled: Boolean) {
         val collection = getPreferencesCollection() ?: return
 
         val updatedPref = preference.copy(isEnabled = isEnabled)

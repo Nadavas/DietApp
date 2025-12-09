@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.ui.notifications
+package com.nadavariel.dietapp.scheduling
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,7 +8,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.toObject
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.model.NotificationPreference
+import com.nadavariel.dietapp.model.ReminderPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,10 +37,10 @@ class BootReceiver : BroadcastReceiver() {
                     val snapshot = preferencesCollection.get().await()
 
                     val preferencesToSchedule = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject<NotificationPreference>()?.copy(id = doc.id)
+                        doc.toObject<ReminderPreference>()?.copy(id = doc.id)
                     }.filter { it.isEnabled }
 
-                    val scheduler = NotificationScheduler(context)
+                    val scheduler = ReminderScheduler(context)
 
                     // Simplified: We don't need to check type here anymore.
                     // The scheduler handles everything via UniversalReminderReceiver.

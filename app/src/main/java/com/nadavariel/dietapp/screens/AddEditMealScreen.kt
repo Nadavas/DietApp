@@ -49,9 +49,9 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.NutrientData
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.components.AppDatePickerDialog
-import com.nadavariel.dietapp.ui.components.AppTimePickerDialog
-import com.nadavariel.dietapp.ui.components.DateTimePickerRow
+import com.nadavariel.dietapp.ui.AppDatePickerDialog
+import com.nadavariel.dietapp.ui.AppTimePickerDialog
+import com.nadavariel.dietapp.ui.DateTimePickerRow
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
 import kotlinx.coroutines.Dispatchers

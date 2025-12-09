@@ -47,10 +47,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.NotificationPreference
+import com.nadavariel.dietapp.model.ReminderPreference
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.components.StyledAlertDialog
-import com.nadavariel.dietapp.viewmodel.NotificationViewModel
+import com.nadavariel.dietapp.ui.StyledAlertDialog
+import com.nadavariel.dietapp.viewmodel.RemindersViewModel
 import java.util.Calendar
 import androidx.core.net.toUri
 
@@ -59,9 +59,9 @@ import androidx.core.net.toUri
 @Composable
 fun NotificationScreen(
     navController: NavController,
-    notificationViewModel: NotificationViewModel = viewModel()
+    remindersViewModel: RemindersViewModel = viewModel()
 ) {
-    val allNotifications by notificationViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
+    val allNotifications by remindersViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
 
     // UPDATED: Sort strictly by time (Hour -> Minute), ignoring repetition type
     val sortedNotifications = remember(allNotifications) {
@@ -69,8 +69,8 @@ fun NotificationScreen(
     }
 
     var showAddDialog by remember { mutableStateOf(false) }
-    var selectedPreference by remember { mutableStateOf<NotificationPreference?>(null) }
-    var preferenceToDelete by remember { mutableStateOf<NotificationPreference?>(null) }
+    var selectedPreference by remember { mutableStateOf<ReminderPreference?>(null) }
+    var preferenceToDelete by remember { mutableStateOf<ReminderPreference?>(null) }
 
     val context = LocalContext.current
 
@@ -255,7 +255,7 @@ fun NotificationScreen(
                         NotificationCard(
                             preference = pref,
                             onToggle = { enabled ->
-                                notificationViewModel.toggleNotification(pref, enabled)
+                                remindersViewModel.toggleNotification(pref, enabled)
                             },
                             onEdit = {
                                 selectedPreference = pref
@@ -275,7 +275,7 @@ fun NotificationScreen(
 
     if (showAddDialog) {
         AddEditNotificationDialog(
-            viewModel = notificationViewModel,
+            viewModel = remindersViewModel,
             preferenceToEdit = selectedPreference,
             onDismiss = { showAddDialog = false; selectedPreference = null }
         )
@@ -289,7 +289,7 @@ fun NotificationScreen(
             confirmButtonText = "Delete",
             dismissButtonText = "Cancel",
             onConfirm = {
-                preferenceToDelete?.let { notificationViewModel.deleteNotification(it) }
+                preferenceToDelete?.let { remindersViewModel.deleteNotification(it) }
                 preferenceToDelete = null
             }
         )
@@ -299,7 +299,7 @@ fun NotificationScreen(
 @SuppressLint("DefaultLocale")
 @Composable
 fun NotificationCard(
-    preference: NotificationPreference,
+    preference: ReminderPreference,
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -435,8 +435,8 @@ fun NotificationCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditNotificationDialog(
-    viewModel: NotificationViewModel,
-    preferenceToEdit: NotificationPreference?,
+    viewModel: RemindersViewModel,
+    preferenceToEdit: ReminderPreference?,
     onDismiss: () -> Unit
 ) {
     val isEdit = preferenceToEdit != null
@@ -592,7 +592,7 @@ fun AddEditNotificationDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val finalPref = (preferenceToEdit ?: NotificationPreference()).copy(
+                    val finalPref = (preferenceToEdit ?: ReminderPreference()).copy(
                         hour = timePickerState.hour,
                         minute = timePickerState.minute,
                         repetition = repetition,

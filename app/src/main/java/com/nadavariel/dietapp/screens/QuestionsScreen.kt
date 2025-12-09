@@ -44,7 +44,7 @@ import com.nadavariel.dietapp.data.QuestionnaireConstants
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.components.AppDatePickerDialog
+import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 import java.util.Calendar

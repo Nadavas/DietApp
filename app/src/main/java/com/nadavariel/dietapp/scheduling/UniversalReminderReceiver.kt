@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.ui.notifications
+package com.nadavariel.dietapp.scheduling
 
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -21,7 +21,7 @@ class UniversalReminderReceiver : BroadcastReceiver() {
 
     companion object {
         // Shared Keys
-        const val EXTRA_NOTIFICATION_ID = "notification_id"
+        const val EXTRA_REMINDER_ID = "notification_id"
         const val EXTRA_MESSAGE = "notification_message"
         const val EXTRA_REPETITION = "notification_repetition"
         const val EXTRA_TYPE = "notification_type" // "MEAL" or "WEIGHT"
@@ -38,7 +38,7 @@ class UniversalReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent == null) return
 
-        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
+        val reminderId = intent.getIntExtra(EXTRA_REMINDER_ID, 0)
         val message = intent.getStringExtra(EXTRA_MESSAGE) ?: "Time to log!"
         val repetition = intent.getStringExtra(EXTRA_REPETITION) ?: "DAILY"
         val type = intent.getStringExtra(EXTRA_TYPE) ?: "MEAL"
@@ -47,12 +47,12 @@ class UniversalReminderReceiver : BroadcastReceiver() {
         val hour = intent.getIntExtra(EXTRA_HOUR, -1)
         val minute = intent.getIntExtra(EXTRA_MINUTE, -1)
 
-        if (notificationId == 0) return
+        if (reminderId == 0) return
 
         // --- 1. RESCHEDULE LOGIC (For Daily) ---
         // We reschedule immediately to ensure the next alarm is set even if the app isn't opened
         if (repetition == "DAILY" && hour != -1 && minute != -1) {
-            scheduleNextOccurrence(context, notificationId, intent, hour, minute)
+            scheduleNextOccurrence(context, reminderId, intent, hour, minute)
         }
 
         // --- 2. CHECK DAY OF WEEK ---
@@ -105,7 +105,7 @@ class UniversalReminderReceiver : BroadcastReceiver() {
 
         val pendingIntent = PendingIntent.getActivity(
             context,
-            notificationId,
+            reminderId,
             appIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -120,7 +120,7 @@ class UniversalReminderReceiver : BroadcastReceiver() {
             .build()
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(notificationId, notification)
+        manager.notify(reminderId, notification)
     }
 
     private fun scheduleNextOccurrence(context: Context, notificationId: Int, oldIntent: Intent, hour: Int, minute: Int) {

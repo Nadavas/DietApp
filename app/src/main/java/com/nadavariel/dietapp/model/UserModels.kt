@@ -66,10 +66,10 @@ data class Question(
     val inputType: InputType? = null
 )
 
-// --- NotificationPreference ---
+// --- ReminderPreference ---
 
 @IgnoreExtraProperties
-data class NotificationPreference(
+data class ReminderPreference(
     @DocumentId
     val id: String = "",
     val hour: Int = 12,

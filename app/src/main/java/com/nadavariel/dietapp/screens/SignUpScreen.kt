@@ -25,8 +25,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nadavariel.dietapp.ui.AppPrimaryButton
+import com.nadavariel.dietapp.ui.AppTextField
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.ui.components.* // Import your global components
+import com.nadavariel.dietapp.ui.AuthScreenWrapper
+import com.nadavariel.dietapp.ui.AvatarSelectionDialog
+import com.nadavariel.dietapp.ui.GoogleSignInButton
+import com.nadavariel.dietapp.ui.UserAvatar
+import com.nadavariel.dietapp.ui.rememberGoogleSignInLauncher
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
@@ -165,7 +171,12 @@ fun SignUpScreen(
             val annotatedTextLogin = buildAnnotatedString {
                 append("Already have an account? ")
                 pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
-                withStyle(style = SpanStyle(color = AppTheme.colors.primaryGreen, fontWeight = FontWeight.Bold)) {
+                withStyle(
+                    style = SpanStyle(
+                        color = AppTheme.colors.primaryGreen,
+                        fontWeight = FontWeight.Bold
+                    )
+                ) {
                     append("Log in")
                 }
                 pop()
@@ -173,7 +184,11 @@ fun SignUpScreen(
             ClickableText(
                 text = annotatedTextLogin,
                 onClick = { offset ->
-                    annotatedTextLogin.getStringAnnotations(tag = "LOGIN", start = offset, end = offset)
+                    annotatedTextLogin.getStringAnnotations(
+                        tag = "LOGIN",
+                        start = offset,
+                        end = offset
+                    )
                         .firstOrNull()?.let { onNavigateToSignIn() }
                 },
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -192,8 +207,11 @@ fun SignUpScreen(
                     enabled = authResult != AuthResult.Loading,
                     onClick = {
                         scope.launch {
-                            try { googleSignInClient.signOut().await() }
-                            catch (e: Exception) { Log.w("SignUpScreen", "Sign out failed: ${e.message}") }
+                            try {
+                                googleSignInClient.signOut().await()
+                            } catch (e: Exception) {
+                                Log.w("SignUpScreen", "Sign out failed: ${e.message}")
+                            }
                             launcher.launch(googleSignInClient.signInIntent)
                         }
                     }

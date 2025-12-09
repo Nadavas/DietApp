@@ -1,22 +1,22 @@
-package com.nadavariel.dietapp.ui.notifications
+package com.nadavariel.dietapp.scheduling
 
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.nadavariel.dietapp.model.NotificationPreference
+import com.nadavariel.dietapp.model.ReminderPreference
 import java.util.ArrayList
 import java.util.Calendar
 
-class NotificationScheduler(private val context: Context) {
+class ReminderScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    private fun getPendingIntent(preference: NotificationPreference): PendingIntent {
+    private fun getPendingIntent(preference: ReminderPreference): PendingIntent {
         // ALWAYS use UniversalReminderReceiver
         val intent = Intent(context, UniversalReminderReceiver::class.java).apply {
-            putExtra(UniversalReminderReceiver.EXTRA_NOTIFICATION_ID, preference.uniqueId)
+            putExtra(UniversalReminderReceiver.EXTRA_REMINDER_ID, preference.uniqueId)
             putExtra(UniversalReminderReceiver.EXTRA_MESSAGE, preference.message)
             putExtra(UniversalReminderReceiver.EXTRA_REPETITION, preference.repetition)
             // Pass the type ("MEAL" or "WEIGHT")
@@ -38,7 +38,7 @@ class NotificationScheduler(private val context: Context) {
     }
 
     // Removed the 'receiverClass' parameter
-    fun schedule(preference: NotificationPreference) {
+    fun schedule(preference: ReminderPreference) {
         if (!preference.isEnabled) return
 
         val pendingIntent = getPendingIntent(preference)
@@ -72,7 +72,7 @@ class NotificationScheduler(private val context: Context) {
     }
 
     // Removed the 'receiverClass' parameter
-    fun cancel(preference: NotificationPreference) {
+    fun cancel(preference: ReminderPreference) {
         try {
             val pendingIntent = getPendingIntent(preference)
             alarmManager.cancel(pendingIntent)

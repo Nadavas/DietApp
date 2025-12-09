@@ -1,8 +1,9 @@
 @file:Suppress("DEPRECATION")
 
-package com.nadavariel.dietapp.ui.components
+package com.nadavariel.dietapp.ui
 
 import android.app.Activity
+import android.content.Intent
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
@@ -72,6 +73,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -81,7 +83,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.data.AvatarConstants
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
@@ -117,7 +118,11 @@ fun HoveringNotificationCard(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        modifier = Modifier.clickable(enabled = onClick != null) { onClick?.invoke() }
+        modifier = Modifier.clickable(enabled = onClick != null) {
+            if (onClick != null) {
+                onClick()
+            }
+        }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
@@ -444,7 +449,7 @@ fun AvatarSelectionDialog(
 @Composable
 fun UserAvatar(
     avatarId: String?,
-    size: androidx.compose.ui.unit.Dp,
+    size: Dp,
     modifier: Modifier = Modifier
 ) {
     // 1. Check if it matches one of your pre-defined local avatars
@@ -526,7 +531,7 @@ fun rememberGoogleSignInLauncher(
     scope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
     onAuthSuccess: (isNewUser: Boolean) -> Unit
-): Pair<ManagedActivityResultLauncher<android.content.Intent, ActivityResult>, GoogleSignInClient> {
+): Pair<ManagedActivityResultLauncher<Intent, ActivityResult>, GoogleSignInClient> {
     val context = LocalContext.current
 
     val gso = remember {

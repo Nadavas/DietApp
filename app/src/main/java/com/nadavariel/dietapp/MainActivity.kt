@@ -56,12 +56,12 @@ import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.DietAppTheme
-import com.nadavariel.dietapp.ui.components.GeminiConfirmationDialog
-import com.nadavariel.dietapp.ui.components.HoveringNotificationCard
+import com.nadavariel.dietapp.ui.GeminiConfirmationDialog
+import com.nadavariel.dietapp.ui.HoveringNotificationCard
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
-import com.nadavariel.dietapp.viewmodel.NotificationViewModel
+import com.nadavariel.dietapp.viewmodel.RemindersViewModel
 import com.nadavariel.dietapp.screens.EnergyDetailScreen
 import com.nadavariel.dietapp.screens.MacrosDetailScreen
 import com.nadavariel.dietapp.screens.CarbsDetailScreen
@@ -101,9 +101,9 @@ class MainActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 ThreadViewModel() as T
                             }
-                            modelClass.isAssignableFrom(NotificationViewModel::class.java) -> {
+                            modelClass.isAssignableFrom(RemindersViewModel::class.java) -> {
                                 @Suppress("UNCHECKED_CAST")
-                                NotificationViewModel(application) as T
+                                RemindersViewModel(application) as T
                             }
                             modelClass.isAssignableFrom(QuestionsViewModel::class.java) -> {
                                 @Suppress("UNCHECKED_CAST")
@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
             val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
             val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory)
-            val notificationViewModel: NotificationViewModel = viewModel(factory = appViewModelFactory)
+            val remindersViewModel: RemindersViewModel = viewModel(factory = appViewModelFactory)
             val questionsViewModel: QuestionsViewModel = viewModel(factory = appViewModelFactory)
             val goalsViewModel: GoalsViewModel = viewModel(factory = appViewModelFactory)
 
@@ -510,7 +510,7 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.NOTIFICATIONS) {
                                 NotificationScreen(
                                     navController = navController,
-                                    notificationViewModel = notificationViewModel
+                                    remindersViewModel = remindersViewModel
                                 )
                             }
 
