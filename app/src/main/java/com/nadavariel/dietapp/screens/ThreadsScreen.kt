@@ -39,7 +39,6 @@ import com.nadavariel.dietapp.model.Thread
 import com.nadavariel.dietapp.model.Topic
 import com.nadavariel.dietapp.model.communityTopics
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.viewmodel.NewsViewModel
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -113,12 +112,14 @@ fun CommunityHomeContent(
     allTopics: List<Topic>,
     navController: NavController,
     threadViewModel: ThreadViewModel,
-    newsViewModel: NewsViewModel = viewModel(),
     onTopicSelected: (Topic) -> Unit
 ) {
     val context = LocalContext.current
-    val articles by newsViewModel.articles.collectAsState()
-    val isLoadingNews by newsViewModel.isLoading.collectAsState()
+
+    // 1. Collect the missing error state
+    val newsError by threadViewModel.newsError.collectAsState()
+    val articles by threadViewModel.newsArticles.collectAsState()
+    val isLoadingNews by threadViewModel.isNewsLoading.collectAsState()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -126,14 +127,10 @@ fun CommunityHomeContent(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
-        // ... [Daily Challenge & Trending Section code remains exactly the same] ...
-        // ... [Topics Section code remains exactly the same] ...
+        // ... (Daily Challenge & Trending Sections remain the same) ...
 
-        // 2. Trending Section
         if (hottestThreads.isNotEmpty()) {
-            item {
-                SectionHeaderModern(title = "Trending Now")
-            }
+            item { SectionHeaderModern(title = "Trending Now") }
             item {
                 HottestThreadsCarouselModern(
                     hottestThreads = hottestThreads,
@@ -144,7 +141,7 @@ fun CommunityHomeContent(
             }
         }
 
-        // 3. Topics Section
+        // ... (Topics Section remains the same) ...
         item {
             Spacer(modifier = Modifier.height(8.dp))
             SectionHeaderModern(title = "Explore Topics")
@@ -161,7 +158,7 @@ fun CommunityHomeContent(
             }
         }
 
-        // 4. --- UPDATED NEWS SECTION ---
+        // --- NEWS SECTION ---
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -171,7 +168,6 @@ fun CommunityHomeContent(
             ) {
                 SectionHeaderModern(title = "Health news from the world")
 
-                // Subtle refresh button
                 if (isLoadingNews) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
@@ -182,7 +178,7 @@ fun CommunityHomeContent(
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable { newsViewModel.refresh() }
+                            .clickable { threadViewModel.refreshNews() }
                             .padding(4.dp)
                     ) {
                         Icon(
@@ -196,8 +192,45 @@ fun CommunityHomeContent(
             }
         }
 
+        // 2. Handle the Error State UI
+        if (newsError != null) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { threadViewModel.refreshNews() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = newsError ?: "Failed to load news",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "RETRY",
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Show Articles (Only if no error)
         if (articles.isNotEmpty()) {
-            // HIGHLIGHT CARD (Top story with big image)
             item {
                 NewsHighlightCard(
                     article = articles.first(),
@@ -208,8 +241,6 @@ fun CommunityHomeContent(
                 )
             }
 
-            // STANDARD LIST (Rest of the stories with thumbnails)
-            // We use the new 'NewsCardInternal' here which supports the images
             items(articles.drop(1)) { article ->
                 NewsCardInternal(
                     article = article,
@@ -219,10 +250,10 @@ fun CommunityHomeContent(
                     }
                 )
             }
-        } else if (!isLoadingNews) {
+        } else if (!isLoadingNews && newsError == null) {
             item {
                 Text(
-                    text = "No news available. Check your internet connection.",
+                    text = "No news available right now.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = AppTheme.colors.textSecondary,
                     modifier = Modifier.padding(top = 8.dp)

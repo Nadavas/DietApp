@@ -9,11 +9,12 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.model.Comment
 import com.nadavariel.dietapp.model.Like
 import com.nadavariel.dietapp.model.Thread
+import com.nadavariel.dietapp.model.NewsArticle
+import com.nadavariel.dietapp.repository.NewsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,14 +26,15 @@ import kotlinx.coroutines.tasks.await
 class ThreadViewModel : ViewModel() {
     private val firestore = Firebase.firestore
     private val auth: FirebaseAuth = Firebase.auth
+    private val newsRepository = NewsRepository() // Initialize News Repository
 
-    // --- LISTENER REGISTRATIONS FOR CLEANUP ---
+    // --- LISTENER REGISTRATIONS ---
     private var threadsListener: ListenerRegistration? = null
     private var commentsListener: ListenerRegistration? = null
     private var likesListener: ListenerRegistration? = null
     private var userThreadsListener: ListenerRegistration? = null
 
-    // --- STATE FLOWS ---
+    // --- THREAD STATE FLOWS ---
     private val _threads = MutableStateFlow<List<Thread>>(emptyList())
     val threads: StateFlow<List<Thread>> = _threads.asStateFlow()
 
@@ -51,11 +53,24 @@ class ThreadViewModel : ViewModel() {
     private val _hottestThreads = MutableStateFlow<List<Thread>>(emptyList())
     val hottestThreads: StateFlow<List<Thread>> = _hottestThreads.asStateFlow()
 
-    // State for the current user's personal threads
     private val _userThreads = MutableStateFlow<List<Thread>>(emptyList())
     val userThreads: StateFlow<List<Thread>> = _userThreads.asStateFlow()
 
+    // --- NEWS STATE FLOWS (Added from NewsViewModel) ---
+    private val _newsArticles = MutableStateFlow<List<NewsArticle>>(emptyList())
+    val newsArticles: StateFlow<List<NewsArticle>> = _newsArticles.asStateFlow()
+
+    private val _isNewsLoading = MutableStateFlow(false)
+    val isNewsLoading: StateFlow<Boolean> = _isNewsLoading.asStateFlow()
+
+    private val _newsError = MutableStateFlow<String?>(null)
+    val newsError: StateFlow<String?> = _newsError.asStateFlow()
+
     init {
+        // Load News immediately on init
+        loadNewsArticles()
+
+        // Load Threads when authenticated
         auth.addAuthStateListener { firebaseAuth ->
             if (firebaseAuth.currentUser != null) {
                 fetchAllThreads()
@@ -64,6 +79,31 @@ class ThreadViewModel : ViewModel() {
             }
         }
     }
+
+    // --- NEWS FUNCTIONALITY (Added) ---
+
+    fun loadNewsArticles() {
+        viewModelScope.launch {
+            try {
+                _isNewsLoading.value = true
+                _newsError.value = null
+                // Fetch latest 5 articles
+                val articles = newsRepository.fetchLatestArticles(5)
+                _newsArticles.value = articles
+            } catch (e: Exception) {
+                _newsError.value = "Failed to load news articles"
+                e.printStackTrace()
+            } finally {
+                _isNewsLoading.value = false
+            }
+        }
+    }
+
+    fun refreshNews() {
+        loadNewsArticles()
+    }
+
+    // --- THREAD FUNCTIONALITY (Existing) ---
 
     private fun fetchAllThreads() {
         threadsListener?.remove()
@@ -78,7 +118,7 @@ class ThreadViewModel : ViewModel() {
                             return@addSnapshotListener
                         }
                         val threadList = snapshots?.mapNotNull { document ->
-                            document.toObject<Thread>().copy(id = document.id)
+                            document.toObject(Thread::class.java).copy(id = document.id)
                         } ?: emptyList()
 
                         _threads.value = threadList
@@ -107,9 +147,8 @@ class ThreadViewModel : ViewModel() {
                 }
                 if (snapshot != null) {
                     val threadsList = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject<Thread>()?.copy(id = doc.id)
+                        doc.toObject(Thread::class.java)?.copy(id = doc.id)
                     }
-                    // Sort locally since Firestore composite indexes can be tricky with 'where' + 'orderBy'
                     _userThreads.value = threadsList.sortedByDescending { it.timestamp }
                 }
             }
@@ -118,9 +157,6 @@ class ThreadViewModel : ViewModel() {
     // --- DELETE FUNCTIONALITY ---
 
     fun deleteThread(threadId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        // Deleting the main document.
-        // Note: Subcollections (comments/likes) are not automatically deleted in Firestore client SDKs.
-        // They become orphaned. To delete them fully, a Cloud Function is usually recommended.
         firestore.collection("threads").document(threadId)
             .delete()
             .addOnSuccessListener {
@@ -139,14 +175,13 @@ class ThreadViewModel : ViewModel() {
         val updates = mapOf(
             "header" to newHeader,
             "paragraph" to newContent,
-            "timestamp" to System.currentTimeMillis() // Optional: Update timestamp to bump it
+            "timestamp" to System.currentTimeMillis()
         )
 
         firestore.collection("threads").document(threadId)
             .update(updates)
             .addOnSuccessListener {
                 Log.d("ThreadViewModel", "Thread updated successfully: $threadId")
-                // Refresh the selected thread if it's currently being viewed
                 if (_selectedThread.value?.id == threadId) {
                     fetchThreadById(threadId)
                 }
@@ -213,7 +248,6 @@ class ThreadViewModel : ViewModel() {
     }
 
     fun fetchThreadById(threadId: String) {
-        // Clear listeners for the previous thread before fetching new one
         commentsListener?.remove()
         likesListener?.remove()
 
@@ -222,7 +256,7 @@ class ThreadViewModel : ViewModel() {
             _comments.value = emptyList()
             try {
                 val docSnapshot = firestore.collection("threads").document(threadId).get().await()
-                _selectedThread.value = docSnapshot.toObject<Thread>()?.copy(id = docSnapshot.id)
+                _selectedThread.value = docSnapshot.toObject(Thread::class.java)?.copy(id = docSnapshot.id)
 
                 if (_selectedThread.value != null) {
                     fetchCommentsForThread(threadId)
@@ -251,7 +285,7 @@ class ThreadViewModel : ViewModel() {
                             return@addSnapshotListener
                         }
                         val commentList = snapshots?.mapNotNull { document ->
-                            document.toObject<Comment>().copy(id = document.id)
+                            document.toObject(Comment::class.java).copy(id = document.id)
                         } ?: emptyList()
                         _comments.value = commentList
                     }
@@ -312,7 +346,7 @@ class ThreadViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                val likes = snapshots?.mapNotNull { it.toObject<Like>() } ?: emptyList()
+                val likes = snapshots?.mapNotNull { it.toObject(Like::class.java) } ?: emptyList()
                 _likeCount.value = likes.size
                 _hasUserLiked.value = likes.any { it.userId == currentUserId }
             }
@@ -409,6 +443,11 @@ class ThreadViewModel : ViewModel() {
         _comments.value = emptyList()
         _likeCount.value = 0
         _hasUserLiked.value = false
+
+        // News cleanup is usually not needed as it's not a listener,
+        // but we can clear the list if desired
+        _newsArticles.value = emptyList()
+
         Log.d("ThreadViewModel", "Cleared all listeners and data.")
     }
 
