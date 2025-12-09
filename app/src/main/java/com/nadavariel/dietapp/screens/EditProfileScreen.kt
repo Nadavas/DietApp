@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.Goal
+import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.AvatarSelectionDialog
@@ -303,54 +304,21 @@ fun EditProfileScreen(
         }
     }
 
-    // --- Material 3 Date Picker Dialog ---
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = dateOfBirthInput?.time ?: System.currentTimeMillis()
-        )
-
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val selectedCal = Calendar.getInstance().apply { timeInMillis = millis }
-                            val now = Calendar.getInstance()
-
-                            // Logic: If future date, use Today (or keep previous valid if you prefer, but Today is standard fallback)
-                            // Better UX might be to just clamp it to today, which this does.
-                            val finalDate = if (selectedCal.after(now)) now.time else Date(millis)
-
-                            dateOfBirthInput = finalDate
-                        }
-                        showDatePicker = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDatePicker = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
-                ) {
-                    Text("Cancel")
-                }
-            },
-            colors = DatePickerDefaults.colors(containerColor = Color.White)
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = AppTheme.colors.primaryGreen,
-                    todayContentColor = AppTheme.colors.primaryGreen
-                )
-            )
+        val initialCal = Calendar.getInstance().apply {
+            if (dateOfBirthInput != null) {
+                time = dateOfBirthInput!!
+            }
         }
+
+        AppDatePickerDialog(
+            initialDate = initialCal,
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { newCal ->
+                dateOfBirthInput = newCal.time
+                showDatePicker = false
+            }
+        )
     }
 
     if (showAvatarDialog) {

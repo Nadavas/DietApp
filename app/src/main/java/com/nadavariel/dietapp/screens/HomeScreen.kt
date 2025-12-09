@@ -67,6 +67,7 @@ import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.MealSection
 import com.nadavariel.dietapp.model.NutrientDef
 import com.nadavariel.dietapp.R
+import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.UserAvatar
@@ -75,11 +76,10 @@ import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -948,50 +948,24 @@ private fun CalorieSummaryCard(
         }
     }
 
-    // --- Date Picker Dialog ---
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        )
-
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val newDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
-                            onDateSelected(newDate)
-                        }
-                        showDatePicker = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.primaryGreen)
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDatePicker = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.textSecondary)
-                ) {
-                    Text("Cancel")
-                }
-            },
-            colors = DatePickerDefaults.colors(
-                containerColor = Color.White,
-            )
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = AppTheme.colors.primaryGreen,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = AppTheme.colors.primaryGreen,
-                    todayContentColor = AppTheme.colors.primaryGreen
-                )
-            )
+        val initialCal = Calendar.getInstance().apply {
+            set(selectedDate.year, selectedDate.monthValue - 1, selectedDate.dayOfMonth)
         }
+
+        AppDatePickerDialog(
+            initialDate = initialCal,
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { newCal ->
+                val newDate = LocalDate.of(
+                    newCal.get(Calendar.YEAR),
+                    newCal.get(Calendar.MONTH) + 1,
+                    newCal.get(Calendar.DAY_OF_MONTH)
+                )
+                onDateSelected(newDate)
+                showDatePicker = false
+            }
+        )
     }
 }
 
