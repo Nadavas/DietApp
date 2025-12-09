@@ -105,6 +105,13 @@ data class ExampleMeal(
     val estimatedCalories: Int = 0
 )
 
+data class NutrientDef(
+    val label: String,
+    val unit: String,
+    val color: Color,
+    val selector: (Meal) -> Double? // Function to get the value from a Meal
+)
+
 // --- FoodNutritionalInfo (Your existing class) ---
 // (This is unchanged)
 data class FoodNutritionalInfo(
