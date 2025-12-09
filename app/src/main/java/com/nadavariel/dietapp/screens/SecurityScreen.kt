@@ -43,6 +43,7 @@ import com.google.android.gms.common.api.ApiException
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -156,26 +157,9 @@ fun SecurityScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = AppTheme.colors.screenBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Security & Privacy",
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.darkGreyText
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = AppTheme.colors.darkGreyText
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
+            AppTopBar(
+                title = "Security & Privacy",
+                onBack = { navController.popBackStack() }
             )
         }
     ) { paddingValues ->

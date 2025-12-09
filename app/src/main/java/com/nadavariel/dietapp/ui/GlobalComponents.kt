@@ -137,6 +137,75 @@ fun AppMainHeader(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopBar(
+    title: String,
+    onBack: () -> Unit,
+    showBack: Boolean = true,
+    // Optional: For the "Icon" version
+    icon: ImageVector? = null,
+    iconColor: Color? = null,
+    // Optional: Overrides
+    containerColor: Color = AppTheme.colors.screenBackground,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    TopAppBar(
+        title = {
+            if (icon != null && iconColor != null) {
+                // --- ICON + TITLE LAYOUT ---
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(iconColor.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Text(
+                        text = title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTheme.colors.darkGreyText
+                    )
+                }
+            } else {
+                // --- STANDARD TITLE LAYOUT ---
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.darkGreyText
+                )
+            }
+        },
+        navigationIcon = {
+            if (showBack) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = AppTheme.colors.darkGreyText
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = containerColor
+        ),
+        actions = actions
+    )
+}
+
 @Composable
 fun HoveringNotificationCard(
     message: String,

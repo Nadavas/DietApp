@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.Spa
@@ -51,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.ExampleMeal
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.viewmodel.GoalsViewModel
 import kotlin.math.sin
 
@@ -66,28 +66,9 @@ fun DietPlanScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Your Nutrition Plan",
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.darkGreyText
-                    )
-                },
-                navigationIcon = {
-                    // --- FIX: Simply pop back to the previous screen ---
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = AppTheme.colors.darkGreyText
-                        )
-                    }
-                    // --- END OF FIX ---
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.screenBackground
-                )
+            AppTopBar(
+                title = "Nutrition Plan",
+                onBack = { navController.popBackStack() }
             )
         },
         containerColor = AppTheme.colors.screenBackground

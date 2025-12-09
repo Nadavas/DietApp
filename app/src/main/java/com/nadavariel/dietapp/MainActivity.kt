@@ -508,7 +508,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             composable(NavRoutes.NOTIFICATIONS) {
-                                NotificationScreen(
+                                RemindersScreen(
                                     navController = navController,
                                     remindersViewModel = remindersViewModel
                                 )
@@ -568,7 +568,6 @@ class MainActivity : ComponentActivity() {
                                     authViewModel = authViewModel,
                                     goalsViewModel = goalsViewModel,
                                     navController = navController,
-                                    onBack = { navController.popBackStack() },
                                     isNewUser = isNewUser
                                 )
                             }

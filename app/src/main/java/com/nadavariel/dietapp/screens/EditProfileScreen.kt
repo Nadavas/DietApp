@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,10 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.AvatarSelectionDialog
 import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -46,7 +45,6 @@ fun EditProfileScreen(
     authViewModel: AuthViewModel,
     goalsViewModel: GoalsViewModel,
     navController: NavController,
-    onBack: () -> Unit,
     isNewUser: Boolean = false
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
@@ -79,15 +77,7 @@ fun EditProfileScreen(
             gender = selectedGender
         )
         goalsViewModel.saveUserAnswers()
-
-        if (isNewUser) {
-            navController.navigate(NavRoutes.HOME) {
-                popUpTo(NavRoutes.EDIT_PROFILE_BASE) { inclusive = true }
-                launchSingleTop = true
-            }
-        } else {
-            navController.popBackStack()
-        }
+        navController.popBackStack()
     }
 
     LaunchedEffect(userProfile, isNewUser) {
@@ -109,35 +99,9 @@ fun EditProfileScreen(
             .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Edit Profile",
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.darkGreyText
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (isNewUser) {
-                            navController.navigate(NavRoutes.HOME) {
-                                popUpTo(NavRoutes.EDIT_PROFILE_BASE) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        } else {
-                            onBack()
-                        }
-                    }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = AppTheme.colors.darkGreyText
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.screenBackground
-                )
+            AppTopBar(
+                title = "Edit Profile",
+                onBack = { navController.popBackStack() }
             )
 
             Column(

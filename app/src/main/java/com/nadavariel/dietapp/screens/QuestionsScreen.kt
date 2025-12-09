@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
@@ -45,6 +44,7 @@ import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppDatePickerDialog
+import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
 import java.util.Calendar
@@ -105,57 +105,34 @@ fun QuestionsScreen(
     Scaffold(
         containerColor = AppTheme.colors.screenBackground,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = when(screenState) {
-                            ScreenState.LANDING -> "Questionnaire"
-                            ScreenState.EDITING -> "Edit Answers"
-                            ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
-                        },
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.darkGreyText
-                    )
-                },
-                navigationIcon = {
-                    val hideBackButton = startQuiz
-                            && screenState == ScreenState.QUIZ_MODE
-                            && quizCurrentIndex == 0
-                            && source == "onboarding"
+            val titleText = when(screenState) {
+                ScreenState.LANDING -> "Questionnaire"
+                ScreenState.EDITING -> "Edit Answers"
+                ScreenState.QUIZ_MODE -> "Question ${quizCurrentIndex + 1} of ${questions.size}"
+            }
 
-                    if (!hideBackButton) {
-                        IconButton(onClick = {
-                            when (screenState) {
-                                ScreenState.LANDING -> {
-                                    navController.popBackStack()
-                                }
-                                ScreenState.QUIZ_MODE -> {
-                                    if (quizCurrentIndex > 0) {
-                                        quizCurrentIndex--
-                                    } else {
-                                        if (startQuiz) {
-                                            navController.popBackStack()
-                                        } else {
-                                            screenState = ScreenState.LANDING
-                                        }
-                                    }
-                                }
-                                else -> {
-                                    screenState = ScreenState.LANDING
-                                }
+            val hideBackButton = startQuiz
+                    && screenState == ScreenState.QUIZ_MODE
+                    && quizCurrentIndex == 0
+                    && source == "onboarding"
+
+            AppTopBar(
+                title = titleText,
+                showBack = !hideBackButton,
+                onBack = {
+                    when (screenState) {
+                        ScreenState.LANDING -> navController.popBackStack()
+                        ScreenState.QUIZ_MODE -> {
+                            if (quizCurrentIndex > 0) {
+                                quizCurrentIndex--
+                            } else {
+                                if (startQuiz) navController.popBackStack()
+                                else screenState = ScreenState.LANDING
                             }
-                        }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = AppTheme.colors.darkGreyText
-                            )
                         }
+                        else -> screenState = ScreenState.LANDING
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppTheme.colors.screenBackground
-                )
+                }
             )
         }
     ) { paddingValues ->

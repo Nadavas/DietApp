@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material3.*
@@ -52,6 +51,7 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.AppMainHeader
 import com.nadavariel.dietapp.ui.AppTimePickerDialog
+import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.DateTimePickerRow
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import com.nadavariel.dietapp.viewmodel.GeminiResult
@@ -241,26 +241,9 @@ fun AddEditMealScreen(
         // --- EDIT MODE ---
         if (isEditMode) {
             Column(modifier = Modifier.fillMaxSize()) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Edit Meal",
-                            fontWeight = FontWeight.Bold,
-                            color = AppTheme.colors.darkGreyText
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = AppTheme.colors.darkGreyText
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = AppTheme.colors.screenBackground
-                    )
+                AppTopBar(
+                    title = "Edit Meal",
+                    onBack = { navController.popBackStack() }
                 )
 
                 LazyColumn(

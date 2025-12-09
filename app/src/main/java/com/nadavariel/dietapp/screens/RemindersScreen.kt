@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Warning
@@ -53,11 +52,12 @@ import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.viewmodel.RemindersViewModel
 import java.util.Calendar
 import androidx.core.net.toUri
+import com.nadavariel.dietapp.ui.AppTopBar
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationScreen(
+fun RemindersScreen(
     navController: NavController,
     remindersViewModel: RemindersViewModel = viewModel()
 ) {
@@ -134,23 +134,9 @@ fun NotificationScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Reminders",
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.darkGreyText
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = AppTheme.colors.textPrimary
-                )
+            AppTopBar(
+                title = "Reminders",
+                onBack = { navController.popBackStack() }
             )
         },
         floatingActionButton = {

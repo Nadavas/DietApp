@@ -5,11 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PostAdd
-import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +24,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.nadavariel.dietapp.model.Topic
 import com.nadavariel.dietapp.model.communityTopics
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.viewmodel.ThreadViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,41 +88,11 @@ fun CreateThreadScreen(
         Column(modifier = Modifier.fillMaxSize()) {
 
             // --- Header Section ---
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 2.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    IconButton(
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier.offset(x = (-12).dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = AppTheme.colors.textPrimary
-                        )
-                    }
-
-                    Text(
-                        text = if (isEditMode) "Edit Thread" else "Create Thread",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppTheme.colors.textPrimary
-                    )
-                    Text(
-                        text = if (isEditMode) "Update your discussion details" else "Start a new discussion with the community",
-                        fontSize = 14.sp,
-                        color = AppTheme.colors.textSecondary,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
+            AppTopBar(
+                title = if (isEditMode) "Edit Thread" else "Create Thread",
+                onBack = { navController.popBackStack() },
+                containerColor = Color.White
+            )
 
             // --- Main Content ---
             if (isLoading) {
@@ -191,7 +161,7 @@ fun CreateThreadScreen(
                                     shape = RoundedCornerShape(12.dp),
                                     leadingIcon = {
                                         Column(Modifier.padding(top = 12.dp)) {
-                                            Icon(Icons.Default.Subject, null, tint = AppTheme.colors.primaryGreen)
+                                            Icon(Icons.AutoMirrored.Filled.Subject, null, tint = AppTheme.colors.primaryGreen)
                                         }
                                     },
                                     colors = OutlinedTextFieldDefaults.colors(
@@ -209,7 +179,7 @@ fun CreateThreadScreen(
                         Button(
                             onClick = {
                                 if (isFormValid) {
-                                    if (isEditMode && threadIdToEdit != null) {
+                                    if (isEditMode) {
                                         // UPDATE EXISTING THREAD
                                         threadViewModel.updateThread(
                                             threadId = threadIdToEdit,
@@ -294,7 +264,7 @@ fun TopicDropdown(
             },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -361,7 +331,7 @@ fun TypeDropdown(
             },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
