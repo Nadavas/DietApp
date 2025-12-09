@@ -38,6 +38,7 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.model.Achievement
 import com.nadavariel.dietapp.model.AchievementRepository
 import com.nadavariel.dietapp.model.CalculatedStats
+import com.nadavariel.dietapp.ui.AppMainHeader
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
 import kotlinx.coroutines.delay
@@ -64,7 +65,10 @@ fun StatisticsScreen(
             .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ModernHeader()
+            AppMainHeader(
+                title = "Nutrition Insights",
+                subtitle = "Your weekly nutrition summary"
+            )
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -489,32 +493,6 @@ private fun AchievementDetailDialog(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
-        }
-    }
-}
-
-@Composable
-private fun ModernHeader() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 2.dp
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)
-        ) {
-            Text(
-                text = "Nutrition Insights",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.textPrimary
-            )
-            Text(
-                text = "Your weekly nutrition summary",
-                fontSize = 14.sp,
-                color = AppTheme.colors.textSecondary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
         }
     }
 }

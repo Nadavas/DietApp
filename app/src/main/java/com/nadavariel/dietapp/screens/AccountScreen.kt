@@ -27,186 +27,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.R
+import com.nadavariel.dietapp.ui.AppMainHeader
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
-
-// --- NEW HEADER COMPOSABLE ---
-@Composable
-private fun ModernAccountHeader(onSignOutClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 20.dp), // Padding applied to the Row itself
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically // This centers items vertically
-        ) {
-            // Left Side: Title and Subtitle
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Your Account",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppTheme.colors.textPrimary
-                )
-                Text(
-                    text = "Manage profile and preferences",
-                    fontSize = 14.sp,
-                    color = AppTheme.colors.textSecondary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-            // Right Side: Sign Out Button
-            // Remove any extra padding here to let Row alignment take over
-            TextButton(
-                onClick = onSignOutClick,
-                colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.softRed)
-            ) {
-                Text(
-                    text = "Sign Out",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Sign Out",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AccountHeaderInfo(
-    name: String,
-    email: String,
-    avatarId: String?,
-    modifier: Modifier = Modifier,
-    onAvatarClick: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
-                )
-                // FIX: Use UserAvatar
-                UserAvatar(
-                    avatarId = avatarId,
-                    size = 86.dp,
-                    modifier = Modifier.clickable { onAvatarClick() }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = AppTheme.colors.darkGreyText
-            )
-            Text(
-                text = email,
-                style = MaterialTheme.typography.bodyLarge,
-                color = AppTheme.colors.lightGreyText
-            )
-        }
-    }
-}
-
-@Composable
-private fun MenuRow(
-    title: String,
-    subtitle: String? = null,
-    leadingIcon: @Composable () -> Unit,
-    onClick: () -> Unit,
-    hasNotification: Boolean = false
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.primaryGreen) {
-                    leadingIcon()
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AppTheme.colors.darkGreyText
-                )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = AppTheme.colors.lightGreyText
-                    )
-                }
-            }
-
-            if (hasNotification) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(MaterialTheme.colorScheme.error, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = AppTheme.colors.lightGreyText,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -231,7 +57,6 @@ fun AccountScreen(
             }
 
             is AuthResult.Error -> {
-                // Only show generic errors here. Reauth errors are handled in Security screen now.
                 if (result.message != "re-authenticate-required") {
                     errorMessage = result.message
                 }
@@ -241,14 +66,33 @@ fun AccountScreen(
         }
     }
 
-    // Using a standard Column instead of Scaffold so the ModernHeader flows with content
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(AppTheme.colors.screenBackground)
     ) {
-        // Modern Header is placed directly at the top
-        ModernAccountHeader(onSignOutClick = { showSignOutDialog = true })
+        AppMainHeader(
+            title = "Your Account",
+            subtitle = "Manage profile and preferences",
+            action = {
+                TextButton(
+                    onClick = { showSignOutDialog = true }, // Or pass your callback here
+                    colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.softRed)
+                ) {
+                    Text(
+                        text = "Sign Out",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Sign Out",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        )
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
@@ -371,5 +215,131 @@ fun AccountScreen(
                 authViewModel.signOut(context)
             }
         )
+    }
+}
+
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
+@Composable
+fun AccountHeaderInfo(
+    name: String,
+    email: String,
+    avatarId: String?,
+    modifier: Modifier = Modifier,
+    onAvatarClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
+                )
+                // FIX: Use UserAvatar
+                UserAvatar(
+                    avatarId = avatarId,
+                    size = 86.dp,
+                    modifier = Modifier.clickable { onAvatarClick() }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = AppTheme.colors.darkGreyText
+            )
+            Text(
+                text = email,
+                style = MaterialTheme.typography.bodyLarge,
+                color = AppTheme.colors.lightGreyText
+            )
+        }
+    }
+}
+
+@Composable
+private fun MenuRow(
+    title: String,
+    subtitle: String? = null,
+    leadingIcon: @Composable () -> Unit,
+    onClick: () -> Unit,
+    hasNotification: Boolean = false
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                CompositionLocalProvider(LocalContentColor provides AppTheme.colors.primaryGreen) {
+                    leadingIcon()
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppTheme.colors.darkGreyText
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.lightGreyText
+                    )
+                }
+            }
+
+            if (hasNotification) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(MaterialTheme.colorScheme.error, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = AppTheme.colors.lightGreyText,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }

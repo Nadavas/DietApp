@@ -90,6 +90,53 @@ import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+// Add this to GlobalComponents.kt
+
+@Composable
+fun AppMainHeader(
+    title: String,
+    subtitle: String,
+    action: @Composable (() -> Unit)? = null // Optional slot for the "Sign Out" button
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Side: Title and Subtitle
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppTheme.colors.textPrimary,
+                    lineHeight = 40.sp // Ensures descenders don't get cut off
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 14.sp,
+                    color = AppTheme.colors.textSecondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Right Side: Optional Action (e.g., Sign Out)
+            if (action != null) {
+                // Add a small spacer just in case text gets long
+                Spacer(modifier = Modifier.width(8.dp))
+                action()
+            }
+        }
+    }
+}
+
 @Composable
 fun HoveringNotificationCard(
     message: String,

@@ -50,6 +50,7 @@ import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.model.NutrientData
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppDatePickerDialog
+import com.nadavariel.dietapp.ui.AppMainHeader
 import com.nadavariel.dietapp.ui.AppTimePickerDialog
 import com.nadavariel.dietapp.ui.DateTimePickerRow
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
@@ -341,7 +342,6 @@ fun AddEditMealScreen(
                         }
 
                         SubmitMealButton(
-                            isEditMode = true,
                             geminiResult = geminiResult,
                             isButtonEnabled = isButtonEnabled
                         ) {
@@ -377,31 +377,10 @@ fun AddEditMealScreen(
         // --- ADD MODE ---
         } else {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Header
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color.White,
-                    shadowElevation = 2.dp
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Text(
-                            text = "Log a Meal",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppTheme.colors.textPrimary
-                        )
-                        Text(
-                            text = "Choose how to add your meal",
-                            fontSize = 14.sp,
-                            color = AppTheme.colors.textSecondary,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
+                AppMainHeader(
+                    title = "Log a Meal",
+                    subtitle = "Choose how to add your meal"
+                )
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -930,7 +909,6 @@ private fun ModeSelectionCard(
 
 @Composable
 private fun SubmitMealButton(
-    isEditMode: Boolean,
     geminiResult: GeminiResult,
     isButtonEnabled: Boolean,
     onClick: () -> Unit
@@ -950,22 +928,14 @@ private fun SubmitMealButton(
             disabledContentColor = Color.White.copy(alpha = 0.7f)
         )
     ) {
-        when {
-            geminiResult is GeminiResult.Loading -> {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                Spacer(Modifier.width(12.dp))
-                Text("Analyzing...", fontWeight = FontWeight.Bold)
-            }
-            isEditMode -> {
-                Icon(Icons.Default.Check, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Update Meal", fontWeight = FontWeight.Bold)
-            }
-            else -> {
-                Icon(Icons.Default.CloudUpload, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Analyze and Add Meal", fontWeight = FontWeight.Bold)
-            }
+        if (geminiResult is GeminiResult.Loading) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+            Spacer(Modifier.width(12.dp))
+            Text("Analyzing...", fontWeight = FontWeight.Bold)
+        } else {
+            Icon(Icons.Default.Check, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Update Meal", fontWeight = FontWeight.Bold)
         }
     }
 }
