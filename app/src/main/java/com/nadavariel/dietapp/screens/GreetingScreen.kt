@@ -33,7 +33,7 @@ fun Greeting(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.homeGradient))
+            .background(Color.White)
     ) {
         Column(
             modifier = Modifier

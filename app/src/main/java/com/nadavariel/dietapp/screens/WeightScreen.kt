@@ -145,7 +145,7 @@ fun WeightScreen(
                     // Chart
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                             shape = RoundedCornerShape(24.dp)
                         ) {
@@ -352,7 +352,7 @@ private fun JourneyStoryCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = AppTheme.colors.cardBackground
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -666,7 +666,7 @@ private fun MotivationalTrophySection(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -872,7 +872,7 @@ fun ManageHistoryDialog(
                     items(weightHistory.reversed(), key = { it.id }) { entry ->
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = AppTheme.colors.cardBackground
+                                containerColor = Color.White
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {

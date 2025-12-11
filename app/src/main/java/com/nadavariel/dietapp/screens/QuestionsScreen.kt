@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -320,13 +321,12 @@ private fun OptionCardItem(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-    val containerColor = AppTheme.colors.cardBackground
 
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 1.dp)
     ) {
@@ -378,7 +378,7 @@ private fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
         onClick = { showDatePicker = true },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.3f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -453,7 +453,7 @@ private fun AnimatedSliderInput(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, AppTheme.colors.lightGreyText.copy(alpha = 0.3f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -550,7 +550,6 @@ private fun ExerciseChip(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.lightGreyText.copy(alpha = 0.3f)
-    val containerColor = AppTheme.colors.cardBackground
     val contentColor = if (isSelected) AppTheme.colors.primaryGreen else AppTheme.colors.darkGreyText
 
     val icon = remember(text) {
@@ -568,7 +567,7 @@ private fun ExerciseChip(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 1.dp)
     ) {
@@ -722,7 +721,7 @@ private fun QuestionItemCard(question: String, answer: String?, onClick: () -> U
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

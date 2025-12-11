@@ -60,7 +60,7 @@ fun MyProfileScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
+            .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Modern Header with gradient
@@ -233,7 +233,7 @@ fun MyProfileScreen(
                     ProfileSectionCard(
                         title = "Physical Stats",
                         icon = Icons.Default.FitnessCenter,
-                        iconColor = AppTheme.colors.statsGreen
+                        iconColor = AppTheme.colors.vividGreen
                     ) {
                         ProfileInfoItem(
                             icon = Icons.Default.MonitorWeight,
@@ -241,7 +241,7 @@ fun MyProfileScreen(
                             value = if (userProfile.startingWeight > 0f)
                                 "${userProfile.startingWeight} kg"
                             else "Not set",
-                            iconColor = AppTheme.colors.statsGreen
+                            iconColor = AppTheme.colors.vividGreen
                         )
                         ProfileInfoItem(
                             icon = Icons.Default.Height,
@@ -271,7 +271,7 @@ fun MyProfileScreen(
                             icon = Icons.Default.Restaurant,
                             label = "Daily Protein",
                             value = proteinGoal,
-                            iconColor = AppTheme.colors.statsGreen
+                            iconColor = AppTheme.colors.vividGreen
                         )
                         ProfileInfoItem(
                             icon = Icons.Default.FlagCircle,

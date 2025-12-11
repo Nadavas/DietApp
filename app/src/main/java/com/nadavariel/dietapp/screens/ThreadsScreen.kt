@@ -67,7 +67,7 @@ fun ThreadsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
+            .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 

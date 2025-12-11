@@ -300,7 +300,7 @@ fun NotificationCard(
 
     val isMeal = preference.type == "MEAL"
     val iconVector = if (isMeal) Icons.Rounded.Restaurant else Icons.Rounded.FitnessCenter
-    val themeColor = if (isMeal) AppTheme.colors.purple else AppTheme.colors.foodsToLimit
+    val themeColor = if (isMeal) AppTheme.colors.purple else AppTheme.colors.deepRed
 
     val isRecurring = preference.repetition == "DAILY"
 

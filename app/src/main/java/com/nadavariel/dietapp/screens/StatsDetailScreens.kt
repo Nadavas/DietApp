@@ -21,7 +21,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -103,7 +102,7 @@ fun EnergyDetailScreen(
                 weeklyData = weeklyProtein,
                 target = goals.getOrNull(1)?.value?.toIntOrNull(),
                 label = "g",
-                color = AppTheme.colors.statsGreen
+                color = AppTheme.colors.vividGreen
             )
         }
         item {
@@ -149,14 +148,14 @@ fun MacrosDetailScreen(
     DetailScreenScaffold(
         title = "Macronutrients",
         icon = Icons.Default.PieChart,
-        color = AppTheme.colors.statsGreen,
+        color = AppTheme.colors.vividGreen,
         navController = navController
     ) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
@@ -284,7 +283,7 @@ fun MineralsDetailScreen(
                 weeklyData = weeklyPotassium,
                 target = goals.getOrNull(5)?.value?.toIntOrNull(),
                 label = "mg",
-                color = AppTheme.colors.deepPurple
+                color = AppTheme.colors.purple
             )
         }
         item {
@@ -401,7 +400,7 @@ private fun DetailScreenScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
+                .background(Color.White)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -430,7 +429,7 @@ private fun DetailStatCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -517,7 +516,7 @@ private fun InsightCard(insights: List<String>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.statsGreen.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.vividGreen.copy(alpha = 0.08f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -533,7 +532,7 @@ private fun InsightCard(insights: List<String>) {
                 Icon(
                     imageVector = Icons.Default.Lightbulb,
                     contentDescription = null,
-                    tint = AppTheme.colors.statsGreen,
+                    tint = AppTheme.colors.vividGreen,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
@@ -552,7 +551,7 @@ private fun InsightCard(insights: List<String>) {
                     Text(
                         text = "•",
                         fontSize = 14.sp,
-                        color = AppTheme.colors.statsGreen,
+                        color = AppTheme.colors.vividGreen,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -713,8 +712,8 @@ private fun BeautifulPieChart(
     data: Map<String, Float>
 ) {
     val proteinColor = AppTheme.colors.primaryGreen.toArgb()
-    val carbsColor = AppTheme.colors.activeLifestyle.toArgb()
-    val fatColor = AppTheme.colors.disclaimerIcon.toArgb()
+    val carbsColor = AppTheme.colors.skyBlue.toArgb()
+    val fatColor = AppTheme.colors.tangerine.toArgb()
     val centerTextColor = proteinColor
 
     val entries = data.entries

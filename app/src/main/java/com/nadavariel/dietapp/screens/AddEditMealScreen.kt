@@ -451,7 +451,7 @@ fun AddEditMealScreen(
                             ModeSelectionCard(
                                 title = "Manual",
                                 icon = Icons.Default.EditNote,
-                                color = AppTheme.colors.statsGreen,
+                                color = AppTheme.colors.vividGreen,
                                 isSelected = selectedMode == AddMealMode.MANUAL,
                                 onClick = { selectedMode = AddMealMode.MANUAL },
                                 modifier = Modifier.weight(1f)
@@ -788,7 +788,7 @@ fun AddEditMealScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(20.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = AppTheme.colors.statsBackground.copy(alpha = 0.3f)
+                                        containerColor = Color.White.copy(alpha = 0.3f)
                                     ),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                                 ) {

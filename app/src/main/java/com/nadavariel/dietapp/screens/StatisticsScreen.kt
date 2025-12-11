@@ -62,7 +62,7 @@ fun StatisticsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
+            .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AppMainHeader(
@@ -113,7 +113,7 @@ fun StatisticsScreen(
                         title = "Macronutrients",
                         subtitle = "Protein, carbs, and fat balance",
                         icon = Icons.Default.PieChart,
-                        color = AppTheme.colors.statsGreen,
+                        color = AppTheme.colors.vividGreen,
                         onClick = { navController.navigate(NavRoutes.STATS_MACROS) }
                     )
                 }
@@ -216,7 +216,7 @@ private fun WeeklyAchievementsCarousel(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
@@ -508,7 +508,7 @@ private fun CategoryCard(
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(

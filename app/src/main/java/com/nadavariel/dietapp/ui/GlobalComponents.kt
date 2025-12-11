@@ -703,7 +703,7 @@ fun AuthScreenWrapper(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(AppTheme.colors.homeGradient))
+                .background(Color.White)
                 .padding(paddingValues)
         ) {
             content(paddingValues)

@@ -141,7 +141,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.homeGradient))
+            .background(Color.White)
     ) {
         if (isScreenLoading) {
             Box(
@@ -433,8 +433,8 @@ fun HomeScreen(
         // Macros (Specific Colors)
         val macroList = listOf(
             NutrientDef("Protein", "g", AppTheme.colors.primaryGreen) { it.protein },
-            NutrientDef("Carbohydrates", "g", AppTheme.colors.activeLifestyle) { it.carbohydrates },
-            NutrientDef("Fat", "g", AppTheme.colors.disclaimerIcon) { it.fat }
+            NutrientDef("Carbohydrates", "g", AppTheme.colors.skyBlue) { it.carbohydrates },
+            NutrientDef("Fat", "g", AppTheme.colors.tangerine) { it.fat }
         )
 
         // Micros (Generic Color)
@@ -581,7 +581,7 @@ private fun WeightStatusCard(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -773,7 +773,7 @@ private fun CalorieSummaryCard(
 
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -1091,7 +1091,7 @@ private fun MealItem(
 
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.cardBackground),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()

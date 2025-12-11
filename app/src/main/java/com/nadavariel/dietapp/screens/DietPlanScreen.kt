@@ -160,8 +160,8 @@ fun DietPlanScreen(
                 // --- NEW CARD: Health Overview (Updated for List) ---
                 CollapsibleCard(
                     icon = Icons.Default.PersonSearch,
-                    iconBackgroundColor = AppTheme.colors.healthOverviewBackground,
-                    iconTint = AppTheme.colors.healthOverviewTint,
+                    iconBackgroundColor = AppTheme.colors.skyBlue.copy(alpha = 0.1f),
+                    iconTint = AppTheme.colors.skyBlue,
                     title = "Your Health Overview"
                 ) {
                     Spacer(Modifier.height(8.dp))
@@ -171,7 +171,7 @@ fun DietPlanScreen(
                             Text(
                                 "•",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = AppTheme.colors.healthOverviewTint,
+                                color = AppTheme.colors.skyBlue,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -188,8 +188,8 @@ fun DietPlanScreen(
                 // --- NEW CARD: Goal Strategy (Updated for List) ---
                 CollapsibleCard(
                     icon = Icons.Default.Flag,
-                    iconBackgroundColor = AppTheme.colors.exampleMealPlanTint.copy(alpha = 0.1f),
-                    iconTint = AppTheme.colors.exampleMealPlanTint,
+                    iconBackgroundColor = AppTheme.colors.darkPurple.copy(alpha = 0.1f),
+                    iconTint = AppTheme.colors.darkPurple,
                     title = "Your Goal Strategy"
                 ) {
                     Spacer(Modifier.height(8.dp))
@@ -198,7 +198,7 @@ fun DietPlanScreen(
                             Text(
                                 "•",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = AppTheme.colors.exampleMealPlanTint,
+                                color = AppTheme.colors.darkPurple,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -244,7 +244,7 @@ fun DietPlanScreen(
                         label = "Carbs",
                         value = plan.concretePlan.targets.carbsGrams,
                         unit = "g",
-                        color = AppTheme.colors.activeLifestyle,
+                        color = AppTheme.colors.skyBlue,
                         progress = 0.85f
                     )
                     EnhancedMacroCard(
@@ -253,7 +253,7 @@ fun DietPlanScreen(
                         label = "Fat",
                         value = plan.concretePlan.targets.fatGrams,
                         unit = "g",
-                        color = AppTheme.colors.disclaimerIcon,
+                        color = AppTheme.colors.tangerine,
                         progress = 0.65f
                     )
                 }
@@ -266,7 +266,7 @@ fun DietPlanScreen(
                 // --- NEW CARD: Meal Guidelines ---
                 CollapsibleCard(
                     icon = Icons.AutoMirrored.Filled.Rule,
-                    iconBackgroundColor = AppTheme.colors.mealGuidelinesBackground,
+                    iconBackgroundColor = AppTheme.colors.purple.copy(alpha = 0.1f),
                     iconTint = AppTheme.colors.purple,
                     title = "Meal Guidelines"
                 ) {
@@ -291,7 +291,7 @@ fun DietPlanScreen(
                     Spacer(Modifier.height(16.dp))
 
                     // Foods to Limit
-                    Text("Foods to Limit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = AppTheme.colors.foodsToLimit)
+                    Text("Foods to Limit:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = AppTheme.colors.deepRed)
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         plan.concretePlan.mealGuidelines.foodsToLimit.forEach { FoodChip(it, false) }
@@ -320,7 +320,7 @@ fun DietPlanScreen(
                 // AI Recommendations (Updated for List)
                 CollapsibleCard(
                     icon = Icons.Default.Lightbulb,
-                    iconBackgroundColor = AppTheme.colors.personalizedTrainingBackground,
+                    iconBackgroundColor = AppTheme.colors.orange.copy(alpha = 0.1f),
                     iconTint = AppTheme.colors.orange,
                     title = "Personalized Training Advice"
                 ) {
@@ -347,7 +347,7 @@ fun DietPlanScreen(
                 // Disclaimer - Subtle and informative (This was already correct)
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = AppTheme.colors.foodsToLimit.copy(alpha = 0.1f)
+                        containerColor = AppTheme.colors.deepRed.copy(alpha = 0.1f)
                     ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -546,7 +546,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         Icons.Default.LocalFireDepartment,
                         contentDescription = null,
                         modifier = Modifier.size(44.dp),
-                        tint = AppTheme.colors.disclaimerIcon
+                        tint = AppTheme.colors.tangerine
                     )
                 }
 
@@ -569,7 +569,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                         text = animatedCalories.toInt().toString(),
                         style = MaterialTheme.typography.displayLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = AppTheme.colors.disclaimerIcon
+                        color = AppTheme.colors.tangerine
                     )
                     Text(
                         text = " kcal",
@@ -725,13 +725,13 @@ fun ProteinRecommendationCard(weightKg: Int) {
             RecommendationRow(
                 label = "Light Activity",
                 range = "$nonActiveMin–$nonActiveMax g/day",
-                color = AppTheme.colors.lightActivity
+                color = AppTheme.colors.goldenYellow
             )
             Spacer(Modifier.height(8.dp))
             RecommendationRow(
                 label = "Active Lifestyle",
                 range = "$activeMin–$activeMax g/day",
-                color = AppTheme.colors.activeLifestyle
+                color = AppTheme.colors.skyBlue
             )
         }
     }
@@ -849,7 +849,7 @@ private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
             mealType,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = AppTheme.colors.primaryGreen
+            color = AppTheme.colors.accentTeal
         )
         Text(
             meal.description,
@@ -867,7 +867,7 @@ private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
 // Helper for Food Chips
 @Composable
 private fun FoodChip(text: String, isGood: Boolean) {
-    val chipColor = if (isGood) AppTheme.colors.primaryGreen else AppTheme.colors.foodsToLimit
+    val chipColor = if (isGood) AppTheme.colors.primaryGreen else AppTheme.colors.deepRed
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))

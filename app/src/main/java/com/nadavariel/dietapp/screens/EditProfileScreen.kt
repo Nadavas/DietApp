@@ -17,7 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -97,7 +96,7 @@ fun EditProfileScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(AppTheme.colors.statsGradient))
+            .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AppTopBar(
@@ -229,7 +228,7 @@ fun EditProfileScreen(
                 ProfileEditCard(
                     title = "Physical Stats",
                     icon = Icons.Default.FitnessCenter,
-                    iconColor = AppTheme.colors.statsGreen
+                    iconColor = AppTheme.colors.vividGreen
                 ) {
                     ModernOutlinedTextField(
                         value = weightInput,
@@ -441,7 +440,7 @@ private fun EditableGoalField(
 
     val goalColor = when {
         isCalorieGoal -> AppTheme.colors.warmOrange
-        isProteinGoal -> AppTheme.colors.statsGreen
+        isProteinGoal -> AppTheme.colors.vividGreen
         isWeightGoal -> AppTheme.colors.accentTeal
         else -> AppTheme.colors.primaryGreen
     }
