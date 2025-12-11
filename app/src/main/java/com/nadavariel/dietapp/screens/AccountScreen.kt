@@ -171,7 +171,7 @@ fun AccountScreen(
                     item {
                         MenuRow(
                             title = "Security & Privacy",
-                            subtitle = "App lock, password & legal",
+                            subtitle = "Manage password & account data",
                             leadingIcon = { Icon(Icons.Filled.Lock, "Security", modifier = Modifier.size(24.dp)) },
                             onClick = { navController.navigate(NavRoutes.SECURITY) }
                         )
