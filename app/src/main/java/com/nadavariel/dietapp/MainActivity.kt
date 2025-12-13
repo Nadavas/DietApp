@@ -662,7 +662,7 @@ class MainActivity : ComponentActivity() {
                                 val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsStateWithLifecycle()
                                 val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsStateWithLifecycle()
 
-                                AllAchievementsScreen(
+                                AchievementsScreen(
                                     navController = navController,
                                     weeklyCalories = weeklyCalories,
                                     weeklyProtein = weeklyProtein.mapValues { it.value.toFloat() },
