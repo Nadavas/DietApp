@@ -251,9 +251,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             gender = Gender.UNKNOWN
         )
         saveUserProfile(newProfile)
-
-        // Clear the temporary sign-up state
-        clearInputFields()
     }
 
     suspend fun createGoogleUserAndProfile() {
@@ -286,9 +283,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
         Log.d("AuthViewModel", "Saving Google Profile: Name='${newProfile.name}', Avatar='${newProfile.avatarId}'")
         saveUserProfile(newProfile)
-
-        // Clear the temporary sign-up state
-        clearInputFields()
     }
 
 
@@ -310,7 +304,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         }
                     }
                     onSuccess(false)
-                    clearInputFields()
                 } else {
                     val errorMessage = task.exception?.message ?: "Sign in failed."
                     _authResult.value = AuthResult.Error(errorMessage)

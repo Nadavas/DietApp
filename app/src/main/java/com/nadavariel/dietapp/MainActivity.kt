@@ -396,7 +396,6 @@ class MainActivity : ComponentActivity() {
                                 SignInScreen(
                                     authViewModel = authViewModel,
                                     onBack = {
-                                        authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
                                     onSignInSuccess = { isNewUser ->
@@ -415,7 +414,6 @@ class MainActivity : ComponentActivity() {
                                 SignUpScreen(
                                     authViewModel = authViewModel,
                                     onBack = {
-                                        authViewModel.clearInputFields()
                                         navController.popBackStack()
                                     },
                                     onSignUpSuccess = { isNewUser ->
