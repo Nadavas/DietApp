@@ -72,7 +72,7 @@ fun AchievementsScreen(
             AppTopBar(
                 title = "All Achievements",
                 onBack = { navController.popBackStack() },
-                containerColor = Color.White // Optional: Ensures it matches the white background
+                containerColor = Color.White
             )
 
             LazyVerticalGrid(

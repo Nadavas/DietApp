@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
-import com.nadavariel.dietapp.model.Topic
 import com.nadavariel.dietapp.model.communityTopics
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
@@ -36,21 +35,18 @@ fun CreateThreadScreen(
 ) {
     val topics = communityTopics
     val types = listOf("Question", "Guide", "Help", "Discussion")
+    val isEditMode = threadIdToEdit != null
 
-    // --- State Management ---
+
     var header by remember { mutableStateOf("") }
     var paragraph by remember { mutableStateOf("") }
     var selectedTopic by remember { mutableStateOf(topics.first()) }
     var type by remember { mutableStateOf("Question") }
-
-    // Logic to distinguish between Edit Mode and Create Mode
-    val isEditMode = threadIdToEdit != null
-    // Loading state: Only true initially if we are in Edit Mode
     var isLoading by remember { mutableStateOf(isEditMode) }
 
     val selectedThread by threadViewModel.selectedThread.collectAsState()
 
-    // 1. Initial Setup: Fetch data or clear previous state
+    // Initial Setup: Fetch data or clear previous state
     LaunchedEffect(threadIdToEdit) {
         if (threadIdToEdit != null) {
             // Edit Mode: Fetch specific thread
@@ -61,7 +57,7 @@ fun CreateThreadScreen(
         }
     }
 
-    // 2. Populate fields when data arrives (Edit Mode only)
+    // Populate fields when data arrives (Edit Mode only)
     LaunchedEffect(selectedThread) {
         if (isEditMode && selectedThread != null && selectedThread!!.id == threadIdToEdit) {
             header = selectedThread!!.header
@@ -73,7 +69,6 @@ fun CreateThreadScreen(
             if (matchingTopic != null) {
                 selectedTopic = matchingTopic
             }
-            // Data loaded, stop loading spinner
             isLoading = false
         }
     }
@@ -86,15 +81,12 @@ fun CreateThreadScreen(
             .background(AppTheme.colors.screenBackground)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // --- Header Section ---
             AppTopBar(
                 title = if (isEditMode) "Edit Thread" else "Create Thread",
                 onBack = { navController.popBackStack() },
                 containerColor = Color.White
             )
 
-            // --- Main Content ---
             if (isLoading) {
                 // Show loading spinner while fetching edit data
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -118,23 +110,41 @@ fun CreateThreadScreen(
                                 verticalArrangement = Arrangement.spacedBy(20.dp)
                             ) {
 
-                                // 1. Topic Selection
-                                TopicDropdown(
+                                // Topic Selection
+                                AppDropdown(
                                     items = topics,
                                     selectedItem = selectedTopic,
-                                    onItemSelected = { selectedTopic = it }
+                                    onItemSelected = { selectedTopic = it },
+                                    label = "Select Topic",
+                                    accentColor = AppTheme.colors.accentTeal,
+                                    itemLabelMapper = { it.displayName },
+                                    leadingIcon = { topic ->
+                                        Icon(topic.icon, contentDescription = null, tint = AppTheme.colors.accentTeal)
+                                    },
+                                    itemLeadingIcon = { topic ->
+                                        Icon(topic.icon, contentDescription = null, tint = AppTheme.colors.accentTeal)
+                                    }
                                 )
 
-                                // 2. Type Selection
-                                TypeDropdown(
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Type Selection
+                                AppDropdown(
                                     items = types,
                                     selectedItem = type,
-                                    onItemSelected = { type = it }
+                                    onItemSelected = { type = it },
+                                    label = "Thread Type",
+                                    accentColor = AppTheme.colors.warmOrange,
+                                    itemLabelMapper = { it },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Category, contentDescription = null, tint = AppTheme.colors.warmOrange)
+                                    },
+                                    itemLeadingIcon = null
                                 )
 
                                 HorizontalDivider(color = AppTheme.colors.textSecondary.copy(alpha = 0.1f))
 
-                                // 3. Header Input
+                                // Header Input
                                 OutlinedTextField(
                                     value = header,
                                     onValueChange = { header = it },
@@ -150,7 +160,7 @@ fun CreateThreadScreen(
                                     singleLine = true
                                 )
 
-                                // 4. Content Input
+                                // Content Input
                                 OutlinedTextField(
                                     value = paragraph,
                                     onValueChange = { paragraph = it },
@@ -228,7 +238,6 @@ fun CreateThreadScreen(
                                 fontSize = 16.sp
                             )
                         }
-                        // Spacer for bottom navigation visibility
                         Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
@@ -239,10 +248,15 @@ fun CreateThreadScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopicDropdown(
-    items: List<Topic>,
-    selectedItem: Topic,
-    onItemSelected: (Topic) -> Unit
+fun <T> AppDropdown(
+    items: List<T>,
+    selectedItem: T,
+    onItemSelected: (T) -> Unit,
+    label: String,
+    accentColor: Color,
+    itemLabelMapper: (T) -> String,
+    leadingIcon: @Composable (T) -> Unit,
+    itemLeadingIcon: (@Composable (T) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -251,26 +265,20 @@ fun TopicDropdown(
         onExpandedChange = { expanded = !expanded }
     ) {
         OutlinedTextField(
-            value = selectedItem.displayName,
+            value = itemLabelMapper(selectedItem),
             onValueChange = {},
             readOnly = true,
-            label = { Text("Select Topic") },
-            leadingIcon = {
-                Icon(
-                    selectedItem.icon,
-                    contentDescription = null,
-                    tint = AppTheme.colors.accentTeal
-                )
-            },
+            label = { Text(label) },
+            leadingIcon = { leadingIcon(selectedItem) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppTheme.colors.accentTeal,
+                focusedBorderColor = accentColor,
                 unfocusedBorderColor = AppTheme.colors.textSecondary.copy(alpha = 0.3f),
-                focusedLabelColor = AppTheme.colors.accentTeal
+                focusedLabelColor = accentColor
             )
         )
         ExposedDropdownMenu(
@@ -278,78 +286,20 @@ fun TopicDropdown(
             onDismissRequest = { expanded = false },
             modifier = Modifier.background(Color.White)
         ) {
-            items.forEach { topic ->
+            items.forEach { item ->
                 DropdownMenuItem(
                     text = {
                         Text(
-                            topic.displayName,
+                            text = itemLabelMapper(item),
                             color = AppTheme.colors.textPrimary,
                             fontWeight = FontWeight.Medium
                         )
                     },
-                    leadingIcon = {
-                        Icon(
-                            topic.icon,
-                            contentDescription = null,
-                            tint = AppTheme.colors.accentTeal
-                        )
-                    },
+                    leadingIcon = if (itemLeadingIcon != null) {
+                        { itemLeadingIcon(item) }
+                    } else null,
                     onClick = {
-                        onItemSelected(topic)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TypeDropdown(
-    items: List<String>,
-    selectedItem: String,
-    onItemSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
-        OutlinedTextField(
-            value = selectedItem,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Thread Type") },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Category,
-                    contentDescription = null,
-                    tint = AppTheme.colors.warmOrange
-                )
-            },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppTheme.colors.warmOrange,
-                unfocusedBorderColor = AppTheme.colors.textSecondary.copy(alpha = 0.3f),
-                focusedLabelColor = AppTheme.colors.warmOrange
-            )
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(Color.White)
-        ) {
-            items.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option, color = AppTheme.colors.textPrimary) },
-                    onClick = {
-                        onItemSelected(option)
+                        onItemSelected(item)
                         expanded = false
                     }
                 )

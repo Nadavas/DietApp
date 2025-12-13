@@ -67,7 +67,6 @@ fun EmailVerificationScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // The user MUST click this now. No auto-jump.
             AppPrimaryButton(
                 text = "I've Verified My Email",
                 isLoading = isChecking,

@@ -76,7 +76,7 @@ fun AccountScreen(
             subtitle = "Manage profile and preferences",
             action = {
                 TextButton(
-                    onClick = { showSignOutDialog = true }, // Or pass your callback here
+                    onClick = { showSignOutDialog = true },
                     colors = ButtonDefaults.textButtonColors(contentColor = AppTheme.colors.softRed)
                 ) {
                     Text(
@@ -137,7 +137,6 @@ fun AccountScreen(
                                     modifier = Modifier.size(24.dp)
                                 )
                             },
-                            // UPDATE: Pass source=account
                             onClick = {
                                 navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=false&source=account")
                             }
@@ -223,7 +222,7 @@ fun AccountScreen(
 // -------------------------------
 
 @Composable
-fun AccountHeaderInfo(
+private fun AccountHeaderInfo(
     name: String,
     email: String,
     avatarId: String?,
@@ -249,7 +248,6 @@ fun AccountHeaderInfo(
                         .size(96.dp)
                         .background(AppTheme.colors.primaryGreen.copy(alpha = 0.1f), CircleShape)
                 )
-                // FIX: Use UserAvatar
                 UserAvatar(
                     avatarId = avatarId,
                     size = 86.dp,

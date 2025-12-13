@@ -32,10 +32,10 @@ data class Meal(
     val timestamp: Timestamp = Timestamp(Date())
 )
 
-val MorningSectionColor = Color(0xFFFFA726)
-val NoonSectionColor = Color(0xFF66BB6A)
-val EveningSectionColor = Color(0xFF42A5F5)
-val NightSectionColor = Color(0xFFAB47BC)
+val MorningSectionColor = Color(0xFFFBC02D)
+val NoonSectionColor = Color(0xFF8BC34A)
+val EveningSectionColor = Color(0xFF40C4FF)
+val NightSectionColor = Color(0xFF607D8B)
 
 enum class MealSection(val sectionName: String, val color: Color) {
     MORNING("Morning", MorningSectionColor),

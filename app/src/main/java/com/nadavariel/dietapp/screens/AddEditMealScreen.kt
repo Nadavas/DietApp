@@ -78,11 +78,8 @@ fun AddEditMealScreen(
     val context = LocalContext.current
     val isEditMode = mealToEdit != null
 
-    // --- State Variables ---
     var selectedMode by remember { mutableStateOf<AddMealMode?>(if (isEditMode) AddMealMode.MANUAL else null) }
     var foodName by remember { mutableStateOf("") }
-
-    // Macros & Micros
     var caloriesText by remember { mutableStateOf("") }
     var proteinText by remember { mutableStateOf("") }
     var carbsText by remember { mutableStateOf("") }
@@ -98,7 +95,6 @@ fun AddEditMealScreen(
     var vitaminB12Text by remember { mutableStateOf("") }
     var servingAmountText by remember { mutableStateOf("") }
     var servingUnitText by remember { mutableStateOf("") }
-
     var showNutrients by remember { mutableStateOf(false) }
     var selectedDateTimeState by remember { mutableStateOf(Calendar.getInstance()) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }

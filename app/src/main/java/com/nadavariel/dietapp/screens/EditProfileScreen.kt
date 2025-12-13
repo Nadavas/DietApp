@@ -60,7 +60,6 @@ fun EditProfileScreen(
     var dateOfBirthInput: Date? by remember(userProfile.dateOfBirth) { mutableStateOf(userProfile.dateOfBirth) }
     var selectedAvatarId by remember(userProfile.avatarId) { mutableStateOf(userProfile.avatarId) }
     var selectedGender by remember(userProfile.gender) { mutableStateOf(userProfile.gender) }
-
     var showAvatarDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var isGenderDropdownExpanded by remember { mutableStateOf(false) }
@@ -112,7 +111,6 @@ fun EditProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Avatar Selection Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
@@ -138,7 +136,6 @@ fun EditProfileScreen(
                                 .size(120.dp)
                                 .clickable { showAvatarDialog = true }
                         ) {
-                            // FIX: Use UserAvatar
                             UserAvatar(
                                 avatarId = selectedAvatarId,
                                 size = 120.dp
@@ -472,7 +469,6 @@ private fun EditableGoalField(
         OutlinedTextField(
             value = textValue,
             onValueChange = { newValue ->
-                // FIX: Only allow digits and one decimal point
                 if (newValue.all { it.isDigit() || it == '.' } && newValue.count { it == '.' } <= 1) {
                     textValue = newValue
                     onValueChange(newValue)

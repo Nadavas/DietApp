@@ -8,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
@@ -29,7 +28,6 @@ fun Greeting(
     onSignInClick: () -> Unit,
     onSignUpClick: () -> Unit
 ) {
-    // Use the App's gradient background for a polished look
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -65,7 +63,7 @@ fun Greeting(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Sign in button - Filled Green
+            // Sign in button
             Button(
                 onClick = onSignInClick,
                 modifier = Modifier
@@ -87,7 +85,7 @@ fun Greeting(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Sign Up button - Outlined Green
+            // Sign Up button
             OutlinedButton(
                 onClick = onSignUpClick,
                 modifier = Modifier
@@ -95,7 +93,7 @@ fun Greeting(
                     .height(56.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = AppTheme.colors.primaryGreen,
-                    containerColor = Color.White.copy(alpha = 0.5f) // Slight semi-transparent fill
+                    containerColor = Color.White.copy(alpha = 0.5f)
                 ),
                 border = BorderStroke(2.dp, AppTheme.colors.primaryGreen),
                 shape = MaterialTheme.shapes.medium

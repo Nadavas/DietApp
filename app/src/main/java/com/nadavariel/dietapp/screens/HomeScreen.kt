@@ -379,7 +379,7 @@ fun HomeScreen(
                             stickyHeader {
                                 MealSectionHeader(
                                     section,
-                                    Modifier.background(AppTheme.colors.screenBackground)
+                                        Modifier.background(Color.White)
                                 )
                             }
                             items(mealsInSection, key = { it.id }) { meal ->
@@ -410,6 +410,7 @@ fun HomeScreen(
         }
     }
 
+    // Delete Meal Dialog
     if (showDeleteConfirmationDialog && mealToDelete != null) {
         StyledAlertDialog(
             onDismissRequest = {
@@ -460,7 +461,6 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.verticalScroll(rememberScrollState())
                 ) {
-                    // Loop for Macros
                     macroList.forEach { nutrient ->
                         val total = mealsForSelectedDate.sumOf { nutrient.selector(it) ?: 0.0 }
                         NutritionRow(nutrient.label, total, nutrient.unit, nutrient.color)
@@ -471,7 +471,6 @@ fun HomeScreen(
                         color = AppTheme.colors.textSecondary.copy(alpha = 0.2f)
                     )
 
-                    // Loop for Micros
                     microList.forEach { nutrient ->
                         val total = mealsForSelectedDate.sumOf { nutrient.selector(it) ?: 0.0 }
                         NutritionRow(nutrient.label, total, nutrient.unit, nutrient.color)
@@ -565,7 +564,7 @@ private fun WeightStatusCard(
         progressPercentage >= 75f -> "🥇"
         progressPercentage >= 50f -> "🥈"
         progressPercentage >= 25f -> "🥉"
-        progressPercentage >= 10f -> "⚡" // Added "The Spark"
+        progressPercentage >= 10f -> "⚡"
         else -> null
     }
 
@@ -760,7 +759,8 @@ private fun CalorieSummaryCard(
     onDateSelected: (LocalDate) -> Unit,
     onGoToToday: () -> Unit
 ) {
-    val circleColor = AppTheme.colors.primaryGreen
+    val filledCircleColor = AppTheme.colors.primaryGreen
+    val emptyCircleColor = AppTheme.colors.divider
     val remaining = max(0, goalCalories - totalCalories)
     val progress = if (goalCalories > 0) (totalCalories.toFloat() / goalCalories.toFloat()).coerceIn(0f, 1f) else 0f
     val animatedProgress by animateFloatAsState(
@@ -791,14 +791,14 @@ private fun CalorieSummaryCard(
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         drawArc(
-                            color = Color(0xFFF0F0F0),
+                            color = emptyCircleColor,
                             startAngle = -90f,
                             sweepAngle = 360f,
                             useCenter = false,
                             style = Stroke(width = 24f, cap = StrokeCap.Round)
                         )
                         drawArc(
-                            color = circleColor,
+                            color = filledCircleColor,
                             startAngle = -90f,
                             sweepAngle = 360 * animatedProgress,
                             useCenter = false,
@@ -844,7 +844,7 @@ private fun CalorieSummaryCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             HorizontalDivider(
-                color = AppTheme.colors.divider.copy(alpha = 0.5f)
+                color = AppTheme.colors.divider
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1155,7 +1155,7 @@ private fun MealItem(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50))
-                                .background(Color(0xFFF3F4F6))
+                                .background(AppTheme.colors.screenBackground)
                         ) {
                             IconButton(onClick = { onEdit(meal) }) {
                                 Icon(
@@ -1246,14 +1246,14 @@ private fun NutritionDetailsTable(meal: Meal) {
                 label = "Carbs",
                 value = meal.carbohydrates,
                 unit = "g",
-                color = Color(0xFF00BFA5),
+                color = AppTheme.colors.skyBlue,
                 modifier = Modifier.weight(1f)
             )
             NutritionDetailItem(
                 label = "Fat",
                 value = meal.fat,
                 unit = "g",
-                color = Color(0xFFFF6E40),
+                color = AppTheme.colors.tangerine,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1330,8 +1330,7 @@ private fun NutritionDetailsTable(meal: Meal) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp), // Reduced vertical padding
-                            // spacedBy(0.dp) ensures we use the full width via weights, effectively minimizing padding between columns
+                                .padding(vertical = 6.dp),
                             horizontalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
                             rowItems.forEach { (label, value, unit) ->
@@ -1339,7 +1338,6 @@ private fun NutritionDetailsTable(meal: Meal) {
                                     label = label,
                                     value = value,
                                     unit = unit,
-                                    // weight(1f) ensures every column is exactly 1/3 of the width, creating perfect alignment
                                     modifier = Modifier.weight(1f)
                                 )
                             }

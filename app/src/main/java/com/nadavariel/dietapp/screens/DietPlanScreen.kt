@@ -62,7 +62,7 @@ fun DietPlanScreen(
 ) {
     val hasAiGeneratedGoals by goalsViewModel.hasAiGeneratedGoals.collectAsState()
     val dietPlan by goalsViewModel.currentDietPlan.collectAsState()
-    val userWeight by goalsViewModel.userWeight.collectAsState() // Keep for protein card
+    val userWeight by goalsViewModel.userWeight.collectAsState()
 
     Scaffold(
         topBar = {
@@ -81,7 +81,6 @@ fun DietPlanScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // AI Generated Badge - Enhanced
             AnimatedVisibility(
                 visible = hasAiGeneratedGoals && dietPlan != null,
                 enter = fadeIn() + scaleIn(
@@ -101,7 +100,6 @@ fun DietPlanScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box {
-                        // Decorative gradient background
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -121,7 +119,6 @@ fun DietPlanScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Animated sparkle icon container
                             Box(
                                 modifier = Modifier
                                     .size(56.dp)
@@ -154,10 +151,10 @@ fun DietPlanScreen(
                 }
             }
 
-            // Hero Calorie Card - Stunning redesign
+            // --- Hero Calorie Card ---
             dietPlan?.let { plan ->
 
-                // --- NEW CARD: Health Overview (Updated for List) ---
+                // --- Health Overview ---
                 CollapsibleCard(
                     icon = Icons.Default.PersonSearch,
                     iconBackgroundColor = AppTheme.colors.skyBlue.copy(alpha = 0.1f),
@@ -165,7 +162,6 @@ fun DietPlanScreen(
                     title = "Your Health Overview"
                 ) {
                     Spacer(Modifier.height(8.dp))
-                    // Loop through the list of strings
                     plan.healthOverview.forEach { point ->
                         Row(modifier = Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
                             Text(
@@ -185,7 +181,7 @@ fun DietPlanScreen(
                     }
                 }
 
-                // --- NEW CARD: Goal Strategy (Updated for List) ---
+                // --- Goal Strategy ---
                 CollapsibleCard(
                     icon = Icons.Default.Flag,
                     iconBackgroundColor = AppTheme.colors.darkPurple.copy(alpha = 0.1f),
@@ -212,11 +208,12 @@ fun DietPlanScreen(
                     }
                 }
 
+                // --- Daily Calorie Target ---
                 AnimatedCalorieHeroCard(
                     dailyCalories = plan.concretePlan.targets.dailyCalories
                 )
 
-                // Macronutrient Breakdown Section
+                // --- Macronutrient Breakdown Section ---
                 Text(
                     "Daily Macros",
                     style = MaterialTheme.typography.titleLarge,
@@ -258,12 +255,12 @@ fun DietPlanScreen(
                     )
                 }
 
-                // Protein Recommendations Card
+                // --- Protein Guide ---
                 if (userWeight.toInt() > 0) {
                     ProteinRecommendationCard(userWeight.toInt())
                 }
 
-                // --- NEW CARD: Meal Guidelines ---
+                // --- Meal Guidelines ---
                 CollapsibleCard(
                     icon = Icons.AutoMirrored.Filled.Rule,
                     iconBackgroundColor = AppTheme.colors.purple.copy(alpha = 0.1f),
@@ -298,7 +295,7 @@ fun DietPlanScreen(
                     }
                 }
 
-                // --- NEW CARD: Example Meal Plan ---
+                // --- Example Meal Plan ---
                 CollapsibleCard(
                     icon = Icons.Default.Restaurant,
                     iconBackgroundColor = AppTheme.colors.accentTeal.copy(alpha = 0.1f),
@@ -317,7 +314,7 @@ fun DietPlanScreen(
                     }
                 }
 
-                // AI Recommendations (Updated for List)
+                // --- Training Advice ---
                 CollapsibleCard(
                     icon = Icons.Default.Lightbulb,
                     iconBackgroundColor = AppTheme.colors.orange.copy(alpha = 0.1f),
@@ -344,7 +341,7 @@ fun DietPlanScreen(
                     }
                 }
 
-                // Disclaimer - Subtle and informative (This was already correct)
+                // --- Disclaimer ---
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = AppTheme.colors.deepRed.copy(alpha = 0.1f)
@@ -373,26 +370,24 @@ fun DietPlanScreen(
                 }
             }
 
-            // Empty state - Enhanced
+            // Empty state
             if (dietPlan == null) {
                 EmptyDietPlanState(
                     onNavigateToQuestions = {
-                        // UPDATE: Pass startQuiz=true and source=account
-                        // This ensures they go back to the Account section after finishing
                         navController.navigate("questions?startQuiz=true&source=account")
                     }
                 )
             }
 
-            // Bottom spacing
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
-// ---
-// --- REUSABLE COMPOSABLE (Added from last step)
-// ---
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
 private fun CollapsibleCard(
     icon: ImageVector,
@@ -401,7 +396,7 @@ private fun CollapsibleCard(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var isExpanded by remember { mutableStateOf(false) } // Default hidden as requested
+    var isExpanded by remember { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(
         targetValue = if (isExpanded) 180f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -417,9 +412,8 @@ private fun CollapsibleCard(
         Column(
             modifier = Modifier
                 .padding(20.dp)
-                .animateContentSize() // Animate the size change of the Column
+                .animateContentSize()
         ) {
-            // Title Row - now clickable
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -456,16 +450,13 @@ private fun CollapsibleCard(
                 )
             }
 
-            // Collapsible Content
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
                 exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeOut()
             ) {
-                // We wrap the content in another Column to prevent animation glitches
-                // and to apply padding uniformly.
                 Column(
-                    modifier = Modifier.padding(top = 8.dp) // Add padding between title and content
+                    modifier = Modifier.padding(top = 8.dp)
                 ) {
                     content()
                 }
@@ -476,7 +467,7 @@ private fun CollapsibleCard(
 
 
 @Composable
-fun AnimatedCalorieHeroCard(dailyCalories: Int) {
+private fun AnimatedCalorieHeroCard(dailyCalories: Int) {
     val animatedCalories by animateFloatAsState(
         targetValue = dailyCalories.toFloat(),
         animationSpec = spring(
@@ -499,7 +490,6 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                 .fillMaxWidth()
                 .height(240.dp)
         ) {
-            // Decorative background pattern
             val circleColor = AppTheme.colors.primaryGreen
             Canvas(
                 modifier = Modifier
@@ -527,7 +517,6 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Flame icon with circular background
                 Box(
                     modifier = Modifier
                         .size(60.dp)
@@ -584,7 +573,7 @@ fun AnimatedCalorieHeroCard(dailyCalories: Int) {
 }
 
 @Composable
-fun EnhancedMacroCard(
+private fun EnhancedMacroCard(
     modifier: Modifier = Modifier,
     icon: ImageVector,
     label: String,
@@ -614,18 +603,15 @@ fun EnhancedMacroCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Circular progress indicator
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(60.dp)
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    // Background circle
                     drawCircle(
                         color = color.copy(alpha = 0.15f),
                         radius = size.minDimension / 2
                     )
-                    // Progress arc
                     drawArc(
                         color = color,
                         startAngle = -90f,
@@ -671,7 +657,7 @@ fun EnhancedMacroCard(
 }
 
 @Composable
-fun ProteinRecommendationCard(weightKg: Int) {
+private fun ProteinRecommendationCard(weightKg: Int) {
     val nonActiveMin = (weightKg * 0.8).toInt()
     val nonActiveMax = (weightKg * 1).toInt()
     val activeMin = (weightKg * 1.2).toInt()
@@ -721,7 +707,6 @@ fun ProteinRecommendationCard(weightKg: Int) {
 
             Spacer(Modifier.height(16.dp))
 
-            // Recommendation rows
             RecommendationRow(
                 label = "Light Activity",
                 range = "$nonActiveMin–$nonActiveMax g/day",
@@ -738,7 +723,7 @@ fun ProteinRecommendationCard(weightKg: Int) {
 }
 
 @Composable
-fun RecommendationRow(label: String, range: String, color: Color) {
+private fun RecommendationRow(label: String, range: String, color: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -763,12 +748,8 @@ fun RecommendationRow(label: String, range: String, color: Color) {
     }
 }
 
-// --- THIS COMPOSABLE IS NOW MOVING TO UPDATE_PROFILE_SCREEN.KT ---
-// @Composable
-// fun EditableGoalCard( ... ) { ... }
-
 @Composable
-fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
+private fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -784,7 +765,6 @@ fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Decorative illustration placeholder
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -837,11 +817,6 @@ fun EmptyDietPlanState(onNavigateToQuestions: () -> Unit) {
     }
 }
 
-// ---
-// --- !!! NEW HELPER COMPOSABLES TO ADD AT THE END OF THE FILE !!! ---
-// ---
-
-// Helper for Meal Plan
 @Composable
 private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
     Column {
@@ -864,7 +839,6 @@ private fun MealPlanItem(mealType: String, meal: ExampleMeal) {
     }
 }
 
-// Helper for Food Chips
 @Composable
 private fun FoodChip(text: String, isGood: Boolean) {
     val chipColor = if (isGood) AppTheme.colors.primaryGreen else AppTheme.colors.deepRed

@@ -38,12 +38,10 @@ fun MyProfileScreen(
     goalsViewModel: GoalsViewModel,
     navController: NavController
 ) {
-    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
-    val hasMissingProfileDetails by authViewModel.hasMissingPrimaryProfileDetails.collectAsStateWithLifecycle()
-    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
-
     val goals by goalsViewModel.goals.collectAsStateWithLifecycle()
+    val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
 
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val calorieGoal = remember(goals) {
         (goals.find { it.text.contains("calorie", ignoreCase = true) }?.value ?: "Not Set")
             .let { if (it.isNotBlank() && it != "Not Set") "$it kcal" else "Not Set" }
@@ -63,7 +61,6 @@ fun MyProfileScreen(
             .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Modern Header with gradient
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.Transparent
@@ -99,7 +96,6 @@ fun MyProfileScreen(
                             )
                         }
 
-                        // Avatar and Name
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -111,10 +107,9 @@ fun MyProfileScreen(
                                     .background(Color.White.copy(alpha = 0.2f))
                                     .padding(4.dp)
                             ) {
-                                // FIX: Use UserAvatar
                                 UserAvatar(
                                     avatarId = userProfile.avatarId,
-                                    size = 120.dp // The modifier inside UserAvatar handles the clip(CircleShape)
+                                    size = 120.dp
                                 )
                             }
 
@@ -145,60 +140,6 @@ fun MyProfileScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Warning for missing details
-                if (hasMissingProfileDetails) {
-                    item {
-                        val missingFields = mutableListOf<String>()
-                        if (userProfile.name.isBlank()) missingFields.add("name")
-                        if (userProfile.startingWeight <= 0f) missingFields.add("starting weight")
-                        if (userProfile.height <= 0f) missingFields.add("height")
-
-                        val message = if (missingFields.isNotEmpty()) {
-                            val formattedFields = when (missingFields.size) {
-                                1 -> missingFields[0]
-                                2 -> "${missingFields[0]} and ${missingFields[1]}"
-                                else -> {
-                                    val allButLast = missingFields.dropLast(1).joinToString(", ")
-                                    "$allButLast, and ${missingFields.last()}"
-                                }
-                            }
-                            "Your $formattedFields details are missing. Complete your profile for better tracking!"
-                        } else {
-                            "Some profile details are incomplete. Please update your profile."
-                        }
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = AppTheme.colors.warmOrange.copy(alpha = 0.15f)
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = AppTheme.colors.warmOrange,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    text = message,
-                                    color = AppTheme.colors.textPrimary,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                }
-
                 // About You Section
                 item {
                     ProfileSectionCard(
@@ -305,7 +246,6 @@ fun MyProfileScreen(
                     }
                 }
 
-                // Bottom spacing
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
