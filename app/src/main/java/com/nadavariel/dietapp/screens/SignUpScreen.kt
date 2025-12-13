@@ -51,13 +51,12 @@ fun SignUpScreen(
     val confirmPassword by authViewModel.confirmPasswordState
     val selectedAvatarId by authViewModel.selectedAvatarId
     val authResult by authViewModel.authResult.collectAsState()
-    val isGoogleSignUp by authViewModel.isGoogleSignUp
 
     var showAvatarDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 1. Use the shared Google Launcher logic
+    // Shared Google Launcher logic
     val (launcher, googleSignInClient) = rememberGoogleSignInLauncher(
         authViewModel = authViewModel,
         scope = scope,
@@ -76,7 +75,6 @@ fun SignUpScreen(
         }
     }
 
-    // 2. Use Shared Auth Screen Wrapper
     AuthScreenWrapper(
         snackbarHostState = snackbarHostState,
         onBack = onBack
@@ -97,7 +95,7 @@ fun SignUpScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Avatar Selection (Specific to Sign Up)
+            // Avatar Selection
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -123,7 +121,7 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Use Shared Styled Text Fields
+            // Text Fields (Cleaned up: No Google checks)
             AppTextField(
                 value = name,
                 onValueChange = { authViewModel.nameState.value = it },
@@ -133,16 +131,14 @@ fun SignUpScreen(
             AppTextField(
                 value = email,
                 onValueChange = { authViewModel.emailState.value = it },
-                label = "Email",
-                enabled = !isGoogleSignUp
+                label = "Email"
             )
 
             AppTextField(
                 value = password,
                 onValueChange = { authViewModel.passwordState.value = it },
                 label = "Password",
-                visualTransformation = PasswordVisualTransformation(),
-                enabled = !isGoogleSignUp
+                visualTransformation = PasswordVisualTransformation()
             )
 
             AppTextField(
@@ -150,24 +146,53 @@ fun SignUpScreen(
                 onValueChange = { authViewModel.confirmPasswordState.value = it },
                 label = "Confirm Password",
                 visualTransformation = PasswordVisualTransformation(),
-                enabled = !isGoogleSignUp,
-                modifier = Modifier.padding(bottom = 16.dp) // Extra padding for last field
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 4. Use Shared Primary Button
+            // Create Account Button (PURE MANUAL LOGIC)
             AppPrimaryButton(
-                text = "Next",
+                text = "Create Account",
                 isLoading = authResult == AuthResult.Loading,
                 onClick = {
-                    Log.d("SignUpScreen", "Next clicked.")
-                    authViewModel.signUp { onSignUpSuccess(true) }
+                    Log.d("SignUpScreen", "Create Account clicked.")
+
+                    // 1. Basic Validation
+                    if (name.isBlank() || email.isBlank() || password.isBlank()) {
+                        scope.launch { snackbarHostState.showSnackbar("Please fill in all fields") }
+                        return@AppPrimaryButton
+                    }
+                    if (password != confirmPassword) {
+                        scope.launch { snackbarHostState.showSnackbar("Passwords do not match") }
+                        return@AppPrimaryButton
+                    }
+
+                    // 2. Perform Creation
+                    scope.launch {
+                        try {
+                            // A. Create User & Profile
+                            authViewModel.createEmailUserAndProfile()
+
+                            // B. Send Verification Email
+                            authViewModel.sendVerificationEmail(
+                                onSuccess = { },
+                                onError = { msg -> Log.e("SignUp", "Verification failed: $msg") }
+                            )
+
+                            // C. Navigate
+                            onSignUpSuccess(true)
+
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "Sign up failed")
+                        }
+                    }
                 }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Login Link
             val annotatedTextLogin = buildAnnotatedString {
                 append("Already have an account? ")
                 pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
@@ -184,39 +209,33 @@ fun SignUpScreen(
             ClickableText(
                 text = annotatedTextLogin,
                 onClick = { offset ->
-                    annotatedTextLogin.getStringAnnotations(
-                        tag = "LOGIN",
-                        start = offset,
-                        end = offset
-                    )
+                    annotatedTextLogin.getStringAnnotations(tag = "LOGIN", start = offset, end = offset)
                         .firstOrNull()?.let { onNavigateToSignIn() }
                 },
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            if (!isGoogleSignUp) {
-                Text(
-                    "OR",
-                    modifier = Modifier.padding(vertical = 16.dp),
-                    color = AppTheme.colors.textSecondary,
-                    fontSize = 14.sp
-                )
+            // Google Section
+            Text(
+                "OR",
+                modifier = Modifier.padding(vertical = 16.dp),
+                color = AppTheme.colors.textSecondary,
+                fontSize = 14.sp
+            )
 
-                // 5. Use Shared Google Button
-                GoogleSignInButton(
-                    enabled = authResult != AuthResult.Loading,
-                    onClick = {
-                        scope.launch {
-                            try {
-                                googleSignInClient.signOut().await()
-                            } catch (e: Exception) {
-                                Log.w("SignUpScreen", "Sign out failed: ${e.message}")
-                            }
-                            launcher.launch(googleSignInClient.signInIntent)
+            GoogleSignInButton(
+                enabled = authResult != AuthResult.Loading,
+                onClick = {
+                    scope.launch {
+                        try {
+                            googleSignInClient.signOut().await()
+                        } catch (e: Exception) {
+                            Log.w("SignUpScreen", "Sign out failed: ${e.message}")
                         }
+                        launcher.launch(googleSignInClient.signInIntent)
                     }
-                )
-            }
+                }
+            )
         }
     }
 

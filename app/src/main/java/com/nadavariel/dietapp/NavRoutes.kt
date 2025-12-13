@@ -43,4 +43,5 @@ object NavRoutes {
     const val STATS_VITAMINS = "stats/vitamins"
     const val WEIGHT_TRACKER = "weight_tracker"
     const val ALL_ACHIEVEMENTS = "all_achievements"
+    const val EMAIL_VERIFICATION = "email_verification"
 }

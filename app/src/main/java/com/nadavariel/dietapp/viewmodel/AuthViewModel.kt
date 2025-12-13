@@ -433,6 +433,48 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
+    // 1. Helper to check if currently signed-in user is verified
+    fun isEmailVerified(): Boolean {
+        return auth.currentUser?.isEmailVerified == true
+    }
+
+    // 2. Send the verification email
+    fun sendVerificationEmail(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = auth.currentUser
+        if (user != null) {
+            user.sendEmailVerification()
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        onSuccess()
+                    } else {
+                        onError(task.exception?.message ?: "Failed to send verification email.")
+                    }
+                }
+        }
+    }
+
+    // 3. Reload user to check if they clicked the link
+    suspend fun checkEmailVerificationStatus(): Boolean {
+        return try {
+            val user = auth.currentUser
+            if (user == null) {
+                Log.d("AuthViewModel", "CheckStatus: No user signed in.")
+                return false
+            }
+
+            // 1. Force reload from server
+            user.reload().await()
+
+            // 2. Log the result for debugging
+            val isVerified = user.isEmailVerified
+            Log.d("AuthViewModel", "CheckStatus: ${user.email} verified=$isVerified")
+
+            return isVerified
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "CheckStatus: Error reloading user", e)
+            false
+        }
+    }
 
     fun updateProfile(
         name: String,

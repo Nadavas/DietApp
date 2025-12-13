@@ -215,9 +215,35 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // 1. Define this reusable logic to ensure IDENTICAL behavior
+                val handleAuthNavigation: (Boolean) -> Unit = { isNewUser ->
+                    if (!authViewModel.isEmailVerified()) {
+                        // Case A: Not Verified -> Blocking Screen
+                        navController.navigate(NavRoutes.EMAIL_VERIFICATION) {
+                            popUpTo(NavRoutes.LANDING) { inclusive = true }
+                        }
+                    } else if (isNewUser) {
+                        // Case B: Verified + New -> Quiz
+                        navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding") {
+                            popUpTo(NavRoutes.LANDING) { inclusive = true }
+                        }
+                    } else {
+                        // Case C: Verified + Existing -> Home
+                        navController.navigate(NavRoutes.HOME) {
+                            popUpTo(NavRoutes.LANDING) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                }
+
+                // 2. Update Start Destination
                 val startDestination = remember {
                     if (authViewModel.isUserSignedIn()) {
-                        NavRoutes.HOME
+                        if (!authViewModel.isEmailVerified()) {
+                            NavRoutes.EMAIL_VERIFICATION
+                        } else {
+                            NavRoutes.HOME
+                        }
                     } else {
                         NavRoutes.LANDING
                     }
@@ -365,6 +391,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+
                             composable(NavRoutes.SIGN_IN) {
                                 SignInScreen(
                                     authViewModel = authViewModel,
@@ -373,15 +400,8 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onSignInSuccess = { isNewUser ->
-                                        val route = if (isNewUser) {
-                                            "${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding"
-                                        } else {
-                                            NavRoutes.HOME
-                                        }
-                                        navController.navigate(route) {
-                                            popUpTo(NavRoutes.LANDING) { inclusive = true }
-                                            launchSingleTop = true
-                                        }
+                                        // Apply the unified logic
+                                        handleAuthNavigation(isNewUser)
                                     },
                                     onNavigateToSignUp = {
                                         navController.navigate(NavRoutes.SIGN_UP) {
@@ -390,6 +410,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+
                             composable(NavRoutes.SIGN_UP) {
                                 SignUpScreen(
                                     authViewModel = authViewModel,
@@ -398,18 +419,33 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onSignUpSuccess = { isNewUser ->
-                                        if (isNewUser) {
-                                            navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding")
-                                        } else {
-                                            navController.navigate(NavRoutes.HOME) {
-                                                popUpTo(NavRoutes.LANDING) { inclusive = true }
-                                                launchSingleTop = true
-                                            }
-                                        }
+                                        // Apply the unified logic (FIXED: Now handles existing Google users correctly)
+                                        handleAuthNavigation(isNewUser)
                                     },
                                     onNavigateToSignIn = {
                                         navController.navigate(NavRoutes.SIGN_IN) {
                                             popUpTo(NavRoutes.SIGN_UP) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+
+                            // 3. Add the Verification Screen
+                            composable(NavRoutes.EMAIL_VERIFICATION) {
+                                EmailVerificationScreen(
+                                    authViewModel = authViewModel,
+                                    onVerificationCompleted = {
+                                        // Once verified, they are definitely "New" to the app flow if they came from signup,
+                                        // but usually, we send them to the quiz to be safe.
+                                        navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding") {
+                                            popUpTo(NavRoutes.EMAIL_VERIFICATION) { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    },
+                                    onSignOut = {
+                                        authViewModel.signOut(applicationContext)
+                                        navController.navigate(NavRoutes.LANDING) {
+                                            popUpTo(navController.graph.id) { inclusive = true }
                                         }
                                     }
                                 )
