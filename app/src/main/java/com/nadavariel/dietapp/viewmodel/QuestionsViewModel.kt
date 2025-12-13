@@ -9,7 +9,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.nadavariel.dietapp.data.QuestionnaireConstants
+import com.nadavariel.dietapp.data.QuizConstants
 import com.nadavariel.dietapp.model.DietPlan
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.model.Gender
@@ -92,7 +92,7 @@ class QuestionsViewModel : ViewModel() {
             val answerText = answerMap["answer"] ?: ""
 
             when (questionText) {
-                QuestionnaireConstants.WEIGHT_QUESTION -> {
+                QuizConstants.WEIGHT_QUESTION -> {
                     Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'")
                     val numericWeight = answerText.filter { it.isDigit() || it == '.' }
                     numericWeight.toFloatOrNull()?.let {
@@ -100,7 +100,7 @@ class QuestionsViewModel : ViewModel() {
                         Log.d("QuestionsViewModel", "Adding startingWeight update: $it")
                     } ?: Log.w("QuestionsViewModel", "Could not parse weight: '$answerText'")
                 }
-                QuestionnaireConstants.HEIGHT_QUESTION -> {
+                QuizConstants.HEIGHT_QUESTION -> {
                     Log.d("QuestionsViewModel", "Received height answer string: '$answerText'")
                     val numericHeight = answerText.filter { it.isDigit() || it == '.' }
                     numericHeight.toFloatOrNull()?.let {
@@ -108,7 +108,7 @@ class QuestionsViewModel : ViewModel() {
                         Log.d("QuestionsViewModel", "Adding height update: $it")
                     } ?: Log.w("QuestionsViewModel", "Could not parse height: '$answerText'")
                 }
-                QuestionnaireConstants.DOB_QUESTION -> {
+                QuizConstants.DOB_QUESTION -> {
                     try {
                         dobFormat.parse(answerText)?.let {
                             val timestamp = com.google.firebase.Timestamp(it)
@@ -119,12 +119,12 @@ class QuestionsViewModel : ViewModel() {
                         Log.w("QuestionsViewModel", "Could not parse DOB: '$answerText'. Expected format yyyy-MM-dd", e)
                     }
                 }
-                QuestionnaireConstants.GENDER_QUESTION -> {
+                QuizConstants.GENDER_QUESTION -> {
                     val genderEnum = Gender.fromString(answerText)
                     profileUpdates["gender"] = genderEnum.name
                     Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}")
                 }
-                QuestionnaireConstants.TARGET_WEIGHT_QUESTION -> {
+                QuizConstants.TARGET_WEIGHT_QUESTION -> {
                     targetWeightAnswer = answerText
                     Log.d("QuestionsViewModel", "Found target weight answer: $answerText")
                 }
@@ -166,7 +166,7 @@ class QuestionsViewModel : ViewModel() {
             } else { mutableListOf() }
             val aiGenerated = snapshot.getBoolean("aiGenerated") == true
 
-            val targetWeightQuestionTextForGoal = QuestionnaireConstants.TARGET_WEIGHT_QUESTION
+            val targetWeightQuestionTextForGoal = QuizConstants.TARGET_WEIGHT_QUESTION
 
             val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
 

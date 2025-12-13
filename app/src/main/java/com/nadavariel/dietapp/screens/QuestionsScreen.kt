@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.data.QuestionnaireConstants
+import com.nadavariel.dietapp.data.QuizConstants
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 import com.nadavariel.dietapp.ui.AppTheme
@@ -65,7 +65,7 @@ fun QuestionsScreen(
     startQuiz: Boolean,
     source: String
 ) {
-    val questions = QuestionnaireConstants.questions
+    val questions = QuizConstants.questions
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     var quizAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
@@ -74,8 +74,8 @@ fun QuestionsScreen(
     var questionToEditIndex by remember { mutableStateOf<Int?>(null) }
 
     fun updateOptimisticWeight(answers: List<String?>) {
-        val questions = QuestionnaireConstants.questions
-        val weightQuestionIndex = questions.indexOfFirst { it.text == QuestionnaireConstants.TARGET_WEIGHT_QUESTION }
+        val questions = QuizConstants.questions
+        val weightQuestionIndex = questions.indexOfFirst { it.text == QuizConstants.TARGET_WEIGHT_QUESTION }
 
         if (weightQuestionIndex != -1) {
             val weightAnswer = answers.getOrNull(weightQuestionIndex)
@@ -676,7 +676,7 @@ private fun EditingContent(
     onEditClick: (Int) -> Unit,
     onSaveAndGenerate: () -> Unit
 ) {
-    val questions = QuestionnaireConstants.questions
+    val questions = QuizConstants.questions
 
     Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -762,7 +762,7 @@ private fun QuizModeContent(
     onNext: () -> Unit,
     canProceed: Boolean
 ) {
-    val questions = QuestionnaireConstants.questions
+    val questions = QuizConstants.questions
 
     val progress by animateFloatAsState(
         targetValue = (currentIndex + 1).toFloat() / questions.size,

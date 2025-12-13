@@ -4,6 +4,8 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Color
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.ServerTimestamp
 import com.google.gson.annotations.SerializedName
 import java.time.LocalTime
 import java.time.ZoneId
@@ -130,4 +132,12 @@ data class FoodNutritionalInfo(
     @SerializedName("vitamin_c") val vitaminC: String?,
     @SerializedName("vitamin_a") val vitaminA: String?,
     @SerializedName("vitamin_b12") val vitaminB12: String?
+)
+
+data class WeightEntry(
+    @DocumentId
+    val id: String = "",
+    val weight: Float = 0f,
+    @ServerTimestamp
+    val timestamp: Timestamp? = null
 )

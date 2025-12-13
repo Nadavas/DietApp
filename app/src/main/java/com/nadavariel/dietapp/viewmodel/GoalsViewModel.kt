@@ -9,7 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore // <-- 2. IMPORT
 import com.google.firebase.firestore.ListenerRegistration // <-- 3. IMPORT
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.data.QuestionnaireConstants
+import com.nadavariel.dietapp.data.QuizConstants
 import com.nadavariel.dietapp.model.Goal
 import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -177,9 +177,9 @@ class GoalsViewModel : ViewModel() {
         }
 
         val allGoals = listOf(
-            Goal(id = "calories", text = QuestionnaireConstants.CALORIES_GOAL_QUESTION),
-            Goal(id = "protein", text = QuestionnaireConstants.PROTEIN_GOAL_QUESTION),
-            Goal(id = "target_weight", text = QuestionnaireConstants.TARGET_WEIGHT_QUESTION)
+            Goal(id = "calories", text = QuizConstants.CALORIES_GOAL_QUESTION),
+            Goal(id = "protein", text = QuizConstants.PROTEIN_GOAL_QUESTION),
+            Goal(id = "target_weight", text = QuizConstants.TARGET_WEIGHT_QUESTION)
         )
 
         // 9. SAVE THE LISTENER

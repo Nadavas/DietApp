@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.Achievement
-import com.nadavariel.dietapp.model.AchievementRepository
+import com.nadavariel.dietapp.data.AchievementRepository
 import com.nadavariel.dietapp.ui.AppTheme
 import java.time.LocalDate
 

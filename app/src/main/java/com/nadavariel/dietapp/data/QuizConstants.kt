@@ -4,7 +4,7 @@ import com.nadavariel.dietapp.model.Gender
 import com.nadavariel.dietapp.model.InputType
 import com.nadavariel.dietapp.model.Question
 
-object QuestionnaireConstants {
+object QuizConstants {
     // Key Constants (used for database lookups)
     const val DOB_QUESTION = "What is your date of birth?"
     const val GENDER_QUESTION = "What is your gender?"

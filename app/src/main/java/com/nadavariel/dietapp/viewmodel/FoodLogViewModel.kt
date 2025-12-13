@@ -17,7 +17,7 @@ import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nadavariel.dietapp.data.QuestionnaireConstants
+import com.nadavariel.dietapp.data.QuizConstants
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 // REMOVED: GraphPreference import
 import com.nadavariel.dietapp.model.Meal
@@ -357,7 +357,7 @@ class FoodLogViewModel : ViewModel() {
                     val answersMap = snapshot.get("answers") as? List<Map<String, String>>
 
                     val targetWeightAnswer = answersMap?.firstOrNull {
-                        it["question"] == QuestionnaireConstants.TARGET_WEIGHT_QUESTION
+                        it["question"] == QuizConstants.TARGET_WEIGHT_QUESTION
                     }?.get("answer")
 
                     val parsedWeight = targetWeightAnswer?.split(" ")?.firstOrNull()?.toFloatOrNull() ?: 0f
