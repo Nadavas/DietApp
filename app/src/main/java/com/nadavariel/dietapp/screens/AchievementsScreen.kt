@@ -19,14 +19,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +46,7 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.Achievement
 import com.nadavariel.dietapp.data.AchievementRepository
 import com.nadavariel.dietapp.ui.AppTheme
+import com.nadavariel.dietapp.ui.AppTopBar
 import java.time.LocalDate
 
 @Composable
@@ -71,22 +69,11 @@ fun AchievementsScreen(
         modifier = Modifier.fillMaxSize().background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Surface(shadowElevation = 2.dp) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                    Text(
-                        text = "All Achievements",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-            }
+            AppTopBar(
+                title = "All Achievements",
+                onBack = { navController.popBackStack() },
+                containerColor = Color.White // Optional: Ensures it matches the white background
+            )
 
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 100.dp),
