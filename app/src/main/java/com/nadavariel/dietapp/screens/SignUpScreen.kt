@@ -156,8 +156,6 @@ fun SignUpScreen(
                 text = "Create Account",
                 isLoading = authResult == AuthResult.Loading,
                 onClick = {
-                    Log.d("SignUpScreen", "Create Account clicked.")
-
                     // 1. Basic Validation
                     if (name.isBlank() || email.isBlank() || password.isBlank()) {
                         scope.launch { snackbarHostState.showSnackbar("Please fill in all fields") }
@@ -184,6 +182,7 @@ fun SignUpScreen(
                             onSignUpSuccess(true)
 
                         } catch (e: Exception) {
+                            authViewModel.resetAuthResult()
                             snackbarHostState.showSnackbar(e.message ?: "Sign up failed")
                         }
                     }
