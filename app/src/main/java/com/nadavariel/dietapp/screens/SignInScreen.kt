@@ -131,14 +131,6 @@ fun SignInScreen(
                 onClick = {
                     if (authResult != AuthResult.Loading) {
                         authViewModel.signIn(email, password) { isNewUser ->
-                            // --- NEW LOGIC ---
-                            // Check if verified. If NOT verified and NOT a google user, force verification.
-                            if (!authViewModel.isEmailVerified() && !authViewModel.isGoogleSignUp.value) {
-                                // We treat this as a "special" case where we don't go home yet
-                                // Pass a specific flag or handle in MainActivity,
-                                // but for now, we can piggyback on the existing callback
-                                // In MainActivity, we will check verification status.
-                            }
                             onSignInSuccess(isNewUser)
                         }
                     }

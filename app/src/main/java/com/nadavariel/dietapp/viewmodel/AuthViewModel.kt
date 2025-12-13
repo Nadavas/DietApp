@@ -221,27 +221,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         return auth.currentUser != null
     }
 
-    fun signUp(onSuccess: () -> Unit) {
-        if (isGoogleSignUp.value) { // Use .value
-            if (nameState.value.isBlank()) {
-                _authResult.value = AuthResult.Error("Name cannot be empty.")
-                return
-            }
-        } else {
-            if (nameState.value.isBlank() || emailState.value.isBlank() || passwordState.value.isBlank() || confirmPasswordState.value.isBlank()) {
-                _authResult.value = AuthResult.Error("Name, email and passwords cannot be empty.")
-                return
-            }
-            if (passwordState.value != confirmPasswordState.value) {
-                _authResult.value = AuthResult.Error("Passwords do not match.")
-                return
-            }
-        }
-
-        _authResult.value = AuthResult.Idle
-        onSuccess()
-    }
-
     suspend fun createEmailUserAndProfile() {
         if (emailState.value.isBlank() || passwordState.value.isBlank()) {
             throw Exception("Email or password was blank.")
@@ -441,15 +420,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     // 2. Send the verification email
     fun sendVerificationEmail(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
-        if (user != null) {
-            user.sendEmailVerification()
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        onSuccess()
-                    } else {
-                        onError(task.exception?.message ?: "Failed to send verification email.")
-                    }
-                }
+        user?.sendEmailVerification()?.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                onSuccess()
+            } else {
+                onError(task.exception?.message ?: "Failed to send verification email.")
+            }
         }
     }
 
