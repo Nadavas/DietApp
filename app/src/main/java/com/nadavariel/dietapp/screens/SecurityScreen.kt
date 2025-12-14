@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,26 +60,21 @@ fun SecurityScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val uriHandler = LocalUriHandler.current
+    val projectId = "dietapp-c5e7e"
 
     val authResult by authViewModel.authResult.collectAsStateWithLifecycle()
     val currentUser = authViewModel.currentUser
 
-    // Password Change State
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmNewPassword by remember { mutableStateOf("") }
     var isPasswordSectionExpanded by remember { mutableStateOf(false) }
-
-    // Dialog State
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
-    var showPasswordReauthDialog by remember { mutableStateOf(false) } // Renamed for clarity
-    var showGoogleReauthDialog by remember { mutableStateOf(false) }   // New Google Dialog
-
+    var showPasswordReauthDialog by remember { mutableStateOf(false) }
+    var showGoogleReauthDialog by remember { mutableStateOf(false) }
     var reauthPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    var showPrivacyDialog by remember { mutableStateOf(false) }
-    var showTermsDialog by remember { mutableStateOf(false) }
     var showResetConfirmationDialog by remember { mutableStateOf(false) }
 
     // --- GOOGLE LAUNCHER FOR RE-AUTH ---
@@ -128,7 +123,7 @@ fun SecurityScreen(
                     currentPassword = ""
                     newPassword = ""
                     confirmNewPassword = ""
-                    errorMessage = null // Clear error on success
+                    errorMessage = null
                 }
                 // If success came from deleting account, the VM usually signs out
                 authViewModel.resetAuthResult()
@@ -142,7 +137,7 @@ fun SecurityScreen(
                     } else {
                         showGoogleReauthDialog = true
                     }
-                    authViewModel.resetAuthResult() // Clear error so it doesn't loop
+                    authViewModel.resetAuthResult()
                 } else {
                     errorMessage = result.message
                     // Show generic errors in snackbar too
@@ -354,14 +349,18 @@ fun SecurityScreen(
                 title = "Privacy Policy",
                 icon = Icons.Default.PrivacyTip,
                 iconColor = AppTheme.colors.softBlue,
-                onClick = { showPrivacyDialog = true }
+                onClick = {
+                    uriHandler.openUri("https://$projectId.web.app/privacy.html")
+                }
             )
 
             SecurityOptionRow(
                 title = "Terms of Service",
                 icon = Icons.Default.Description,
                 iconColor = AppTheme.colors.softBlue,
-                onClick = { showTermsDialog = true }
+                onClick = {
+                    uriHandler.openUri("https://$projectId.web.app/terms.html")
+                }
             )
 
             // --- SECTION 3: DANGER ZONE ---
@@ -428,13 +427,10 @@ fun SecurityScreen(
             confirmButtonText = "Reset Data",
             dismissButtonText = "Cancel",
             onConfirm = {
-                // 1. Clear UI dialog
                 showResetConfirmationDialog = false
 
-                // 2. Perform the reset
                 authViewModel.resetUserData(
                     onSuccess = {
-                        // 3. FIX: Clear the cached answers in the other ViewModel
                         questionsViewModel.clearData()
                     },
                     onError = {}
@@ -490,7 +486,6 @@ fun SecurityScreen(
         )
     }
 
-    // --- GOOGLE RE-AUTH DIALOG ---
     if (showGoogleReauthDialog) {
         StyledAlertDialog(
             onDismissRequest = { showGoogleReauthDialog = false },
@@ -500,74 +495,11 @@ fun SecurityScreen(
             dismissButtonText = "Cancel",
             onConfirm = {
                 showGoogleReauthDialog = false
-                // Trigger the Google Launcher
                 scope.launch {
                     try { googleSignInClient.signOut().await() } catch (_: Exception) {}
                     reAuthLauncher.launch(googleSignInClient.signInIntent)
                 }
             }
-        )
-    }
-
-    if (showPrivacyDialog) {
-        AlertDialog(
-            onDismissRequest = { showPrivacyDialog = false },
-            title = { Text("Privacy Policy", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        text = """
-                            1. Data Collection
-                            We collect your name, email, and health metrics (weight, height) to generate your diet plan.
-                            
-                            2. Data Usage
-                            Your data is used solely for providing app functionality. We do not sell your data.
-                            
-                            3. Account Deletion
-                            You can delete your account and all associated data at any time from the Security settings.
-                        """.trimIndent(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppTheme.colors.textSecondary
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showPrivacyDialog = false }) {
-                    Text("Close", color = AppTheme.colors.primaryGreen)
-                }
-            },
-            containerColor = Color.White
-        )
-    }
-
-    if (showTermsDialog) {
-        AlertDialog(
-            onDismissRequest = { showTermsDialog = false },
-            title = { Text("Terms of Service", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        text = """
-                            1. Acceptance
-                            By using this app, you agree to these terms.
-                            
-                            2. Medical Disclaimer
-                            This app uses AI to generate advice. It is not a substitute for professional medical advice. Consult a doctor before making major lifestyle changes.
-                            
-                            3. Usage
-                            You agree to use this app responsibly.
-                        """.trimIndent(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppTheme.colors.textSecondary
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTermsDialog = false }) {
-                    Text("Close", color = AppTheme.colors.primaryGreen)
-                }
-            },
-            containerColor = Color.White
         )
     }
 }
@@ -619,7 +551,7 @@ private fun SecurityOptionRow(
 }
 
 @Composable
-fun ReauthDialog(
+private fun ReauthDialog(
     errorMessage: String?,
     password: String,
     onPasswordChange: (String) -> Unit,
@@ -659,7 +591,6 @@ fun ReauthDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                // FIX: Changed to Error/Red for destructive action
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError

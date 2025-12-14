@@ -23,6 +23,7 @@ import com.nadavariel.dietapp.ui.AppTextField
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AuthScreenWrapper
 import com.nadavariel.dietapp.ui.GoogleSignInButton
+import com.nadavariel.dietapp.ui.LegalDisclaimer
 import com.nadavariel.dietapp.ui.rememberGoogleSignInLauncher
 import com.nadavariel.dietapp.viewmodel.AuthResult
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
@@ -186,6 +187,12 @@ fun SignInScreen(
                     }
                 }
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            LegalDisclaimer()
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

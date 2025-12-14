@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -62,17 +63,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,8 +94,6 @@ import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
 import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-
-// Add this to GlobalComponents.kt
 
 @Composable
 fun AppMainHeader(
@@ -984,5 +987,51 @@ fun AppTimePickerDialog(
             }
         },
         containerColor = Color.White
+    )
+}
+
+@Composable
+fun LegalDisclaimer(
+    modifier: Modifier = Modifier,
+    textColor: Color = AppTheme.colors.textSecondary
+) {
+    val uriHandler = LocalUriHandler.current
+    val projectId = "dietapp-c5e7e"
+
+    val annotatedString = buildAnnotatedString {
+        append("By continuing, you agree to our ")
+
+        // TERMS OF SERVICE LINK
+        pushStringAnnotation(tag = "TERMS", annotation = "https://$projectId.web.app/terms.html")
+        withStyle(style = SpanStyle(color = AppTheme.colors.primaryGreen, textDecoration = TextDecoration.Underline)) {
+            append("Terms of Service")
+        }
+        pop()
+
+        append(" and ")
+
+        // PRIVACY POLICY LINK
+        pushStringAnnotation(tag = "PRIVACY", annotation = "https://$projectId.web.app/privacy.html")
+        withStyle(style = SpanStyle(color = AppTheme.colors.primaryGreen, textDecoration = TextDecoration.Underline)) {
+            append("Privacy Policy")
+        }
+        pop()
+
+        append(".")
+    }
+
+    ClickableText(
+        text = annotatedString,
+        style = MaterialTheme.typography.bodySmall.copy(
+            color = textColor,
+            textAlign = TextAlign.Center
+        ),
+        onClick = { offset ->
+            annotatedString.getStringAnnotations(start = offset, end = offset)
+                .firstOrNull()?.let { annotation ->
+                    uriHandler.openUri(annotation.item)
+                }
+        },
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)
     )
 }
