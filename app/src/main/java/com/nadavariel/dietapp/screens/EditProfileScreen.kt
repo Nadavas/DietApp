@@ -328,6 +328,10 @@ fun EditProfileScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
 private fun ProfileEditCard(
     title: String,

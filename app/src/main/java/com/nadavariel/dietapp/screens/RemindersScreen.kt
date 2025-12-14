@@ -63,7 +63,6 @@ fun RemindersScreen(
 ) {
     val allNotifications by remindersViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
 
-    // UPDATED: Sort strictly by time (Hour -> Minute), ignoring repetition type
     val sortedNotifications = remember(allNotifications) {
         allNotifications.sortedWith(compareBy({ it.hour }, { it.minute }))
     }
@@ -74,7 +73,6 @@ fun RemindersScreen(
 
     val context = LocalContext.current
 
-    // --- Notification Permission Logic ---
     var hasNotificationPermission by remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             mutableStateOf(
@@ -93,7 +91,7 @@ fun RemindersScreen(
         onResult = { isGranted -> hasNotificationPermission = isGranted }
     )
 
-    // --- Exact Alarm Permission Logic (Android 12+) ---
+    // --- Exact Alarm Permission Logic ---
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     var hasExactAlarmPermission by remember {
         mutableStateOf(
@@ -282,9 +280,13 @@ fun RemindersScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @SuppressLint("DefaultLocale")
 @Composable
-fun NotificationCard(
+private fun NotificationCard(
     preference: ReminderPreference,
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit,
@@ -297,12 +299,10 @@ fun NotificationCard(
     }
 
     val timeText = String.format("%02d:%02d", preference.hour, preference.minute)
-
     val isMeal = preference.type == "MEAL"
+    val isRecurring = preference.repetition == "DAILY"
     val iconVector = if (isMeal) Icons.Rounded.Restaurant else Icons.Rounded.FitnessCenter
     val themeColor = if (isMeal) AppTheme.colors.purple else AppTheme.colors.deepRed
-
-    val isRecurring = preference.repetition == "DAILY"
 
     val repeatText = remember(preference.daysOfWeek) {
         when {
@@ -420,7 +420,7 @@ fun NotificationCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEditNotificationDialog(
+private fun AddEditNotificationDialog(
     viewModel: RemindersViewModel,
     preferenceToEdit: ReminderPreference?,
     onDismiss: () -> Unit
@@ -428,10 +428,8 @@ fun AddEditNotificationDialog(
     val isEdit = preferenceToEdit != null
     val defaultMealMessage = "Time to log your meal!"
     val defaultWeightMessage = "Time to log your weight!"
-
     val initialHour = if (isEdit) preferenceToEdit.hour else Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val initialMinute = if (isEdit) preferenceToEdit.minute else Calendar.getInstance().get(Calendar.MINUTE)
-
     val timePickerState = rememberTimePickerState(
         initialHour = initialHour,
         initialMinute = initialMinute,
@@ -439,11 +437,9 @@ fun AddEditNotificationDialog(
     )
 
     var showTimeInput by remember { mutableStateOf(false) }
-
     var repetition by remember { mutableStateOf(preferenceToEdit?.repetition ?: "ONCE") }
     var type by remember { mutableStateOf(preferenceToEdit?.type ?: "MEAL") }
     var message by remember { mutableStateOf(preferenceToEdit?.message ?: defaultMealMessage) }
-
     var selectedDays by remember {
         mutableStateOf(preferenceToEdit?.daysOfWeek ?: listOf(1,2,3,4,5,6,7))
     }
@@ -607,7 +603,7 @@ fun AddEditNotificationDialog(
 }
 
 @Composable
-fun DaySelector(
+private fun DaySelector(
     selectedDays: List<Int>,
     onSelectionChange: (List<Int>) -> Unit
 ) {

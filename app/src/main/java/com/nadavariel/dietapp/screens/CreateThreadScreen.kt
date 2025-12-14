@@ -246,6 +246,10 @@ fun CreateThreadScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> AppDropdown(

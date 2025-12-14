@@ -103,6 +103,10 @@ fun AchievementsScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
 private fun AchievementGridItem(
     badge: Achievement,

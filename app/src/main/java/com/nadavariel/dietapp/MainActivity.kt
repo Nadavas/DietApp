@@ -380,7 +380,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             composable(NavRoutes.LANDING) {
                                 authViewModel.resetAuthResult()
-                                Greeting(
+                                GreetingScreen(
                                     onSignInClick = {
                                         authViewModel.clearInputFields()
                                         navController.navigate(NavRoutes.SIGN_IN)

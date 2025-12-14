@@ -24,7 +24,7 @@ val InterFontFamily = FontFamily(
 )
 
 @Composable
-fun Greeting(
+fun GreetingScreen(
     onSignInClick: () -> Unit,
     onSignUpClick: () -> Unit
 ) {

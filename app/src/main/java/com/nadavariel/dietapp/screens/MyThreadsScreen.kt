@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -70,7 +69,6 @@ fun MyThreadsScreen(
                         MyThreadCard(
                             thread = thread,
                             onEdit = {
-                                // FIX: Use the helper function correctly
                                 val route = NavRoutes.createThread(threadId = thread.id)
                                 navController.navigate(route)
                             },
@@ -96,7 +94,6 @@ fun MyThreadsScreen(
                             threadViewModel.deleteThread(
                                 threadId = thread.id,
                                 onSuccess = {
-                                    // Success - Listener will update UI
                                     showDeleteDialog = null
                                     Toast.makeText(context, "Thread deleted", Toast.LENGTH_SHORT).show()
                                 },
@@ -123,8 +120,12 @@ fun MyThreadsScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
-fun MyThreadCard(
+private fun MyThreadCard(
     thread: Thread,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -140,7 +141,6 @@ fun MyThreadCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()

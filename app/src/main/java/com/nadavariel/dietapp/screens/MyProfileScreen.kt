@@ -252,6 +252,10 @@ fun MyProfileScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
 private fun ProfileSectionCard(
     title: String,

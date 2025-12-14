@@ -67,6 +67,7 @@ fun QuestionsScreen(
 ) {
     val questions = QuizConstants.questions
     val savedAnswers by questionsViewModel.userAnswers.collectAsState()
+
     var screenState by remember { mutableStateOf(ScreenState.LANDING) }
     var quizAnswers by remember { mutableStateOf<List<String?>>(emptyList()) }
     var quizCurrentIndex by remember { mutableIntStateOf(0) }
@@ -421,9 +422,6 @@ private fun DobInput(currentAnswer: String?, onSave: (String) -> Unit) {
     }
 }
 
-/**
- * Replaces HeightInput, WeightInput, and TargetWeightInput
- */
 @Composable
 private fun AnimatedSliderInput(
     currentAnswer: String?,
@@ -502,9 +500,6 @@ private fun AnimatedSliderInput(
     }
 }
 
-/**
- * Replaces the TextInput for exercise types
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ExerciseTypeInput(
@@ -540,9 +535,6 @@ private fun ExerciseTypeInput(
     }
 }
 
-/**
- * A selectable chip for the ExerciseTypeInput
- */
 @Composable
 private fun ExerciseChip(
     text: String,
