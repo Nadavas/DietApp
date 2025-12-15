@@ -146,10 +146,8 @@ fun AppTopBar(
     title: String,
     onBack: () -> Unit,
     showBack: Boolean = true,
-    // Optional: For the "Icon" version
     icon: ImageVector? = null,
     iconColor: Color? = null,
-    // Optional: Overrides
     containerColor: Color = AppTheme.colors.screenBackground,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
@@ -215,6 +213,7 @@ fun HoveringNotificationCard(
     showSpinner: Boolean,
     onClick: (() -> Unit)?
 ) {
+    val iconColor = MaterialTheme.colorScheme.primary
     val cardColor = if (showSpinner) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
@@ -225,12 +224,6 @@ fun HoveringNotificationCard(
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
         MaterialTheme.colorScheme.onPrimaryContainer
-    }
-
-    val iconColor = if (showSpinner) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.primary
     }
 
     Card(
@@ -286,7 +279,7 @@ fun GeminiConfirmationDialog(
 
     AlertDialog(
         onDismissRequest = { /* Do nothing (blocking) */ },
-        containerColor = Color.White, // Force white background
+        containerColor = Color.White,
         title = {
             Text(
                 "Meal Breakdown (${editableFoodList.size})",
@@ -568,7 +561,7 @@ fun UserAvatar(
             .background(if (localDrawable == null) AppTheme.colors.primaryGreen.copy(alpha = 0.1f) else Color.Transparent)
     ) {
         if (localDrawable != null) {
-            // Case A: It's a built-in avatar
+            // Built-in avatar
             Image(
                 painter = painterResource(id = localDrawable),
                 contentDescription = "User Avatar",
@@ -576,7 +569,7 @@ fun UserAvatar(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            // Case B: Fallback / Default (Handles null, empty, or old custom URLs)
+            // Default avatar
             Image(
                 painter = painterResource(id = R.drawable.ic_person_filled),
                 contentDescription = "Default Avatar",

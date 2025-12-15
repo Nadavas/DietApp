@@ -44,7 +44,6 @@ fun SignInScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 1. Use the shared Google Launcher logic
     val (launcher, googleSignInClient) = rememberGoogleSignInLauncher(
         authViewModel = authViewModel,
         scope = scope,
@@ -56,7 +55,6 @@ fun SignInScreen(
         when (val result = authResult) {
             is AuthResult.Success -> {
                 authViewModel.resetAuthResult()
-                onSignInSuccess(false)
             }
             is AuthResult.Error -> {
                 scope.launch { snackbarHostState.showSnackbar(result.message) }
@@ -66,7 +64,6 @@ fun SignInScreen(
         }
     }
 
-    // 2. Use Shared Auth Screen Wrapper
     AuthScreenWrapper(
         snackbarHostState = snackbarHostState,
         onBack = onBack
@@ -86,7 +83,6 @@ fun SignInScreen(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // 3. Use Shared Styled Text Fields
             AppTextField(
                 value = email,
                 onValueChange = { authViewModel.emailState.value = it },
@@ -103,7 +99,7 @@ fun SignInScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Checkbox (Specific to Sign In)
+            // Remember Me Checkbox
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,7 +169,7 @@ fun SignInScreen(
                 fontSize = 14.sp
             )
 
-            // 5. Use Shared Google Button
+            // Google Button
             GoogleSignInButton(
                 enabled = authResult != AuthResult.Loading,
                 onClick = {

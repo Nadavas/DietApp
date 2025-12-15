@@ -57,7 +57,6 @@ fun SignUpScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Shared Google Launcher logic
     val (launcher, googleSignInClient) = rememberGoogleSignInLauncher(
         authViewModel = authViewModel,
         scope = scope,
@@ -96,7 +95,6 @@ fun SignUpScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Avatar Selection
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -122,7 +120,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Text Fields (Cleaned up: No Google checks)
             AppTextField(
                 value = name,
                 onValueChange = { authViewModel.nameState.value = it },
@@ -152,12 +149,12 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Create Account Button (PURE MANUAL LOGIC)
+            // Create Account Button
             AppPrimaryButton(
                 text = "Create Account",
                 isLoading = authResult == AuthResult.Loading,
                 onClick = {
-                    // 1. Basic Validation
+                    // Basic Validation
                     if (name.isBlank() || email.isBlank() || password.isBlank()) {
                         scope.launch { snackbarHostState.showSnackbar("Please fill in all fields") }
                         return@AppPrimaryButton
@@ -167,19 +164,16 @@ fun SignUpScreen(
                         return@AppPrimaryButton
                     }
 
-                    // 2. Perform Creation
+                    // Perform Creation
                     scope.launch {
                         try {
-                            // A. Create User & Profile
                             authViewModel.createEmailUserAndProfile()
 
-                            // B. Send Verification Email
                             authViewModel.sendVerificationEmail(
                                 onSuccess = { },
                                 onError = { msg -> Log.e("SignUp", "Verification failed: $msg") }
                             )
 
-                            // C. Navigate
                             onSignUpSuccess(true)
 
                         } catch (e: Exception) {
@@ -192,7 +186,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Login Link
             val annotatedTextLogin = buildAnnotatedString {
                 append("Already have an account? ")
                 pushStringAnnotation(tag = "LOGIN", annotation = "Log in")
@@ -215,7 +208,6 @@ fun SignUpScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Google Section
             Text(
                 "OR",
                 modifier = Modifier.padding(vertical = 16.dp),
@@ -223,6 +215,7 @@ fun SignUpScreen(
                 fontSize = 14.sp
             )
 
+            // Google Button
             GoogleSignInButton(
                 enabled = authResult != AuthResult.Loading,
                 onClick = {

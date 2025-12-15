@@ -62,20 +62,15 @@ fun ThreadDetailScreen(
     val context = LocalContext.current
 
     var newCommentText by remember { mutableStateOf("") }
-
-    // Dialog States
     var showLikesDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) } // For the dropdown menu
-
+    var showMenu by remember { mutableStateOf(false) }
     var likedUsers by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val topic = remember(selectedThread) {
         communityTopics.find { it.key == selectedThread?.topic }
     }
     val accentColor = topic?.gradient?.first() ?: AppTheme.colors.primaryGreen
-
-    // CHECK OWNERSHIP
     val isOwner = remember(currentUser, selectedThread) {
         currentUser != null && selectedThread != null && currentUser.uid == selectedThread!!.authorId
     }
@@ -127,10 +122,9 @@ fun ThreadDetailScreen(
                         )
                     }
 
-                    // Spacer to push the menu to the right
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // --- NEW: Owner Menu ---
+                    // --- Owner Menu ---
                     if (isOwner) {
                         Box {
                             IconButton(onClick = { showMenu = true }) {
@@ -255,7 +249,6 @@ fun ThreadDetailScreen(
         )
     }
 
-    // --- NEW: Delete Confirmation Dialog ---
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
@@ -293,9 +286,12 @@ fun ThreadDetailScreen(
     }
 }
 
-// ... [The rest of the helper composables (ThemedBackground, ThreadContentView, etc.) remain unchanged] ...
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
-fun ThemedBackground(icon: ImageVector, color: Color) {
+private fun ThemedBackground(icon: ImageVector, color: Color) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -310,7 +306,6 @@ fun ThemedBackground(icon: ImageVector, color: Color) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            // Extremely subtle alpha to blend with screenBackground
                             tint = color.copy(alpha = 0.04f),
                             modifier = Modifier
                                 .size(40.dp)
@@ -324,7 +319,7 @@ fun ThemedBackground(icon: ImageVector, color: Color) {
 }
 
 @Composable
-fun ThreadContentView(
+private fun ThreadContentView(
     thread: Thread,
     likeCount: Int,
     hasUserLiked: Boolean,
@@ -334,7 +329,6 @@ fun ThreadContentView(
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
-    // White Card Container (Hub Style)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -347,7 +341,6 @@ fun ThreadContentView(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Author Info
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -359,7 +352,7 @@ fun ThreadContentView(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.Person, // Or use letter
+                        Icons.Default.Person,
                         contentDescription = null,
                         tint = accentColor,
                         modifier = Modifier.size(24.dp)
@@ -382,7 +375,6 @@ fun ThreadContentView(
 
             HorizontalDivider(color = AppTheme.colors.textSecondary.copy(alpha = 0.1f))
 
-            // Thread Header
             Text(
                 text = thread.header,
                 style = MaterialTheme.typography.headlineSmall,
@@ -390,7 +382,6 @@ fun ThreadContentView(
                 color = AppTheme.colors.textPrimary,
             )
 
-            // Thread Content
             Text(
                 text = thread.paragraph,
                 style = MaterialTheme.typography.bodyLarge,
@@ -400,7 +391,6 @@ fun ThreadContentView(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Likes Button (Styled as a chip)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     onClick = onLikeClicked,
@@ -457,7 +447,7 @@ fun ThreadContentView(
 }
 
 @Composable
-fun CommentInputField(
+private fun CommentInputField(
     value: String,
     onValueChange: (String) -> Unit,
     onSendClick: () -> Unit,
@@ -508,7 +498,7 @@ fun CommentInputField(
 }
 
 @Composable
-fun CommentsHeaderSection(commentsCount: Int) {
+private fun CommentsHeaderSection(commentsCount: Int) {
     Row(
         modifier = Modifier.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -530,7 +520,7 @@ fun CommentsHeaderSection(commentsCount: Int) {
 }
 
 @Composable
-fun CommentItemView(comment: Comment, accentColor: Color) {
+private fun CommentItemView(comment: Comment, accentColor: Color) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
 
     Card(
@@ -543,7 +533,6 @@ fun CommentItemView(comment: Comment, accentColor: Color) {
             modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Author Avatar
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -558,7 +547,6 @@ fun CommentItemView(comment: Comment, accentColor: Color) {
                 )
             }
 
-            // Comment Content
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -589,7 +577,7 @@ fun CommentItemView(comment: Comment, accentColor: Color) {
 }
 
 @Composable
-fun EmptyCommentsState() {
+private fun EmptyCommentsState() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -621,7 +609,7 @@ fun EmptyCommentsState() {
 }
 
 @Composable
-fun LikesDialog(
+private fun LikesDialog(
     likedUsers: List<String>,
     onDismiss: () -> Unit,
     accentColor: Color

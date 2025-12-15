@@ -22,7 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -53,13 +52,12 @@ import androidx.core.net.toUri
 fun ThreadsScreen(
     navController: NavController,
     threadViewModel: ThreadViewModel = viewModel(),
-    initialTopicId: String? = null // New parameter from MainActivity
+    initialTopicId: String? = null
 ) {
     val allTopics = communityTopics
     val threads by threadViewModel.threads.collectAsState()
     val hottestThreads by threadViewModel.hottestThreads.collectAsState()
 
-    // We determine the view mode based on the passed ID directly
     val selectedTopic = remember(initialTopicId) {
         allTopics.find { it.key == initialTopicId }
     }
@@ -70,31 +68,26 @@ fun ThreadsScreen(
             .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // Header adapts based on whether we are in a Topic or Home
             ModernCommunityHeader(
                 title = selectedTopic?.displayName ?: "Community Hub",
                 subtitle = selectedTopic?.subtitle ?: "Connect, share, and learn",
-                showBack = selectedTopic != null, // Show back arrow if inside a topic
-                onBack = { navController.popBackStack() }, // Use system navigation to go back
+                showBack = selectedTopic != null,
+                onBack = { navController.popBackStack() },
                 onNewThread = { navController.navigate("create_thread") },
                 onMyThreads = { navController.navigate(NavRoutes.MY_THREADS) }
             )
 
             if (selectedTopic == null) {
-                // Show Main List
                 CommunityHomeContent(
                     hottestThreads = hottestThreads,
                     allTopics = allTopics,
                     navController = navController,
                     threadViewModel = threadViewModel,
-                    // FIX: Navigate to the new Route ID instead of setting local state
                     onTopicSelected = { topic ->
                         navController.navigate("thread_topic/${topic.key}")
                     }
                 )
             } else {
-                // Show Topic Specific List
                 TopicThreadList(
                     threads = threads.filter { it.topic == selectedTopic.key },
                     topic = selectedTopic,
@@ -106,8 +99,12 @@ fun ThreadsScreen(
     }
 }
 
+// -------------------------------
+// --------- COMPOSABLES ---------
+// -------------------------------
+
 @Composable
-fun CommunityHomeContent(
+private fun CommunityHomeContent(
     hottestThreads: List<Thread>,
     allTopics: List<Topic>,
     navController: NavController,
@@ -116,7 +113,6 @@ fun CommunityHomeContent(
 ) {
     val context = LocalContext.current
 
-    // 1. Collect the missing error state
     val newsError by threadViewModel.newsError.collectAsState()
     val articles by threadViewModel.newsArticles.collectAsState()
     val isLoadingNews by threadViewModel.isNewsLoading.collectAsState()
@@ -126,9 +122,6 @@ fun CommunityHomeContent(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-
-        // ... (Daily Challenge & Trending Sections remain the same) ...
-
         if (hottestThreads.isNotEmpty()) {
             item { SectionHeaderModern(title = "Trending Now") }
             item {
@@ -141,7 +134,6 @@ fun CommunityHomeContent(
             }
         }
 
-        // ... (Topics Section remains the same) ...
         item {
             Spacer(modifier = Modifier.height(8.dp))
             SectionHeaderModern(title = "Explore Topics")
@@ -192,7 +184,6 @@ fun CommunityHomeContent(
             }
         }
 
-        // 2. Handle the Error State UI
         if (newsError != null) {
             item {
                 Card(
@@ -229,7 +220,6 @@ fun CommunityHomeContent(
             }
         }
 
-        // 3. Show Articles (Only if no error)
         if (articles.isNotEmpty()) {
             item {
                 NewsHighlightCard(
@@ -266,7 +256,7 @@ fun CommunityHomeContent(
 }
 
 @Composable
-fun TopicThreadList(
+private fun TopicThreadList(
     threads: List<Thread>,
     topic: Topic,
     navController: NavController,
@@ -323,14 +313,8 @@ fun TopicThreadList(
     }
 }
 
-// -----------------------------------------------------------------------------
-// MODERN COMPONENTS
-// -----------------------------------------------------------------------------
-
-// ... imports remain the same
-
 @Composable
-fun ModernCommunityHeader(
+private fun ModernCommunityHeader(
     title: String,
     subtitle: String,
     showBack: Boolean,
@@ -348,7 +332,6 @@ fun ModernCommunityHeader(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
-            // Top Row: Title and Back Button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -383,16 +366,14 @@ fun ModernCommunityHeader(
                 }
             }
 
-            // ONLY SHOW BUTTONS IF WE ARE ON THE HOME SCREEN (showBack is false)
             if (!showBack) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Bottom Row: Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 1. "My Threads" Button
+                    // "My Threads" Button
                     OutlinedButton(
                         onClick = onMyThreads,
                         modifier = Modifier.weight(1f),
@@ -411,7 +392,7 @@ fun ModernCommunityHeader(
                         Text("My Threads", fontWeight = FontWeight.Bold)
                     }
 
-                    // 2. "New Thread" Button
+                    // "New Thread" Button
                     Button(
                         onClick = onNewThread,
                         modifier = Modifier.weight(1f),
@@ -437,7 +418,7 @@ fun ModernCommunityHeader(
 }
 
 @Composable
-fun SectionHeaderModern(title: String) {
+private fun SectionHeaderModern(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
@@ -448,13 +429,14 @@ fun SectionHeaderModern(title: String) {
 }
 
 @Composable
-fun HottestThreadsCarouselModern(
+private fun HottestThreadsCarouselModern(
     hottestThreads: List<Thread>,
     allTopics: List<Topic>,
     navController: NavController,
     threadViewModel: ThreadViewModel
 ) {
     var currentIndex by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(key1 = hottestThreads.size) {
         while (true) {
             delay(5000)
@@ -462,7 +444,6 @@ fun HottestThreadsCarouselModern(
         }
     }
 
-    // FIX 2: Box with fixed height prevents jumping size
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -479,7 +460,6 @@ fun HottestThreadsCarouselModern(
                 val thread = hottestThreads[index]
                 val topic = allTopics.find { it.key == thread.topic }
                 if (topic != null) {
-                    // Pass fillMaxSize so the card fills the 190.dp Box
                     ThreadCardModern(
                         thread,
                         topic,
@@ -495,7 +475,7 @@ fun HottestThreadsCarouselModern(
 }
 
 @Composable
-fun TopicCardModern(topic: Topic, onTopicSelected: (Topic) -> Unit) {
+private fun TopicCardModern(topic: Topic, onTopicSelected: (Topic) -> Unit) {
     Card(
         modifier = Modifier
             .width(100.dp)
@@ -540,12 +520,12 @@ fun TopicCardModern(topic: Topic, onTopicSelected: (Topic) -> Unit) {
 }
 
 @Composable
-fun ThreadCardModern(
+private fun ThreadCardModern(
     thread: Thread,
     topic: Topic,
     navController: NavController,
     threadViewModel: ThreadViewModel,
-    modifier: Modifier = Modifier, // Added modifier param
+    modifier: Modifier = Modifier,
     isFeatured: Boolean = false
 ) {
     val likeCount by produceState(initialValue = 0, thread.id) {
@@ -568,7 +548,6 @@ fun ThreadCardModern(
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            // Header: Icon + Topic Name + Date
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -606,7 +585,7 @@ fun ThreadCardModern(
                     Icon(
                         Icons.Default.Whatshot,
                         contentDescription = null,
-                        tint = Color(0xFFFF6B6B),
+                        tint = AppTheme.colors.softRed,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -614,7 +593,6 @@ fun ThreadCardModern(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Title
             Text(
                 text = thread.header,
                 fontSize = 16.sp,
@@ -624,8 +602,6 @@ fun ThreadCardModern(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Content Preview
-            // If featured, we might hide this if title is long, or clamp lines further
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = thread.paragraph,
@@ -636,12 +612,10 @@ fun ThreadCardModern(
                 lineHeight = 20.sp
             )
 
-            // Push stats to bottom if card has fixed height
             Spacer(modifier = Modifier.weight(1f))
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Stats Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
@@ -662,7 +636,7 @@ fun ThreadCardModern(
 }
 
 @Composable
-fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
+private fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
     val (sourceColor, sourceIcon) = getNewsSourceStyle(article.source)
 
     Card(
@@ -676,7 +650,7 @@ fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp) // Taller for highlight
+                    .height(180.dp)
                     .background(sourceColor.copy(alpha = 0.1f))
             ) {
                 if (article.imageUrl != null) {
@@ -687,7 +661,6 @@ fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    // Fallback to Icon if no image found
                     Icon(
                         imageVector = sourceIcon,
                         contentDescription = null,
@@ -696,7 +669,6 @@ fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
                     )
                 }
 
-                // "Top Story" Badge overlay
                 Surface(
                     modifier = Modifier.padding(12.dp).align(Alignment.TopStart),
                     shape = RoundedCornerShape(8.dp),
@@ -737,9 +709,9 @@ fun NewsHighlightCard(article: NewsArticle, onClick: () -> Unit) {
     }
 }
 
-// 2. STANDARD LIST CARD (With Thumbnail Image)
+
 @Composable
-fun NewsCardInternal(article: NewsArticle, onClick: () -> Unit) {
+private fun NewsCardInternal(article: NewsArticle, onClick: () -> Unit) {
     val (sourceColor, sourceIcon) = getNewsSourceStyle(article.source)
 
     Card(
@@ -755,7 +727,7 @@ fun NewsCardInternal(article: NewsArticle, onClick: () -> Unit) {
             // IMAGE / ICON BOX
             Card(
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.size(80.dp), // Square thumbnail
+                modifier = Modifier.size(80.dp),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 if (article.imageUrl != null) {
@@ -798,7 +770,7 @@ fun NewsCardInternal(article: NewsArticle, onClick: () -> Unit) {
 }
 
 @Composable
-fun StatItemModern(icon: ImageVector, text: String, color: Color) {
+private fun StatItemModern(icon: ImageVector, text: String, color: Color) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -818,7 +790,7 @@ fun StatItemModern(icon: ImageVector, text: String, color: Color) {
     }
 }
 
-fun getRelativeTime(timestamp: Long): String {
+private fun getRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
 
@@ -831,9 +803,8 @@ fun getRelativeTime(timestamp: Long): String {
     }
 }
 
-// Helper to give distinct colors to different sources
 @Composable
-fun getNewsSourceStyle(source: String): Pair<Color, ImageVector> {
+private fun getNewsSourceStyle(source: String): Pair<Color, ImageVector> {
     return when {
         source.contains("Harvard", true) -> Pair(AppTheme.colors.sunsetPink, Icons.Default.School)
         source.contains("Nutrition", true) -> Pair(AppTheme.colors.primaryGreen, Icons.Default.Spa)

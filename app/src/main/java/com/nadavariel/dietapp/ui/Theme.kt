@@ -69,14 +69,14 @@ private val LightAppColors = AppColors(
 private val LocalAppColors = staticCompositionLocalOf { LightAppColors }
 
 /**
- * This is the single object you will import in your screens.
+ * This is the single object to import in the screens.
  *
  * HOW TO USE:
  *
- * 1. Import it:
+ * 1. Import:
  * import com.nadavariel.dietapp.ui.AppTheme
  *
- * 2. Use it in your @Composable:
+ * 2. Use in @Composable:
  * @Composable
  * fun MyScreen() {
  * Column(background = AppTheme.colors.ScreenBackground) { // <-- Updated name
@@ -86,7 +86,7 @@ private val LocalAppColors = staticCompositionLocalOf { LightAppColors }
  * )
  * Button(
  * colors = ButtonDefaults.buttonColors(
- * containerColor = AppTheme.material.colorScheme.primary
+ * containerColor = AppTheme.material.colorScheme.primary   // <-- Updated name
  * )
  * )
  * }
@@ -94,7 +94,7 @@ private val LocalAppColors = staticCompositionLocalOf { LightAppColors }
  */
 object AppTheme {
     /**
-     * Access your custom semantic colors.
+     * Access the custom semantic colors.
      * e.g., `AppTheme.colors.PrimaryGreen`
      */
     val colors: AppColors

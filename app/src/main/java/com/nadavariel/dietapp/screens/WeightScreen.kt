@@ -96,7 +96,6 @@ fun WeightScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
             PersonalizedHeader(
                 navController = navController,
                 progressPercentage = progressPercentage
@@ -135,7 +134,7 @@ fun WeightScreen(
                         )
                     }
 
-                    // Trophy Section (Redesigned & Expanded)
+                    // Trophy Section
                     item {
                         MotivationalTrophySection(
                             progressPercentage = progressPercentage
@@ -219,7 +218,6 @@ fun WeightScreen(
         }
     }
 
-    // Dialogs (Log & History)
     if (showLogDialog) {
         LogWeightDialog(
             entryToEdit = entryToEdit,
@@ -735,11 +733,11 @@ private fun MotivationalBadgeItemCompact(badge: BadgeData, isUnlocked: Boolean) 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.width(70.dp) // Fixed width for consistent spacing
+        modifier = Modifier.width(70.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(60.dp) // Smaller size (was 90.dp)
+                .size(60.dp)
                 .scale(scale)
                 .clip(CircleShape)
                 .background(
@@ -756,7 +754,7 @@ private fun MotivationalBadgeItemCompact(badge: BadgeData, isUnlocked: Boolean) 
         ) {
             Text(
                 text = badge.emoji,
-                fontSize = 28.sp, // Smaller emoji
+                fontSize = 28.sp,
                 modifier = Modifier.graphicsLayer { alpha = if (isUnlocked) 1f else 0.3f }
             )
             if (isUnlocked) {
@@ -832,7 +830,7 @@ private fun ActionButton(
 }
 
 @Composable
-fun ManageHistoryDialog(
+private fun ManageHistoryDialog(
     weightHistory: List<WeightEntry>,
     onDismiss: () -> Unit,
     onEdit: (WeightEntry) -> Unit,
@@ -936,7 +934,7 @@ fun ManageHistoryDialog(
 
 @SuppressLint("DefaultLocale")
 @Composable
-fun EnhancedWeightLineChart(
+private fun EnhancedWeightLineChart(
     startingWeight: Float,
     targetWeight: Float,
     history: List<WeightEntry>,
@@ -1014,7 +1012,7 @@ fun EnhancedWeightLineChart(
             .sortedDescending() // Sort to process from top to bottom
 
         val drawnYPositions = mutableListOf<Float>()
-        val minTextSeparation = with(density) { 14.sp.toPx() } // Minimum spacing between labels
+        val minTextSeparation = with(density) { 14.sp.toPx() }
 
         yValuesToShow.forEach { weight ->
             val yPos = getY(weight)
@@ -1024,7 +1022,7 @@ fun EnhancedWeightLineChart(
                 drawContext.canvas.nativeCanvas.drawText(
                     String.format("%.1f", weight),
                     yAxisPadding - with(density) { 6.dp.toPx() },
-                    yPos + with(density) { 4.dp.toPx() }, // Approximate vertical centering
+                    yPos + with(density) { 4.dp.toPx() },
                     yAxisTextPaint
                 )
                 drawnYPositions.add(yPos)
@@ -1145,7 +1143,7 @@ fun EnhancedWeightLineChart(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogWeightDialog(
+private fun LogWeightDialog(
     entryToEdit: WeightEntry?,
     onDismiss: () -> Unit,
     onSave: (weight: Float, date: Calendar) -> Unit,

@@ -9,7 +9,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -32,11 +31,7 @@ import com.nadavariel.dietapp.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
@@ -63,11 +58,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
     val passwordState = mutableStateOf("")
     val confirmPasswordState = mutableStateOf("")
     val selectedAvatarId = mutableStateOf<String?>(null)
+    val rememberMeState = mutableStateOf(false)
 
     private val _authResult = MutableStateFlow<AuthResult>(AuthResult.Idle)
     val authResult: StateFlow<AuthResult> = _authResult.asStateFlow()
-
-    val rememberMeState = mutableStateOf(false)
 
     private val _userProfile = MutableStateFlow(UserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
@@ -81,9 +75,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
     val isEmailPasswordUser: Boolean
         get() = currentUser?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } == true
-
-    private val _hasMissingPrimaryProfileDetails = MutableStateFlow(false)
-    val hasMissingPrimaryProfileDetails: StateFlow<Boolean> = _hasMissingPrimaryProfileDetails.asStateFlow()
 
     private val _isLoadingProfile = MutableStateFlow(true)
     val isLoadingProfile: StateFlow<Boolean> = _isLoadingProfile.asStateFlow()
@@ -113,30 +104,13 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             emailState.value = preferencesRepository.userEmailFlow.first()
             rememberMeState.value = preferencesRepository.rememberMeFlow.first()
 
-            // Load the dismissal state
             preferencesRepository.hasDismissedPlanTipFlow.collect { dismissed ->
                 _hasDismissedPlanTip.value = dismissed
                 _isPreferencesLoaded.value = true
             }
         }
-
-        _userProfile.combine(snapshotFlow { currentUser }) { profile, user ->
-            if (user == null) {
-                false
-            } else {
-                val isNameMissing = profile.name.isBlank()
-                val isWeightMissing = profile.startingWeight <= 0f
-                val isHeightMissing = profile.height <= 0f
-
-                isNameMissing || isWeightMissing || isHeightMissing
-            }
-        }
-            .distinctUntilChanged()
-            .onEach { hasMissing -> _hasMissingPrimaryProfileDetails.value = hasMissing }
-            .launchIn(viewModelScope)
     }
 
-    // New function to handle dismissal
     fun dismissPlanTip() {
         viewModelScope.launch {
             _hasDismissedPlanTip.value = true
@@ -230,10 +204,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         val newName = nameState.value.ifBlank { emailState.value.substringBefore("@") }
         val emailForPrefs = emailState.value
 
-        // Just await the creation. We don't need the result variable since saveUserProfile gets the user internally.
         auth.createUserWithEmailAndPassword(emailState.value.trim(), passwordState.value.trim()).await()
-
-        _authResult.value = AuthResult.Success
 
         if (rememberMeState.value) {
             preferencesRepository.saveUserPreferences(emailForPrefs, rememberMeState.value)
@@ -241,7 +212,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             preferencesRepository.clearUserPreferences()
         }
 
-        // Save profile
         val newProfile = UserProfile(
             name = newName,
             startingWeight = 0f,
@@ -251,17 +221,14 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             gender = Gender.UNKNOWN
         )
         saveUserProfile(newProfile)
+
+        _authResult.value = AuthResult.Success
     }
 
     suspend fun createGoogleUserAndProfile() {
-        // Get the account details we stored in handleGoogleSignIn
         val account = _googleAccount.value ?: throw Exception("Google account not found.")
 
         _authResult.value = AuthResult.Loading
-
-        // Note: auth.currentUser is already set because we signed in during handleGoogleSignIn
-
-        _authResult.value = AuthResult.Success
 
         if (rememberMeState.value) {
             preferencesRepository.saveUserPreferences(account.email ?: "", rememberMeState.value)
@@ -271,7 +238,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
         Log.d("AuthViewModel", "createGoogleUserAndProfile: Reading nameState='${nameState.value}', selectedAvatarId='${selectedAvatarId.value}'")
 
-        // Create the profile
         val newProfile = UserProfile(
             name = nameState.value.ifBlank { account.displayName }.toString(),
             startingWeight = 0f,
@@ -280,9 +246,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
             avatarId = selectedAvatarId.value,
             gender = Gender.UNKNOWN
         )
-
         Log.d("AuthViewModel", "Saving Google Profile: Name='${newProfile.name}', Avatar='${newProfile.avatarId}'")
         saveUserProfile(newProfile)
+
+        _authResult.value = AuthResult.Success
     }
 
 
@@ -387,12 +354,8 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
 
                     // 1. Set the state so QuestionsViewModel knows this is a Google Sign Up
                     _googleAccount.value = account
-//                    nameState.value = account.displayName ?: ""
-//                    emailState.value = account.email ?: ""
 
-                    // 2. DO NOT create profile yet. QuestionsViewModel will do it later.
-
-                    // 3. Signal UI to navigate
+                    // 2. Signal UI to navigate
                     _authResult.value = AuthResult.Idle // Keep Idle so it doesn't trigger 'Success' toast yet
                     onFlowResult(GoogleSignInFlowResult.GoToSignUp)
                 }
@@ -405,12 +368,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    // 1. Helper to check if currently signed-in user is verified
     fun isEmailVerified(): Boolean {
         return auth.currentUser?.isEmailVerified == true
     }
 
-    // 2. Send the verification email
     fun sendVerificationEmail(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = auth.currentUser
         user?.sendEmailVerification()?.addOnCompleteListener { task ->
@@ -422,7 +383,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    // 3. Reload user to check if they clicked the link
     suspend fun checkEmailVerificationStatus(): Boolean {
         return try {
             val user = auth.currentUser
@@ -456,10 +416,7 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         viewModelScope.launch {
             val userId = auth.currentUser?.uid
             if (userId != null) {
-                // Determine the avatar ID. If a new one is passed, use it; otherwise keep existing.
-                // Since we removed upload logic, we just treat avatarId as a simple string.
                 val finalAvatarId = if (!avatarId.isNullOrBlank()) avatarId else _userProfile.value.avatarId
-
                 val parsedStartingWeight = weight.toFloatOrNull() ?: _userProfile.value.startingWeight
                 val parsedHeight = height.toFloatOrNull() ?: _userProfile.value.height
 
@@ -527,14 +484,12 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         }
     }
 
-    // NEW: Handle Google Re-authentication
     fun reauthenticateWithGoogle(
         account: GoogleSignInAccount,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
         val user = auth.currentUser ?: return
-        // Create credential from the new Google Account token
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
 
         user.reauthenticate(credential)
@@ -607,10 +562,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     val rawErrorMessage = e.message ?: "Failed to delete account."
                     Log.e("AuthViewModel", "Error deleting account: $rawErrorMessage", e)
 
-                    // --- FIX START ---
-                    // Check the exception type FIRST.
-                    // If it requires re-auth, set the specific key "re-authenticate-required"
-                    // so the AccountScreen knows to hide the red error card.
                     if (e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
                         _authResult.value = AuthResult.Error("re-authenticate-required")
                         onError("re-authenticate-required")
@@ -622,7 +573,6 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                         _authResult.value = AuthResult.Error(rawErrorMessage)
                         onError(rawErrorMessage)
                     }
-                    // --- FIX END ---
                 }
             }
         } else {
@@ -643,12 +593,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
         _authResult.value = AuthResult.Loading
         viewModelScope.launch {
             try {
-                // 1. Delete activity history
                 deleteSubCollection(userId, "meals")
                 deleteSubCollection(userId, "weight_history")
                 deleteSubCollection(userId, "notifications")
 
-                // 2. Delete Diet Plan & Questionnaire (Reset the "Brain" of the app)
                 firestore.collection("users").document(userId)
                     .collection("diet_plans").document("current_plan")
                     .delete().await()
@@ -657,13 +605,10 @@ class AuthViewModel(private val preferencesRepository: UserPreferencesRepository
                     .collection("user_answers").document("diet_habits")
                     .delete().await()
 
-//                firestore.collection("users").document(userId)
-//                    .collection("user_answers").document("goals")
-//                    .delete().await()
-
                 Log.d("AuthViewModel", "Successfully reset user data and plan.")
                 _authResult.value = AuthResult.Success
                 onSuccess()
+
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Error resetting data", e)
                 _authResult.value = AuthResult.Error(e.message ?: "Reset failed.")

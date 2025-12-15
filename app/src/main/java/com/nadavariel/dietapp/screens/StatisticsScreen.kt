@@ -90,6 +90,7 @@ fun StatisticsScreen(
                         color = AppTheme.colors.textPrimary
                     )
                 }
+
                 item {
                     CategoryCard(
                         title = "Energy & Protein",
@@ -99,6 +100,7 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_ENERGY) }
                     )
                 }
+
                 item {
                     CategoryCard(
                         title = "Macronutrients",
@@ -108,6 +110,7 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_MACROS) }
                     )
                 }
+
                 item {
                     CategoryCard(
                         title = "Fiber & Sugar",
@@ -117,6 +120,7 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_CARBS) }
                     )
                 }
+
                 item {
                     CategoryCard(
                         title = "Minerals",
@@ -126,6 +130,7 @@ fun StatisticsScreen(
                         onClick = { navController.navigate(NavRoutes.STATS_MINERALS) }
                     )
                 }
+
                 item {
                     CategoryCard(
                         title = "Vitamins",
