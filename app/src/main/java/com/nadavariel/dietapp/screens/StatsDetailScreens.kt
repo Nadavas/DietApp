@@ -55,7 +55,7 @@ import com.github.mikephil.charting.utils.ViewPortHandler
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
 import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -70,7 +70,7 @@ import kotlin.math.pow
 @Composable
 fun EnergyDetailScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
-    goalViewModel: GoalsViewModel = viewModel(),
+    goalViewModel: DietPlanViewModel = viewModel(),
     navController: NavController
 ) {
     val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsState()
@@ -198,7 +198,7 @@ fun MacrosDetailScreen(
 @Composable
 fun CarbsDetailScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
-    goalViewModel: GoalsViewModel = viewModel(),
+    goalViewModel: DietPlanViewModel = viewModel(),
     navController: NavController
 ) {
     val weeklyFiber by foodLogViewModel.weeklyFiber.collectAsState()
@@ -249,7 +249,7 @@ fun CarbsDetailScreen(
 @Composable
 fun MineralsDetailScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
-    goalViewModel: GoalsViewModel = viewModel(),
+    goalViewModel: DietPlanViewModel = viewModel(),
     navController: NavController
 ) {
     val weeklySodium by foodLogViewModel.weeklySodium.collectAsState()
@@ -320,7 +320,7 @@ fun MineralsDetailScreen(
 @Composable
 fun VitaminsDetailScreen(
     foodLogViewModel: FoodLogViewModel = viewModel(),
-    goalViewModel: GoalsViewModel = viewModel(),
+    goalViewModel: DietPlanViewModel = viewModel(),
     navController: NavController
 ) {
     val weeklyVitaminC by foodLogViewModel.weeklyVitaminC.collectAsState()

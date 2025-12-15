@@ -19,6 +19,11 @@ data class Thread(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+data class ThreadWithStats(
+    val thread: Thread,
+    val score: Int
+)
+
 data class Comment(
     val id: String = "",
     val threadId: String = "",

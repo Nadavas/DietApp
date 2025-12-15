@@ -73,7 +73,7 @@ import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
 import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -91,7 +91,7 @@ import kotlin.math.max
 fun HomeScreen(
     authViewModel: AuthViewModel,
     foodLogViewModel: FoodLogViewModel,
-    goalViewModel: GoalsViewModel = viewModel(),
+    goalViewModel: DietPlanViewModel = viewModel(),
     navController: NavController,
     isGeneratingPlan: Boolean = false
 ) {

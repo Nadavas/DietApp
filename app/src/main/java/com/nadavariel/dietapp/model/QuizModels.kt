@@ -6,3 +6,8 @@ data class Question(
     val options: List<String>? = null,
     val inputType: InputType? = null
 )
+
+data class UserAnswer(
+    val question: String = "",
+    val answer: String = ""
+)

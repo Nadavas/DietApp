@@ -55,7 +55,7 @@ import kotlinx.coroutines.tasks.await
 fun SecurityScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
-    questionsViewModel: com.nadavariel.dietapp.viewmodel.QuestionsViewModel
+    quizViewModel: com.nadavariel.dietapp.viewmodel.QuizViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -431,7 +431,7 @@ fun SecurityScreen(
 
                 authViewModel.resetUserData(
                     onSuccess = {
-                        questionsViewModel.clearData()
+                        quizViewModel.clearData()
                     },
                     onError = {}
                 )

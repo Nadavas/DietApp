@@ -10,10 +10,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.model.Comment
-import com.nadavariel.dietapp.model.Like
-import com.nadavariel.dietapp.model.Thread
-import com.nadavariel.dietapp.model.NewsArticle
+import com.nadavariel.dietapp.model.*
 import com.nadavariel.dietapp.data.NewsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -26,15 +23,13 @@ import kotlinx.coroutines.tasks.await
 class ThreadViewModel : ViewModel() {
     private val firestore = Firebase.firestore
     private val auth: FirebaseAuth = Firebase.auth
-    private val newsRepository = NewsRepository() // Initialize News Repository
+    private val newsRepository = NewsRepository()
 
-    // --- LISTENER REGISTRATIONS ---
     private var threadsListener: ListenerRegistration? = null
     private var commentsListener: ListenerRegistration? = null
     private var likesListener: ListenerRegistration? = null
     private var userThreadsListener: ListenerRegistration? = null
 
-    // --- THREAD STATE FLOWS ---
     private val _threads = MutableStateFlow<List<Thread>>(emptyList())
     val threads: StateFlow<List<Thread>> = _threads.asStateFlow()
 
@@ -56,7 +51,6 @@ class ThreadViewModel : ViewModel() {
     private val _userThreads = MutableStateFlow<List<Thread>>(emptyList())
     val userThreads: StateFlow<List<Thread>> = _userThreads.asStateFlow()
 
-    // --- NEWS STATE FLOWS (Added from NewsViewModel) ---
     private val _newsArticles = MutableStateFlow<List<NewsArticle>>(emptyList())
     val newsArticles: StateFlow<List<NewsArticle>> = _newsArticles.asStateFlow()
 
@@ -67,10 +61,8 @@ class ThreadViewModel : ViewModel() {
     val newsError: StateFlow<String?> = _newsError.asStateFlow()
 
     init {
-        // Load News immediately on init
         loadNewsArticles()
 
-        // Load Threads when authenticated
         auth.addAuthStateListener { firebaseAuth ->
             if (firebaseAuth.currentUser != null) {
                 fetchAllThreads()
@@ -79,8 +71,6 @@ class ThreadViewModel : ViewModel() {
             }
         }
     }
-
-    // --- NEWS FUNCTIONALITY (Added) ---
 
     fun loadNewsArticles() {
         viewModelScope.launch {
@@ -102,8 +92,6 @@ class ThreadViewModel : ViewModel() {
     fun refreshNews() {
         loadNewsArticles()
     }
-
-    // --- THREAD FUNCTIONALITY (Existing) ---
 
     private fun fetchAllThreads() {
         threadsListener?.remove()
@@ -133,8 +121,6 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-    // --- USER THREADS FUNCTIONALITY ---
-
     fun fetchUserThreads(userId: String) {
         userThreadsListener?.remove()
 
@@ -154,8 +140,6 @@ class ThreadViewModel : ViewModel() {
             }
     }
 
-    // --- DELETE FUNCTIONALITY ---
-
     fun deleteThread(threadId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         firestore.collection("threads").document(threadId)
             .delete()
@@ -168,8 +152,6 @@ class ThreadViewModel : ViewModel() {
                 onError(e.message ?: "Error deleting thread")
             }
     }
-
-    // --- UPDATE FUNCTIONALITY ---
 
     fun updateThread(threadId: String, newHeader: String, newContent: String, onSuccess: () -> Unit) {
         val updates = mapOf(
@@ -191,10 +173,6 @@ class ThreadViewModel : ViewModel() {
                 Log.e("ThreadViewModel", "Error updating thread", e)
             }
     }
-
-    // --- HELPER FUNCTIONS ---
-
-    private data class ThreadWithStats(val thread: Thread, val score: Int)
 
     private fun calculateHottestThreads(threads: List<Thread>) {
         viewModelScope.launch {
@@ -444,8 +422,6 @@ class ThreadViewModel : ViewModel() {
         _likeCount.value = 0
         _hasUserLiked.value = false
 
-        // News cleanup is usually not needed as it's not a listener,
-        // but we can clear the list if desired
         _newsArticles.value = emptyList()
 
         Log.d("ThreadViewModel", "Cleared all listeners and data.")

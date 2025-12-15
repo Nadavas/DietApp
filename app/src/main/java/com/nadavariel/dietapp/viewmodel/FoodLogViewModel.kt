@@ -12,17 +12,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nadavariel.dietapp.data.QuizConstants
-import com.nadavariel.dietapp.model.FoodNutritionalInfo
-// REMOVED: GraphPreference import
-import com.nadavariel.dietapp.model.Meal
-import com.nadavariel.dietapp.model.MealSection
-import com.nadavariel.dietapp.model.WeightEntry
+import com.nadavariel.dietapp.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -58,19 +53,12 @@ class FoodLogViewModel : ViewModel() {
     private val _mealsForSelectedDateState = MutableStateFlow<List<Meal>>(emptyList())
     val mealsForSelectedDate = _mealsForSelectedDateState.asStateFlow()
 
-    private var mealsListenerRegistration: ListenerRegistration? = null
-    private var weightHistoryListener: ListenerRegistration? = null
-    private var targetWeightListener: ListenerRegistration? = null
-
-    // REMOVED: _graphPreferences StateFlow
-
     private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
     val weightHistory = _weightHistory.asStateFlow()
 
     private val _targetWeight = MutableStateFlow(0f)
     val targetWeight = _targetWeight.asStateFlow()
 
-    // --- NEW: Explicit loading state for target weight ---
     private val _isTargetWeightLoaded = MutableStateFlow(false)
     val isTargetWeightLoaded = _isTargetWeightLoaded.asStateFlow()
 
@@ -101,13 +89,11 @@ class FoodLogViewModel : ViewModel() {
     private val _weeklyVitaminC = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyVitaminC = _weeklyVitaminC.asStateFlow()
 
-    // START: Added for Vitamin A and B12
     private val _weeklyVitaminA = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyVitaminA = _weeklyVitaminA.asStateFlow()
 
     private val _weeklyVitaminB12 = MutableStateFlow<Map<LocalDate, Int>>(emptyMap())
     val weeklyVitaminB12 = _weeklyVitaminB12.asStateFlow()
-    // END: Added for Vitamin A and B12
 
     private val _weeklyMacroPercentages = MutableStateFlow(
         mapOf("Protein" to 0f, "Carbs" to 0f, "Fat" to 0f)
@@ -126,8 +112,10 @@ class FoodLogViewModel : ViewModel() {
     private val _isFutureTimeSelected = MutableStateFlow(false)
     val isFutureTimeSelected = _isFutureTimeSelected.asStateFlow()
 
-    // --- 1. ADD VARIABLE TO HOLD TIMESTAMP ---
     private var tempMealTimestamp: Timestamp? = null
+    private var mealsListenerRegistration: ListenerRegistration? = null
+    private var weightHistoryListener: ListenerRegistration? = null
+    private var targetWeightListener: ListenerRegistration? = null
 
     init {
         val today = LocalDate.now()
@@ -146,7 +134,6 @@ class FoodLogViewModel : ViewModel() {
                     viewModelScope.launch {
                         try {
                             fetchMealsForLastSevenDays()
-                            // REMOVED: fetchGraphPreferences()
                         } catch (e: Exception) {
                             Log.e("FoodLogViewModel", "Error in initial data fetch: $e")
                         } finally {
@@ -179,27 +166,18 @@ class FoodLogViewModel : ViewModel() {
         _weeklyCalcium.value = emptyMap()
         _weeklyIron.value = emptyMap()
         _weeklyVitaminC.value = emptyMap()
-        // START: Added for Vitamin A and B12
         _weeklyVitaminA.value = emptyMap()
         _weeklyVitaminB12.value = emptyMap()
-        // END: Added for Vitamin A and B12
-        // REMOVED: _graphPreferences.value = emptyList()
         _caloriesByTimeOfDay.value = mapOf("Morning" to 0f, "Afternoon" to 0f, "Evening" to 0f, "Night" to 0f)
         _isFutureTimeSelected.value = false
         _weightHistory.value = emptyList()
         _targetWeight.value = 0f
-        _isTargetWeightLoaded.value = false // Reset this too
+        _isTargetWeightLoaded.value = false
     }
 
     fun updateDateTimeCheck(selectedTime: Date) {
         _isFutureTimeSelected.value = selectedTime.after(Date())
     }
-
-    // REMOVED: getDefaultGraphPreferences()
-
-    // REMOVED: fetchGraphPreferences()
-
-    // REMOVED: saveGraphPreferences()
 
     private fun calculateWeekStartDate(date: LocalDate): LocalDate {
         var daysToSubtract = date.dayOfWeek.value
@@ -212,7 +190,6 @@ class FoodLogViewModel : ViewModel() {
     fun refreshStatistics() {
         viewModelScope.launch {
             fetchMealsForLastSevenDays()
-            // REMOVED: fetchGraphPreferences()
         }
     }
 
@@ -236,11 +213,8 @@ class FoodLogViewModel : ViewModel() {
             processWeeklyNutrient(meals, Meal::calcium, _weeklyCalcium)
             processWeeklyNutrient(meals, Meal::iron, _weeklyIron)
             processWeeklyNutrient(meals, Meal::vitaminC, _weeklyVitaminC)
-            // START: Added for Vitamin A and B12
             processWeeklyNutrient(meals, Meal::vitaminA, _weeklyVitaminA)
             processWeeklyNutrient(meals, Meal::vitaminB12, _weeklyVitaminB12)
-            // END: Added for Vitamin A and B12
-
             processCaloriesByTimeOfDay(meals)
             processWeeklyMacroPercentages(meals)
 
@@ -330,7 +304,7 @@ class FoodLogViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
                 val historyList = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject<WeightEntry>()?.copy(id = doc.id)
+                    doc.toObject(WeightEntry::class.java)?.copy(id = doc.id)
                 } ?: emptyList()
                 _weightHistory.value = historyList
             }
@@ -348,7 +322,7 @@ class FoodLogViewModel : ViewModel() {
                 if (e != null) {
                     Log.e("FoodLogViewModel", "Error listening to target weight", e)
                     _targetWeight.value = 0f
-                    _isTargetWeightLoaded.value = true // Stop loading on error
+                    _isTargetWeightLoaded.value = true
                     return@addSnapshotListener
                 }
 
@@ -365,7 +339,6 @@ class FoodLogViewModel : ViewModel() {
                     Log.d("DEBUG_WEIGHT", "VM: Snapshot received. Found weight: $parsedWeight (Raw answer: $targetWeightAnswer)")
                     _targetWeight.value = parsedWeight
                 } else {
-                    // CRITICAL FIX: Do not overwrite optimistic data with 0
                     if (_targetWeight.value > 0f) {
                         Log.d("DEBUG_WEIGHT", "VM: Ignoring empty snapshot (Optimistic data exists)")
                     } else {
@@ -373,13 +346,11 @@ class FoodLogViewModel : ViewModel() {
                     }
                 }
 
-                // --- NEW: Signal that we are done loading ---
                 _isTargetWeightLoaded.value = true
                 Log.d("DEBUG_WEIGHT", "VM: isTargetWeightLoaded set to TRUE")
             }
     }
 
-    // --- NEW FUNCTION ---
     fun setTargetWeightOptimistically(weight: Float) {
         Log.d("DEBUG_WEIGHT", "VM: Setting optimistic weight: $weight")
         _targetWeight.value = weight
@@ -468,10 +439,8 @@ class FoodLogViewModel : ViewModel() {
         calcium: Double?,
         iron: Double?,
         vitaminC: Double?,
-        // START: Added for Vitamin A and B12
         vitaminA: Double?,
         vitaminB12: Double?
-        // END: Added for Vitamin A and B12
     ) {
         val userId = auth.currentUser?.uid ?: return
         val meal = Meal(
@@ -490,10 +459,8 @@ class FoodLogViewModel : ViewModel() {
             calcium = calcium,
             iron = iron,
             vitaminC = vitaminC,
-            // START: Added for Vitamin A and B12
             vitaminA = vitaminA,
             vitaminB12 = vitaminB12
-            // END: Added for Vitamin A and B12
         )
         viewModelScope.launch {
             try {
@@ -504,11 +471,9 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // --- 2. MODIFY THIS FUNCTION ---
     fun logMealsFromFoodInfoList(
         foodInfoList: List<FoodNutritionalInfo>
     ) {
-        // Use the stored timestamp, or default to now() if it's somehow null
         val mealTime = tempMealTimestamp ?: Timestamp.now()
 
         for (foodInfo in foodInfoList) {
@@ -528,10 +493,8 @@ class FoodLogViewModel : ViewModel() {
                 calcium = foodInfo.calcium?.toDoubleOrNull(),
                 iron = foodInfo.iron?.toDoubleOrNull(),
                 vitaminC = foodInfo.vitaminC?.toDoubleOrNull(),
-                // START: Added for Vitamin A and B12
                 vitaminA = foodInfo.vitaminA?.toDoubleOrNull(),
                 vitaminB12 = foodInfo.vitaminB12?.toDoubleOrNull()
-                // END: Added for Vitamin A and B12
             )
         }
         resetGeminiResult()
@@ -555,10 +518,8 @@ class FoodLogViewModel : ViewModel() {
         newCalcium: Double?,
         newIron: Double?,
         newVitaminC: Double?,
-        // START: Added for Vitamin A and B12
         newVitaminA: Double?,
         newVitaminB12: Double?
-        // END: Added for Vitamin A and B12
     ) {
         val userId = auth.currentUser?.uid ?: return
 
@@ -579,10 +540,8 @@ class FoodLogViewModel : ViewModel() {
             "calcium" to newCalcium,
             "iron" to newIron,
             "vitaminC" to newVitaminC,
-            // START: Added for Vitamin A and B12
             "vitaminA" to newVitaminA,
             "vitaminB12" to newVitaminB12
-            // END: Added for Vitamin A and B12
         )
         viewModelScope.launch {
             try {
@@ -671,10 +630,9 @@ class FoodLogViewModel : ViewModel() {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
 
-    // --- 3. MODIFY THIS FUNCTION ---
     fun analyzeImageWithGemini(foodName: String, imageB64: String? = null, mealTime: Timestamp) {
         _geminiResult.value = GeminiResult.Loading
-        tempMealTimestamp = mealTime // Store the timestamp
+        tempMealTimestamp = mealTime
 
         viewModelScope.launch {
             try {
@@ -695,10 +653,10 @@ class FoodLogViewModel : ViewModel() {
                     .call(data)
                     .await()
 
-                // FIX: If user signed out during await(), abort showing the result
+                // If user signed out during await(), abort showing the result
                 if (auth.currentUser == null) return@launch
 
-                val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response data is null.")
+                val responseData = result.data as? Map<*, *> ?: throw Exception("Function response data is null.")
                 val success = responseData["success"] as? Boolean
                 val geminiData = responseData["data"]
 
@@ -719,7 +677,7 @@ class FoodLogViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("FoodLogViewModel", "Gemini analysis failed: ${e.message}", e)
-                // FIX: Ensure we don't show error if user is gone
+                // Ensure we don't show error if user is gone
                 if (auth.currentUser != null) {
                     _geminiResult.value = GeminiResult.Error("Function call failed: ${e.message}")
                 }
@@ -727,9 +685,8 @@ class FoodLogViewModel : ViewModel() {
         }
     }
 
-    // --- 4. MODIFY THIS FUNCTION ---
     fun resetGeminiResult() {
         _geminiResult.value = GeminiResult.Idle
-        tempMealTimestamp = null // Clear the timestamp
+        tempMealTimestamp = null
     }
 }

@@ -27,7 +27,7 @@ import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -35,7 +35,7 @@ import java.util.Locale
 @Composable
 fun MyProfileScreen(
     authViewModel: AuthViewModel,
-    goalsViewModel: GoalsViewModel,
+    goalsViewModel: DietPlanViewModel,
     navController: NavController
 ) {
     val goals by goalsViewModel.goals.collectAsStateWithLifecycle()

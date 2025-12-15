@@ -3,27 +3,25 @@ package com.nadavariel.dietapp.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth // <-- 1. IMPORT
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestore // <-- 2. IMPORT
-import com.google.firebase.firestore.ListenerRegistration // <-- 3. IMPORT
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.data.QuizConstants
-import com.nadavariel.dietapp.model.Goal
-import com.nadavariel.dietapp.model.UserProfile
+import com.nadavariel.dietapp.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import com.nadavariel.dietapp.model.DietPlan
 
-class GoalsViewModel : ViewModel() {
+class DietPlanViewModel : ViewModel() {
 
-    private val auth: FirebaseAuth = Firebase.auth // <-- 4. ADD AUTH INSTANCE
-    private val firestore: FirebaseFirestore = Firebase.firestore // <-- 5. ADD FIRESTORE INSTANCE
+    private val auth: FirebaseAuth = Firebase.auth
+    private val firestore: FirebaseFirestore = Firebase.firestore
 
-    // --- 6. ADD LISTENER REGISTRATIONS ---
     private var dietPlanListener: ListenerRegistration? = null
     private var goalsListener: ListenerRegistration? = null
     private var profileListener: ListenerRegistration? = null
@@ -44,22 +42,20 @@ class GoalsViewModel : ViewModel() {
     val isLoadingPlan = _isLoadingPlan.asStateFlow()
 
     init {
-        // --- 7. ADD AUTH STATE LISTENER ---
         auth.addAuthStateListener { firebaseAuth ->
             if (firebaseAuth.currentUser != null) {
-                // User is signed in, NOW we fetch data
                 fetchDietPlan()
                 fetchUserGoals()
                 fetchUserProfile()
             } else {
-                // User signed out, clear all data and listeners
                 clearAllListenersAndData()
             }
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun fetchDietPlan() {
-        dietPlanListener?.remove() // Clear previous listener
+        dietPlanListener?.remove()
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("GoalsViewModel", "Cannot fetch diet plan: User not logged in.")
@@ -82,42 +78,35 @@ class GoalsViewModel : ViewModel() {
 
                 if (snapshot != null && snapshot.exists()) {
                     try {
-                        // --- MANUAL MAPPING TO PREVENT CRASH ON OLD DATA ---
-
-                        // 1. Helper to safely get List<String> from String OR List
+                        // Helper to safely get List<String> from String OR List
                         fun getListField(fieldName: String): List<String> {
                             val rawValue = snapshot.get(fieldName)
                             return when (rawValue) {
                                 is List<*> -> rawValue.mapNotNull { it?.toString() }
-                                is String -> listOf(rawValue) // Fallback for old data
+                                is String -> listOf(rawValue)
                                 else -> emptyList()
                             }
                         }
 
-                        // 2. Map top-level fields
                         val healthOverview = getListField("healthOverview")
                         val goalStrategy = getListField("goalStrategy")
                         val disclaimer = snapshot.getString("disclaimer") ?: ""
-
-                        // 3. Map ConcretePlan (Manually to handle trainingAdvice list)
                         val concretePlanMap = snapshot.get("concretePlan") as? Map<String, Any> ?: emptyMap()
                         val targetsMap = concretePlanMap["targets"] as? Map<String, Any> ?: emptyMap()
                         val guidelinesMap = concretePlanMap["mealGuidelines"] as? Map<String, Any> ?: emptyMap()
 
-                        // Reconstruct ConcretePlan manually
-                        val concretePlan = com.nadavariel.dietapp.model.ConcretePlan(
-                            targets = com.nadavariel.dietapp.model.Targets(
+                        val concretePlan = ConcretePlan(
+                            targets = Targets(
                                 dailyCalories = (targetsMap["dailyCalories"] as? Long)?.toInt() ?: 0,
                                 proteinGrams = (targetsMap["proteinGrams"] as? Long)?.toInt() ?: 0,
                                 carbsGrams = (targetsMap["carbsGrams"] as? Long)?.toInt() ?: 0,
                                 fatGrams = (targetsMap["fatGrams"] as? Long)?.toInt() ?: 0
                             ),
-                            mealGuidelines = com.nadavariel.dietapp.model.MealGuidelines(
+                            mealGuidelines = MealGuidelines(
                                 mealFrequency = guidelinesMap["mealFrequency"] as? String ?: "",
                                 foodsToEmphasize = (guidelinesMap["foodsToEmphasize"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
                                 foodsToLimit = (guidelinesMap["foodsToLimit"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
                             ),
-                            // Handle trainingAdvice list vs string manually from the map
                             trainingAdvice = when (val advice = concretePlanMap["trainingAdvice"]) {
                                 is List<*> -> advice.mapNotNull { it?.toString() }
                                 is String -> listOf(advice)
@@ -125,27 +114,23 @@ class GoalsViewModel : ViewModel() {
                             }
                         )
 
-                        // 5. Map ExampleMealPlan (Standard mapping is safe here usually, but manual for consistency)
-                        // Using toObject for this part is generally safe as structure didn't change drastically,
-                        // but let's stick to the manual reconstruction to be 100% safe.
                         val mealPlanMap = snapshot.get("exampleMealPlan") as? Map<String, Any> ?: emptyMap()
 
-                        fun mapMeal(key: String): com.nadavariel.dietapp.model.ExampleMeal {
-                            val m = mealPlanMap[key] as? Map<String, Any> ?: return com.nadavariel.dietapp.model.ExampleMeal()
-                            return com.nadavariel.dietapp.model.ExampleMeal(
+                        fun mapMeal(key: String): ExampleMeal {
+                            val m = mealPlanMap[key] as? Map<String, Any> ?: return ExampleMeal()
+                            return ExampleMeal(
                                 description = m["description"] as? String ?: "",
                                 estimatedCalories = (m["estimatedCalories"] as? Long)?.toInt() ?: 0
                             )
                         }
 
-                        val exampleMealPlan = com.nadavariel.dietapp.model.ExampleMealPlan(
+                        val exampleMealPlan = ExampleMealPlan(
                             breakfast = mapMeal("breakfast"),
                             lunch = mapMeal("lunch"),
                             dinner = mapMeal("dinner"),
                             snacks = mapMeal("snacks")
                         )
 
-                        // 6. Build final object
                         val safePlan = DietPlan(
                             healthOverview = healthOverview,
                             goalStrategy = goalStrategy,
@@ -169,7 +154,7 @@ class GoalsViewModel : ViewModel() {
     }
 
     private fun fetchUserGoals() {
-        goalsListener?.remove() // Clear previous listener
+        goalsListener?.remove()
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("GoalsViewModel", "Cannot fetch goals: User not logged in.")
@@ -182,7 +167,6 @@ class GoalsViewModel : ViewModel() {
             Goal(id = "target_weight", text = QuizConstants.TARGET_WEIGHT_QUESTION)
         )
 
-        // 9. SAVE THE LISTENER
         goalsListener = firestore.collection("users").document(userId)
             .collection("user_answers").document("goals")
             .addSnapshotListener { snapshot, e ->
@@ -223,14 +207,13 @@ class GoalsViewModel : ViewModel() {
     }
 
     private fun fetchUserProfile() {
-        profileListener?.remove() // Clear previous listener
+        profileListener?.remove()
         val userId = auth.currentUser?.uid
         if (userId == null) {
             Log.e("GoalsViewModel", "Cannot fetch profile: User not logged in.")
             return
         }
 
-        // 10. SAVE THE LISTENER
         profileListener = firestore.collection("users").document(userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -284,7 +267,6 @@ class GoalsViewModel : ViewModel() {
         }
     }
 
-    // --- 11. ADD CLEANUP FUNCTIONS ---
     private fun clearAllListenersAndData() {
         dietPlanListener?.remove()
         dietPlanListener = null
@@ -297,7 +279,7 @@ class GoalsViewModel : ViewModel() {
         _goals.value = emptyList()
         _userWeight.value = 0f
         _hasAiGeneratedGoals.value = false
-        _isLoadingPlan.value = false // Set to false, not true
+        _isLoadingPlan.value = false
         Log.d("GoalsViewModel", "Cleared all listeners and data.")
     }
 

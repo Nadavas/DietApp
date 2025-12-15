@@ -34,7 +34,7 @@ import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.AvatarSelectionDialog
 import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,12 +43,12 @@ import java.util.*
 @Composable
 fun EditProfileScreen(
     authViewModel: AuthViewModel,
-    goalsViewModel: GoalsViewModel,
+    dietPlanViewModel: DietPlanViewModel,
     navController: NavController,
     isNewUser: Boolean = false
 ) {
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
-    val goals by goalsViewModel.goals.collectAsStateWithLifecycle()
+    val goals by dietPlanViewModel.goals.collectAsStateWithLifecycle()
 
     var nameInput by remember(userProfile.name) { mutableStateOf(userProfile.name) }
     var weightInput by remember(userProfile.startingWeight) {
@@ -75,7 +75,7 @@ fun EditProfileScreen(
             avatarId = selectedAvatarId,
             gender = selectedGender
         )
-        goalsViewModel.saveUserAnswers()
+        dietPlanViewModel.saveUserAnswers()
         navController.popBackStack()
     }
 
@@ -268,7 +268,7 @@ fun EditProfileScreen(
                             EditableGoalField(
                                 goal = goal,
                                 onValueChange = { newValue ->
-                                    goalsViewModel.updateAnswer(goal.id, newValue)
+                                    dietPlanViewModel.updateAnswer(goal.id, newValue)
                                 }
                             )
                         }

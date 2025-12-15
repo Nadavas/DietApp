@@ -51,18 +51,18 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.ExampleMeal
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
+import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
 import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DietPlanScreen(
     navController: NavController,
-    goalsViewModel: GoalsViewModel = viewModel()
+    dietPlanViewModel: DietPlanViewModel = viewModel()
 ) {
-    val hasAiGeneratedGoals by goalsViewModel.hasAiGeneratedGoals.collectAsState()
-    val dietPlan by goalsViewModel.currentDietPlan.collectAsState()
-    val userWeight by goalsViewModel.userWeight.collectAsState()
+    val hasAiGeneratedGoals by dietPlanViewModel.hasAiGeneratedGoals.collectAsState()
+    val dietPlan by dietPlanViewModel.currentDietPlan.collectAsState()
+    val userWeight by dietPlanViewModel.userWeight.collectAsState()
 
     Scaffold(
         topBar = {

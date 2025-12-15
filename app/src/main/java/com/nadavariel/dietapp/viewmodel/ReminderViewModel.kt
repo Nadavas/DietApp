@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-class RemindersViewModel(application: Application) : AndroidViewModel(application) {
+class ReminderViewModel(application: Application) : AndroidViewModel(application) {
 
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
@@ -43,7 +43,7 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
     private fun getPreferencesCollection(): CollectionReference? {
         val userId = auth.currentUser?.uid
         if (userId == null) {
-            Log.e("NotifVM", "User is null, cannot get preferences collection.")
+            Log.e("NotifyVM", "User is null, cannot get preferences collection.")
             return null
         }
         return firestore.collection("users").document(userId).collection("notifications")
@@ -55,7 +55,7 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
 
         notificationsListener = collection.addSnapshotListener { snapshot, e ->
             if (e != null) {
-                Log.e("NotifVM", "Error listening for notifications: ${e.message}")
+                Log.e("NotifyVM", "Error listening for notifications: ${e.message}")
                 return@addSnapshotListener
             }
             val fetchedList = snapshot?.documents?.mapNotNull { doc ->
@@ -78,11 +78,10 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
             }
 
             if (prefToSave.isEnabled) {
-                // CHANGED: No need to pass receiver class anymore
                 scheduler.schedule(prefToSave)
             }
         } catch (e: Exception) {
-            Log.e("NotifVM", "Error saving notification: ${e.message}")
+            Log.e("NotifyVM", "Error saving notification: ${e.message}")
         }
     }
 
@@ -90,11 +89,10 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
         val collection = getPreferencesCollection() ?: return@launch
         if (preference.id.isBlank()) return@launch
         try {
-            // CHANGED: No need to pass receiver class anymore
             scheduler.cancel(preference)
             collection.document(preference.id).delete().await()
         } catch (e: Exception) {
-            Log.e("NotifVM", "Error deleting notification: ${e.message}")
+            Log.e("NotifyVM", "Error deleting notification: ${e.message}")
         }
     }
 
@@ -111,7 +109,7 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
                 scheduler.cancel(updatedPref)
             }
         } catch (e: Exception) {
-            Log.e("NotifVM", "Error updating alarm: ${e.message}")
+            Log.e("NotifyVM", "Error updating alarm: ${e.message}")
         }
 
         // 2. Update Firestore
@@ -119,7 +117,7 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
             try {
                 collection.document(preference.id).update("isEnabled", isEnabled).await()
             } catch (e: Exception) {
-                Log.e("NotifVM", "Error toggling notification in DB: ${e.message}")
+                Log.e("NotifyVM", "Error toggling notification in DB: ${e.message}")
             }
         }
     }
@@ -128,7 +126,7 @@ class RemindersViewModel(application: Application) : AndroidViewModel(applicatio
         notificationsListener?.remove()
         notificationsListener = null
         _allNotifications.value = emptyList()
-        Log.d("NotifVM", "Cleared all listeners and data.")
+        Log.d("NotifyVM", "Cleared all listeners and data.")
     }
 
     override fun onCleared() {

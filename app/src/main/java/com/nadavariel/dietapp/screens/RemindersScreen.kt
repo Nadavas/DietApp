@@ -49,7 +49,7 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.model.ReminderPreference
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.StyledAlertDialog
-import com.nadavariel.dietapp.viewmodel.RemindersViewModel
+import com.nadavariel.dietapp.viewmodel.ReminderViewModel
 import java.util.Calendar
 import androidx.core.net.toUri
 import com.nadavariel.dietapp.ui.AppTopBar
@@ -59,9 +59,9 @@ import com.nadavariel.dietapp.ui.AppTopBar
 @Composable
 fun RemindersScreen(
     navController: NavController,
-    remindersViewModel: RemindersViewModel = viewModel()
+    reminderViewModel: ReminderViewModel = viewModel()
 ) {
-    val allNotifications by remindersViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
+    val allNotifications by reminderViewModel.allNotifications.collectAsStateWithLifecycle(emptyList())
 
     val sortedNotifications = remember(allNotifications) {
         allNotifications.sortedWith(compareBy({ it.hour }, { it.minute }))
@@ -239,7 +239,7 @@ fun RemindersScreen(
                         NotificationCard(
                             preference = pref,
                             onToggle = { enabled ->
-                                remindersViewModel.toggleNotification(pref, enabled)
+                                reminderViewModel.toggleNotification(pref, enabled)
                             },
                             onEdit = {
                                 selectedPreference = pref
@@ -259,7 +259,7 @@ fun RemindersScreen(
 
     if (showAddDialog) {
         AddEditNotificationDialog(
-            viewModel = remindersViewModel,
+            viewModel = reminderViewModel,
             preferenceToEdit = selectedPreference,
             onDismiss = { showAddDialog = false; selectedPreference = null }
         )
@@ -273,7 +273,7 @@ fun RemindersScreen(
             confirmButtonText = "Delete",
             dismissButtonText = "Cancel",
             onConfirm = {
-                preferenceToDelete?.let { remindersViewModel.deleteNotification(it) }
+                preferenceToDelete?.let { reminderViewModel.deleteNotification(it) }
                 preferenceToDelete = null
             }
         )
@@ -421,7 +421,7 @@ private fun NotificationCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEditNotificationDialog(
-    viewModel: RemindersViewModel,
+    viewModel: ReminderViewModel,
     preferenceToEdit: ReminderPreference?,
     onDismiss: () -> Unit
 ) {

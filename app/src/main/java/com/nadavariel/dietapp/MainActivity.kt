@@ -54,22 +54,11 @@ import com.nadavariel.dietapp.data.UserPreferencesRepository
 import com.nadavariel.dietapp.model.FoodNutritionalInfo
 import com.nadavariel.dietapp.model.Meal
 import com.nadavariel.dietapp.screens.*
+import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
 import com.nadavariel.dietapp.ui.GeminiConfirmationDialog
 import com.nadavariel.dietapp.ui.HoveringNotificationCard
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.ThreadViewModel
-import com.nadavariel.dietapp.viewmodel.RemindersViewModel
-import com.nadavariel.dietapp.screens.EnergyDetailScreen
-import com.nadavariel.dietapp.screens.MacrosDetailScreen
-import com.nadavariel.dietapp.screens.CarbsDetailScreen
-import com.nadavariel.dietapp.screens.MineralsDetailScreen
-import com.nadavariel.dietapp.screens.VitaminsDetailScreen
-import com.nadavariel.dietapp.viewmodel.DietPlanResult
-import com.nadavariel.dietapp.viewmodel.GeminiResult
-import com.nadavariel.dietapp.viewmodel.GoalsViewModel
-import com.nadavariel.dietapp.viewmodel.QuestionsViewModel
+import com.nadavariel.dietapp.viewmodel.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -83,36 +72,34 @@ class MainActivity : ComponentActivity() {
 
             val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
 
+            @Suppress("UNCHECKED_CAST")
             val appViewModelFactory = remember {
                 object : ViewModelProvider.Factory {
                     @RequiresApi(Build.VERSION_CODES.O)
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
                         return when {
                             modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
-                                @Suppress("UNCHECKED_CAST")
                                 AuthViewModel(preferencesRepository) as T
                             }
                             modelClass.isAssignableFrom(FoodLogViewModel::class.java) -> {
-                                @Suppress("UNCHECKED_CAST")
                                 FoodLogViewModel() as T
                             }
                             modelClass.isAssignableFrom(ThreadViewModel::class.java) -> {
-                                @Suppress("UNCHECKED_CAST")
                                 ThreadViewModel() as T
                             }
-                            modelClass.isAssignableFrom(RemindersViewModel::class.java) -> {
-                                @Suppress("UNCHECKED_CAST")
-                                RemindersViewModel(application) as T
+                            modelClass.isAssignableFrom(ReminderViewModel::class.java) -> {
+                                ReminderViewModel(application) as T
                             }
-                            modelClass.isAssignableFrom(QuestionsViewModel::class.java) -> {
-                                @Suppress("UNCHECKED_CAST")
-                                QuestionsViewModel() as T
+                            modelClass.isAssignableFrom(QuizViewModel::class.java) -> {
+                                QuizViewModel() as T
                             }
-                            modelClass.isAssignableFrom(GoalsViewModel::class.java) -> {
-                                @Suppress("UNCHECKED_CAST")
-                                GoalsViewModel() as T
+                            modelClass.isAssignableFrom(DietPlanViewModel::class.java) -> {
+                                DietPlanViewModel() as T
                             }
-                            else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+                            else ->
+                                throw IllegalArgumentException(
+                                    "Unknown ViewModel class: ${modelClass.name}"
+                                )
                         }
                     }
                 }
@@ -121,9 +108,9 @@ class MainActivity : ComponentActivity() {
             val authViewModel: AuthViewModel = viewModel(factory = appViewModelFactory)
             val foodLogViewModel: FoodLogViewModel = viewModel(factory = appViewModelFactory)
             val threadViewModel: ThreadViewModel = viewModel(factory = appViewModelFactory)
-            val remindersViewModel: RemindersViewModel = viewModel(factory = appViewModelFactory)
-            val questionsViewModel: QuestionsViewModel = viewModel(factory = appViewModelFactory)
-            val goalsViewModel: GoalsViewModel = viewModel(factory = appViewModelFactory)
+            val reminderViewModel: ReminderViewModel = viewModel(factory = appViewModelFactory)
+            val quizViewModel: QuizViewModel = viewModel(factory = appViewModelFactory)
+            val dietPlanViewModel: DietPlanViewModel = viewModel(factory = appViewModelFactory)
 
             val isLoadingProfile by authViewModel.isLoadingProfile.collectAsStateWithLifecycle()
             val currentUser = authViewModel.currentUser
@@ -135,7 +122,7 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
 
-                val dietPlanResult by questionsViewModel.dietPlanResult.collectAsStateWithLifecycle()
+                val dietPlanResult by quizViewModel.dietPlanResult.collectAsStateWithLifecycle()
                 val geminiResult by foodLogViewModel.geminiResult.collectAsStateWithLifecycle()
 
                 val dietPlanLoadingMessage = remember(dietPlanResult) {
@@ -156,7 +143,7 @@ class MainActivity : ComponentActivity() {
                                 delay(3000L)
                                 // If we reach here, the timer finished naturally.
                                 // We reset the result state so the logic is clean for next time.
-                                questionsViewModel.resetDietPlanResult()
+                                quizViewModel.resetDietPlanResult()
                             } finally {
                                 // This block runs whether the timer finished OR if the user
                                 // reset data (cancelling this coroutine).
@@ -170,7 +157,7 @@ class MainActivity : ComponentActivity() {
                                     message = "Error creating plan: ${result.message}",
                                     duration = SnackbarDuration.Long
                                 )
-                                questionsViewModel.resetDietPlanResult()
+                                quizViewModel.resetDietPlanResult()
                             }
                         }
                         else -> {
@@ -202,7 +189,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(currentUser, isLoadingProfile) {
                     if (!isLoadingProfile) {
                         if (currentUser == null) {
-                            questionsViewModel.resetDietPlanResult()
+                            quizViewModel.resetDietPlanResult()
                             foodLogViewModel.resetGeminiResult()
 
                             navController.navigate(NavRoutes.LANDING) {
@@ -215,7 +202,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // 1. Define this reusable logic to ensure IDENTICAL behavior
+                // Define this reusable logic to ensure identical behavior
                 val handleAuthNavigation: (Boolean) -> Unit = { isNewUser ->
                     if (!authViewModel.isEmailVerified()) {
                         // Case A: Not Verified -> Blocking Screen
@@ -224,7 +211,8 @@ class MainActivity : ComponentActivity() {
                         }
                     } else if (isNewUser) {
                         // Case B: Verified + New -> Quiz
-                        navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding") {
+                        navController.navigate(
+                            "${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding") {
                             popUpTo(NavRoutes.LANDING) { inclusive = true }
                         }
                     } else {
@@ -236,7 +224,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // 2. Update Start Destination
                 val startDestination = remember {
                     if (authViewModel.isUserSignedIn()) {
                         if (!authViewModel.isEmailVerified()) {
@@ -267,7 +254,7 @@ class MainActivity : ComponentActivity() {
                                             selectedRoute == NavRoutes.ACCOUNT
                                     )) {
                             NavigationBar(
-                                containerColor = Color(0xFF4CAF50),
+                                containerColor = AppTheme.colors.primaryGreen,
                                 contentColor = Color.White.copy(alpha = 0.9f)
                             ) {
                                 NavigationBarItem(
@@ -280,7 +267,8 @@ class MainActivity : ComponentActivity() {
                                             launchSingleTop = true
                                         }
                                     },
-                                    icon = { Icon(painterResource(id = R.drawable.ic_home_filled), contentDescription = "Home") },
+                                    icon = { Icon(painterResource(id = R.drawable.ic_home_filled),
+                                        contentDescription = "Home") },
                                     label = { Text("Home") },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Color.White,
@@ -318,7 +306,8 @@ class MainActivity : ComponentActivity() {
                                             restoreState = true
                                         }
                                     },
-                                    icon = { Icon(painterResource(id = R.drawable.ic_bar_filled), contentDescription = "Stats") },
+                                    icon = { Icon(painterResource(id = R.drawable.ic_bar_filled),
+                                        contentDescription = "Stats") },
                                     label = { Text("Stats") },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Color.White,
@@ -337,7 +326,8 @@ class MainActivity : ComponentActivity() {
                                             restoreState = true
                                         }
                                     },
-                                    icon = { Icon(painterResource(id = R.drawable.ic_forum), contentDescription = "Threads") },
+                                    icon = { Icon(painterResource(id = R.drawable.ic_forum),
+                                        contentDescription = "Threads") },
                                     label = { Text("Threads") },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Color.White,
@@ -357,7 +347,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     icon = {
-                                        Icon(painterResource(id = R.drawable.ic_person_filled), contentDescription = "Account")
+                                        Icon(painterResource(id = R.drawable.ic_person_filled),
+                                            contentDescription = "Account")
                                     },
                                     label = { Text("Account") },
                                     colors = NavigationBarItemDefaults.colors(
@@ -399,7 +390,6 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onSignInSuccess = { isNewUser ->
-                                        // Apply the unified logic
                                         handleAuthNavigation(isNewUser)
                                     },
                                     onNavigateToSignUp = {
@@ -417,7 +407,6 @@ class MainActivity : ComponentActivity() {
                                         navController.popBackStack()
                                     },
                                     onSignUpSuccess = { isNewUser ->
-                                        // Apply the unified logic (FIXED: Now handles existing Google users correctly)
                                         handleAuthNavigation(isNewUser)
                                     },
                                     onNavigateToSignIn = {
@@ -433,9 +422,8 @@ class MainActivity : ComponentActivity() {
                                 EmailVerificationScreen(
                                     authViewModel = authViewModel,
                                     onVerificationCompleted = {
-                                        // Once verified, they are definitely "New" to the app flow if they came from signup,
-                                        // but usually, we send them to the quiz to be safe.
-                                        navController.navigate("${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding") {
+                                        navController.navigate(
+                                            "${NavRoutes.QUESTIONS}?startQuiz=true&source=onboarding") {
                                             popUpTo(NavRoutes.EMAIL_VERIFICATION) { inclusive = true }
                                             launchSingleTop = true
                                         }
@@ -457,7 +445,7 @@ class MainActivity : ComponentActivity() {
                                 HomeScreen(
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
-                                    goalViewModel = goalsViewModel,
+                                    goalViewModel = dietPlanViewModel,
                                     navController = navController,
                                     isGeneratingPlan = isGenerating
                                 )
@@ -472,10 +460,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                 ),
                                 deepLinks = listOf(
-                                    navDeepLink { uriPattern = "dietapp://weight_tracker?openWeightLog={openWeightLog}" }
+                                    navDeepLink {
+                                        uriPattern = "dietapp://weight_tracker?openWeightLog={openWeightLog}"
+                                    }
                                 )
                             ) { backStackEntry ->
-                                val openWeightLog = backStackEntry.arguments?.getBoolean("openWeightLog") == true
+                                val openWeightLog = backStackEntry
+                                    .arguments?.getBoolean("openWeightLog") == true
 
                                 WeightScreen(
                                     navController = navController,
@@ -531,14 +522,14 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.MY_PROFILE) {
                                 MyProfileScreen(
                                     authViewModel = authViewModel,
-                                    goalsViewModel = goalsViewModel,
+                                    goalsViewModel = dietPlanViewModel,
                                     navController = navController
                                 )
                             }
                             composable(NavRoutes.NOTIFICATIONS) {
                                 RemindersScreen(
                                     navController = navController,
-                                    remindersViewModel = remindersViewModel
+                                    reminderViewModel = reminderViewModel
                                 )
                             }
 
@@ -558,9 +549,9 @@ class MainActivity : ComponentActivity() {
                                 val startQuiz = backStackEntry.arguments?.getBoolean("startQuiz") == true
                                 val source = backStackEntry.arguments?.getString("source") ?: "home"
 
-                                QuestionsScreen(
+                                QuizScreen(
                                     navController = navController,
-                                    questionsViewModel = questionsViewModel,
+                                    quizViewModel = quizViewModel,
                                     authViewModel = authViewModel,
                                     foodLogViewModel = foodLogViewModel,
                                     startQuiz = startQuiz,
@@ -571,14 +562,14 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.DIET_PLAN) {
                                 DietPlanScreen(
                                     navController = navController,
-                                    goalsViewModel = goalsViewModel
+                                    dietPlanViewModel = dietPlanViewModel
                                 )
                             }
                             composable(NavRoutes.SECURITY) {
                                 SecurityScreen(
                                     navController = navController,
                                     authViewModel = authViewModel,
-                                    questionsViewModel = questionsViewModel
+                                    quizViewModel = quizViewModel
                                 )
                             }
 
@@ -592,7 +583,7 @@ class MainActivity : ComponentActivity() {
                                 val isNewUser = isNewUserString?.toBooleanStrictOrNull() == true
                                 EditProfileScreen(
                                     authViewModel = authViewModel,
-                                    goalsViewModel = goalsViewModel,
+                                    dietPlanViewModel = dietPlanViewModel,
                                     navController = navController,
                                     isNewUser = isNewUser
                                 )
@@ -658,9 +649,12 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable(NavRoutes.ALL_ACHIEVEMENTS) {
-                                val weeklyCalories by foodLogViewModel.weeklyCalories.collectAsStateWithLifecycle()
-                                val weeklyProtein by foodLogViewModel.weeklyProtein.collectAsStateWithLifecycle()
-                                val weeklyMacroPercentages by foodLogViewModel.weeklyMacroPercentages.collectAsStateWithLifecycle()
+                                val weeklyCalories by foodLogViewModel
+                                    .weeklyCalories.collectAsStateWithLifecycle()
+                                val weeklyProtein by foodLogViewModel
+                                    .weeklyProtein.collectAsStateWithLifecycle()
+                                val weeklyMacroPercentages by foodLogViewModel
+                                    .weeklyMacroPercentages.collectAsStateWithLifecycle()
 
                                 AchievementsScreen(
                                     navController = navController,
@@ -748,7 +742,7 @@ class MainActivity : ComponentActivity() {
                                         onClick = {
                                             navController.navigate(NavRoutes.DIET_PLAN)
                                             planReadyMessage = null
-                                            questionsViewModel.resetDietPlanResult()
+                                            quizViewModel.resetDietPlanResult()
                                         }
                                     )
                                 }
