@@ -39,7 +39,7 @@ sealed class GeminiResult {
 class FoodLogViewModel : ViewModel() {
     private val auth: FirebaseAuth = Firebase.auth
     private val firestore: FirebaseFirestore = Firebase.firestore
-    private val functions = Firebase.functions("me-west1")
+    private val functions = Firebase.functions("us-central1")
 
     private val _isLoadingLogs = MutableStateFlow(true)
     val isLoadingLogs = _isLoadingLogs.asStateFlow()
@@ -630,7 +630,7 @@ class FoodLogViewModel : ViewModel() {
         return mealsForSelectedDate.value.firstOrNull { it.id == mealId }
     }
 
-    fun analyzeImageWithGemini(foodName: String, imageB64: String? = null, mealTime: Timestamp) {
+    fun analyzeMealWithGemini(foodName: String, imageB64: String? = null, mealTime: Timestamp) {
         _geminiResult.value = GeminiResult.Loading
         tempMealTimestamp = mealTime
 

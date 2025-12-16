@@ -53,7 +53,7 @@ function extractJsonFromMarkdown(text) {
 // =================================================================
 exports.analyzeFoodWithGemini = onCall(
   {
-    region: "me-west1",
+    region: "us-central1",
     secrets: [geminiApiKeySecret],
   },
   async (request) => { // <-- Corrected parameter name from 'data' to 'request'
@@ -177,7 +177,7 @@ exports.analyzeFoodWithGemini = onCall(
 // =================================================================
 exports.generateDietPlan = onCall(
   {
-    region: "me-west1",
+    region: "us-central1",
     secrets: [geminiApiKeySecret],
   },
   async (request) => {

@@ -31,7 +31,7 @@ class QuizViewModel : ViewModel() {
 
     private val auth = Firebase.auth
     private val firestore = Firebase.firestore
-    private val functions = Firebase.functions("me-west1")
+    private val functions = Firebase.functions("us-central1")
 
     private val _userAnswers = MutableStateFlow<List<UserAnswer>>(emptyList())
     val userAnswers = _userAnswers.asStateFlow()
