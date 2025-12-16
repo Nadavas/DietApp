@@ -422,6 +422,21 @@ private fun EditableFoodItem(
     onCarbsChange: (String) -> Unit,
     onFatChange: (String) -> Unit
 ) {
+    // Helper: Only allow digits and max one dot
+    fun validateAndChange(newValue: String, callback: (String) -> Unit) {
+        if (newValue.count { it == '.' } <= 1 && newValue.all { it.isDigit() || it == '.' }) {
+            callback(newValue)
+        }
+    }
+
+    // Defined colors to reuse for all fields
+    val greenFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = AppTheme.colors.primaryGreen,
+        focusedLabelColor = AppTheme.colors.primaryGreen,
+        cursorColor = AppTheme.colors.primaryGreen,
+        unfocusedBorderColor = AppTheme.colors.textSecondary.copy(alpha = 0.5f)
+    )
+
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = item.foodName.orEmpty(),
@@ -433,37 +448,41 @@ private fun EditableFoodItem(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = item.calories.orEmpty(),
-                onValueChange = onCaloriesChange,
+                onValueChange = { validateAndChange(it, onCaloriesChange) },
                 label = { Text("Kcal") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
-                textStyle = MaterialTheme.typography.bodySmall
+                textStyle = MaterialTheme.typography.bodySmall,
+                colors = greenFieldColors
             )
             OutlinedTextField(
                 value = item.protein.orEmpty(),
-                onValueChange = onProteinChange,
+                onValueChange = { validateAndChange(it, onProteinChange) },
                 label = { Text("Protein (g)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
-                textStyle = MaterialTheme.typography.bodySmall
+                textStyle = MaterialTheme.typography.bodySmall,
+                colors = greenFieldColors
             )
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = item.carbohydrates.orEmpty(),
-                onValueChange = onCarbsChange,
+                onValueChange = { validateAndChange(it, onCarbsChange) },
                 label = { Text("Carbs (g)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
-                textStyle = MaterialTheme.typography.bodySmall
+                textStyle = MaterialTheme.typography.bodySmall,
+                colors = greenFieldColors
             )
             OutlinedTextField(
                 value = item.fat.orEmpty(),
-                onValueChange = onFatChange,
+                onValueChange = { validateAndChange(it, onFatChange) },
                 label = { Text("Fat (g)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
-                textStyle = MaterialTheme.typography.bodySmall
+                textStyle = MaterialTheme.typography.bodySmall,
+                colors = greenFieldColors
             )
         }
     }
