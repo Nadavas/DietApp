@@ -73,7 +73,7 @@ exports.analyzeFoodWithGemini = onCall(
 
         const geminiApiKey = geminiApiKeySecret.value();
         const genAI = new GoogleGenerativeAI(geminiApiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Updated to a newer model for consistency
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" }); // Updated to a newer model for consistency
 
         // --- STEP 1: Image Analysis (if image is present) ---
         if (imageB64) {
@@ -200,7 +200,7 @@ exports.generateDietPlan = onCall(
         const geminiApiKey = geminiApiKeySecret.value();
         const genAI = new GoogleGenerativeAI(geminiApiKey);
         // Using a more powerful model for complex JSON
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         // --- THIS IS THE MODIFIED PROMPT (V2) ---
         const prompt = `
