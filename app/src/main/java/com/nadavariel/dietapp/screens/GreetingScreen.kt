@@ -43,7 +43,7 @@ fun GreetingScreen(
         ) {
             // Welcome
             Text(
-                text = "Welcome to DietApp",
+                text = "Welcome to Companion",
                 fontSize = 30.sp,
                 fontFamily = InterFontFamily,
                 fontWeight = FontWeight.Bold,
