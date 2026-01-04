@@ -69,14 +69,14 @@ object AchievementRepository {
         // --- FIXED: COMPLEX NUTRIENTS (Removed 'value > 0' check) ---
 
         // 1. FIBER
-        Achievement("f1", "Fiber Optic", "Avg Fiber > 30g.", "🌾", Color(0xFF8D6E63)) { _, _, _, _, mic ->
-            getMicro(mic, listOf("Fiber", "Fiber, total dietary")) > 30f
+        Achievement("f1", "Fiber Optic", "Avg Fiber > 28g.", "🌾", Color(0xFF8D6E63)) { _, _, _, _, mic ->
+            getMicro(mic, listOf("Fiber", "Fiber, total dietary")) > 28f
         },
 
         // 2. LOW SUGAR (FIXED: Checks daysLogged instead of sugar > 0)
-        Achievement("f2", "Sugar Smart", "Avg Sugar < 40g.", "🦷", Color(0xFF00BCD4)) { d, _, _, _, mic ->
+        Achievement("f2", "Sugar Smart", "Avg Sugar < 50g.", "🦷", Color(0xFF00BCD4)) { d, _, _, _, mic ->
             val s = getMicro(mic, listOf("Sugar", "Sugars", "Sugars, total"))
-            d >= 1 && s < 40f
+            d >= 1 && s < 50f
         },
 
         // 3. CALCIUM
@@ -85,8 +85,8 @@ object AchievementRepository {
         },
 
         // 4. IRON
-        Achievement("f4", "Iron Heart", "Avg Iron > 15mg.", "🩸", Color(0xFFD32F2F)) { _, _, _, _, mic ->
-            getMicro(mic, listOf("Iron", "Fe")) > 15f
+        Achievement("f4", "Iron Heart", "Avg Iron > 18mg.", "🩸", Color(0xFFD32F2F)) { _, _, _, _, mic ->
+            getMicro(mic, listOf("Iron", "Fe")) > 18f
         },
 
         // 5. VITAMIN C
@@ -101,28 +101,16 @@ object AchievementRepository {
         },
 
         // 7. POTASSIUM
-        Achievement("f7", "Electrolyte", "Avg Potassium > 3000mg.", "🍌", Color(0xFFFFEB3B)) { _, _, _, _, mic ->
-            getMicro(mic, listOf("Potassium", "K")) > 3000f
+        Achievement("f7", "Electrolyte", "Avg Potassium > 3400mg.", "🍌", Color(0xFFFFEB3B)) { _, _, _, _, mic ->
+            getMicro(mic, listOf("Potassium", "K")) > 3400f
         },
 
         // 8. VITAMIN A
-        Achievement("f8", "Eagle Eye", "Avg Vit A > 800mcg.", "👁️", Color(0xFFFF5722)) { _, _, _, _, mic ->
-            getMicro(mic, listOf("Vitamin A", "Vit A")) > 800f
-        },
-
-        // 9. MAGNESIUM
-        Achievement("f9", "Zen Master", "Avg Magnesium > 350mg.", "🧘", Color(0xFF673AB7)) { _, _, _, _, mic ->
-            getMicro(mic, listOf("Magnesium", "Mg")) > 350f
-        },
-
-        // 10. CHOLESTEROL (FIXED: Checks daysLogged)
-        Achievement("f10", "Clean Arteries", "Cholesterol < 300mg.", "🩺", Color(0xFFCDDC39)) { d, _, _, _, mic ->
-            val c = getMicro(mic, listOf("Cholesterol"))
-            d >= 1 && c < 300f
+        Achievement("f8", "Eagle Eye", "Avg Vit A > 900mcg.", "👁️", Color(0xFFFF5722)) { _, _, _, _, mic ->
+            getMicro(mic, listOf("Vitamin A", "Vit A")) > 900f
         },
 
         // --- Special ---
-        Achievement("s1", "Minimalist", "Logged 1-2 days, high protein.", "🎯", Color(0xFFFFD54F)) { d, _, p, _, _ -> d in 1..2 && p > 100 },
         Achievement("s2", "Feast Mode", "Avg calories > 3000.", "🍗", Color(0xFF8D6E63)) { _, c, _, _, _ -> c > 3000 }
     )
 }

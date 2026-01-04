@@ -235,6 +235,10 @@ fun CarbsDetailScreen(
         }
         item {
             InsightCard(
+                recommendedValues = mapOf(
+                    "Fiber" to "> 28 g",
+                    "Sugar" to "< 50 g"
+                ),
                 insights = listOf(
                     "Fiber aids digestion and helps maintain stable blood sugar",
                     "Limit added sugars to less than 10% of daily calories"
@@ -306,6 +310,12 @@ fun MineralsDetailScreen(
         }
         item {
             InsightCard(
+                recommendedValues = mapOf(
+                    "Calcium" to "> 1,000 mg",
+                    "Sodium" to "< 2,300 mg",
+                    "Potassium" to "M: > 3,400 mg | F: > 2,600 mg",
+                    "Iron" to "M: > 8 mg | F: > 18 mg"
+                ),
                 insights = listOf(
                     "Potassium supports heart health while limiting sodium benefits blood pressure",
                     "Calcium strengthens bones, and iron fuels your daily energy levels"
@@ -367,6 +377,11 @@ fun VitaminsDetailScreen(
         }
         item {
             InsightCard(
+                recommendedValues = mapOf(
+                    "Vitamin C" to "M: > 90 mg | F: > 75 mg",
+                    "Vitamin A" to "M: > 900 mcg | F: > 700 mcg",
+                    "Vitamin B12" to "> 2.4 mcg"
+                ),
                 insights = listOf(
                     "Vitamin C supports immune function and collagen production",
                     "Vitamin A is crucial for vision, immune function, and skin health",
@@ -516,7 +531,11 @@ private fun DetailStatCard(
 }
 
 @Composable
-private fun InsightCard(insights: List<String>) {
+private fun InsightCard(
+    // New optional parameter for the reference table
+    recommendedValues: Map<String, String>? = null,
+    insights: List<String>
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -529,6 +548,7 @@ private fun InsightCard(insights: List<String>) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Header Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -547,6 +567,50 @@ private fun InsightCard(insights: List<String>) {
                 )
             }
 
+            // --- NEW: Recommended Values Section ---
+            if (recommendedValues != null) {
+                Column(
+                    modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Recommended daily values (Adults):",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppTheme.colors.textPrimary
+                    )
+
+                    // Render the map as: Key ..... Value
+                    recommendedValues.forEach { (nutrient, value) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = nutrient,
+                                fontSize = 14.sp,
+                                color = AppTheme.colors.textPrimary // Slightly lighter for the label
+                            )
+                            Text(
+                                text = value,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold, // Bold for the number
+                                color = AppTheme.colors.textPrimary
+                            )
+                        }
+                    }
+                }
+
+                // Visual separator between stats and text insights
+                HorizontalDivider(
+                    color = AppTheme.colors.vividGreen.copy(alpha = 0.2f),
+                    thickness = 1.dp,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+            // ---------------------------------------
+
+            // Existing Bullet Point Loop
             insights.forEach { insight ->
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
