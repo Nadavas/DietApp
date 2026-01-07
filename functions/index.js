@@ -125,8 +125,8 @@ exports.analyzeFoodWithGemini = onCall(
         `;
 
         const result = await model.generateContent(nutritionalAnalysisPrompt);
-        const response = result.response;
-        const text = response.text();
+        const text = result.response.text();
+        console.log("Gemini response:", text);
 
         const cleanedText = extractJsonFromMarkdown(text);
         console.log("Cleaned Gemini response:", cleanedText);
