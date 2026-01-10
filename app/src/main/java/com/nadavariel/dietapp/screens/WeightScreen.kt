@@ -40,13 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.BadgeData
-import com.nadavariel.dietapp.model.WeightEntry
+import com.nadavariel.dietapp.models.BadgeData
+import com.nadavariel.dietapp.models.WeightEntry
 import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.StyledAlertDialog
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.FoodLogViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs

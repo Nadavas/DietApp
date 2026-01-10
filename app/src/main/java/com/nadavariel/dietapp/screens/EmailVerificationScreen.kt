@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nadavariel.dietapp.ui.AppPrimaryButton
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
 import kotlinx.coroutines.launch
 
 @Composable

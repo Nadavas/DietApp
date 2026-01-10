@@ -26,15 +26,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.Gender
-import com.nadavariel.dietapp.model.Goal
+import com.nadavariel.dietapp.models.Gender
+import com.nadavariel.dietapp.models.Goal
 import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.AvatarSelectionDialog
 import com.nadavariel.dietapp.ui.UserAvatar
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.DietPlanViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 

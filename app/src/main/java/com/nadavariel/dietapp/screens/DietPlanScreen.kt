@@ -48,10 +48,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.ExampleMeal
+import com.nadavariel.dietapp.models.ExampleMeal
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
-import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
+import com.nadavariel.dietapp.viewmodels.DietPlanViewModel
 import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

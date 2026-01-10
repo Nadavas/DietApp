@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.viewmodel
+package com.nadavariel.dietapp.viewmodels
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -10,8 +10,8 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.model.*
-import com.nadavariel.dietapp.data.NewsRepository
+import com.nadavariel.dietapp.models.*
+import com.nadavariel.dietapp.repositories.NewsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow

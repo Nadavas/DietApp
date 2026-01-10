@@ -1,9 +1,9 @@
-package com.nadavariel.dietapp.data
+package com.nadavariel.dietapp.constants
 
 import androidx.compose.ui.graphics.Color
-import com.nadavariel.dietapp.model.Achievement
+import com.nadavariel.dietapp.models.Achievement
 
-object AchievementRepository {
+object AchievementConstants {
 
     // Helper: Normalize Macro Percentages (Handles 0-100 vs 0-1 scale)
     private fun getMacro(map: Map<String, Float>, keys: List<String>): Float {

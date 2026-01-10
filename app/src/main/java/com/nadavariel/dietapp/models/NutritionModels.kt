@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model
+package com.nadavariel.dietapp.models
 
 import android.os.Build
 import androidx.annotation.RequiresApi

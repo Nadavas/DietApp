@@ -86,11 +86,11 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.nadavariel.dietapp.model.FoodNutritionalInfo
+import com.nadavariel.dietapp.models.FoodNutritionalInfo
 import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.data.AvatarConstants
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.GoogleSignInFlowResult
+import com.nadavariel.dietapp.constants.AvatarConstants
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.GoogleSignInFlowResult
 import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

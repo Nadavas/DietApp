@@ -1,8 +1,8 @@
-package com.nadavariel.dietapp.data
+package com.nadavariel.dietapp.constants
 
-import com.nadavariel.dietapp.model.Gender
-import com.nadavariel.dietapp.model.InputType
-import com.nadavariel.dietapp.model.Question
+import com.nadavariel.dietapp.models.Gender
+import com.nadavariel.dietapp.models.InputType
+import com.nadavariel.dietapp.models.Question
 
 object QuizConstants {
     // Key Constants (used for database lookups)

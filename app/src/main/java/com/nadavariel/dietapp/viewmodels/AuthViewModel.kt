@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package com.nadavariel.dietapp.viewmodel
+package com.nadavariel.dietapp.viewmodels
 
 import android.content.Context
 import android.util.Log
@@ -25,9 +25,9 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.R
-import com.nadavariel.dietapp.data.UserPreferencesRepository
-import com.nadavariel.dietapp.model.Gender
-import com.nadavariel.dietapp.model.UserProfile
+import com.nadavariel.dietapp.repositories.UserPreferencesRepository
+import com.nadavariel.dietapp.models.Gender
+import com.nadavariel.dietapp.models.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

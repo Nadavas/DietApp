@@ -27,11 +27,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.data.AchievementRepository
-import com.nadavariel.dietapp.model.CalculatedStats
+import com.nadavariel.dietapp.constants.AchievementConstants
+import com.nadavariel.dietapp.models.CalculatedStats
 import com.nadavariel.dietapp.ui.AppMainHeader
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
+import com.nadavariel.dietapp.viewmodels.FoodLogViewModel
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 
@@ -178,7 +178,7 @@ private fun WeeklyAchievementsCarousel(
     }
 
     val unlockedAchievements = remember(stats, weeklyMacroPercentages, weeklyAverageMicros) {
-        AchievementRepository.allAchievements.filter {
+        AchievementConstants.allAchievements.filter {
             it.condition(stats.daysLogged, stats.avgCals, stats.avgProtein, weeklyMacroPercentages, weeklyAverageMicros)
         }
     }

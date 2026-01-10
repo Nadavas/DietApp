@@ -26,8 +26,8 @@ import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.UserAvatar
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.DietPlanViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 

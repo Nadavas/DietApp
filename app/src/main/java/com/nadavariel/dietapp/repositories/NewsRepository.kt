@@ -1,8 +1,8 @@
-package com.nadavariel.dietapp.data
+package com.nadavariel.dietapp.repositories
 
 import android.util.Log
-import com.nadavariel.dietapp.model.NewsArticle
-import com.nadavariel.dietapp.model.NewsSourcesConfig
+import com.nadavariel.dietapp.models.NewsArticle
+import com.nadavariel.dietapp.models.NewsSourcesConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser

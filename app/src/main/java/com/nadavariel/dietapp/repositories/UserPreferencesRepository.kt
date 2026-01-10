@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.data
+package com.nadavariel.dietapp.repositories
 
 import android.content.Context
 import androidx.datastore.core.DataStore

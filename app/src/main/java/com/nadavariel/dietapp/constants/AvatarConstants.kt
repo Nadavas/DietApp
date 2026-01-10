@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.data
+package com.nadavariel.dietapp.constants
 
 import com.nadavariel.dietapp.R
 

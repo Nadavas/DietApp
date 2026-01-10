@@ -40,14 +40,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.data.QuizConstants
-import com.nadavariel.dietapp.model.InputType
-import com.nadavariel.dietapp.model.Question
+import com.nadavariel.dietapp.constants.QuizConstants
+import com.nadavariel.dietapp.models.InputType
+import com.nadavariel.dietapp.models.Question
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppDatePickerDialog
 import com.nadavariel.dietapp.ui.AppTopBar
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.QuizViewModel
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.QuizViewModel
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -61,7 +61,7 @@ fun QuizScreen(
     navController: NavController,
     quizViewModel: QuizViewModel = viewModel(),
     authViewModel: AuthViewModel,
-    foodLogViewModel: com.nadavariel.dietapp.viewmodel.FoodLogViewModel,
+    foodLogViewModel: com.nadavariel.dietapp.viewmodels.FoodLogViewModel,
     startQuiz: Boolean,
     source: String
 ) {

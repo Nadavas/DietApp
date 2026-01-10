@@ -45,8 +45,8 @@ import com.nadavariel.dietapp.R
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
 import com.nadavariel.dietapp.ui.StyledAlertDialog
-import com.nadavariel.dietapp.viewmodel.AuthResult
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.AuthResult
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -55,7 +55,7 @@ import kotlinx.coroutines.tasks.await
 fun SecurityScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
-    quizViewModel: com.nadavariel.dietapp.viewmodel.QuizViewModel
+    quizViewModel: com.nadavariel.dietapp.viewmodels.QuizViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()

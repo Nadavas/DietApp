@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model
+package com.nadavariel.dietapp.models
 
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.Exclude

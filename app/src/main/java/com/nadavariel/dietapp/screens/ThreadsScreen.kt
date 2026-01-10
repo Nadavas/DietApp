@@ -33,12 +33,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.model.NewsArticle
-import com.nadavariel.dietapp.model.Thread
-import com.nadavariel.dietapp.model.Topic
-import com.nadavariel.dietapp.model.communityTopics
+import com.nadavariel.dietapp.models.NewsArticle
+import com.nadavariel.dietapp.models.Thread
+import com.nadavariel.dietapp.models.Topic
+import com.nadavariel.dietapp.models.communityTopics
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.viewmodel.ThreadViewModel
+import com.nadavariel.dietapp.viewmodels.ThreadViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date

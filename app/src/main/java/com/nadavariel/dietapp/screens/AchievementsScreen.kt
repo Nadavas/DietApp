@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.Achievement
-import com.nadavariel.dietapp.data.AchievementRepository
+import com.nadavariel.dietapp.models.Achievement
+import com.nadavariel.dietapp.constants.AchievementConstants
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
 import java.time.LocalDate
@@ -61,7 +61,7 @@ fun AchievementsScreen(
     }
 
     val weeklyMicros = emptyMap<String, Float>()
-    val allBadges = AchievementRepository.allAchievements
+    val allBadges = AchievementConstants.allAchievements
 
     var selectedBadge by remember { mutableStateOf<Achievement?>(null) }
 

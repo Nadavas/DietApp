@@ -50,15 +50,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import com.nadavariel.dietapp.data.UserPreferencesRepository
-import com.nadavariel.dietapp.model.FoodNutritionalInfo
-import com.nadavariel.dietapp.model.Meal
+import com.nadavariel.dietapp.repositories.UserPreferencesRepository
+import com.nadavariel.dietapp.models.FoodNutritionalInfo
+import com.nadavariel.dietapp.models.Meal
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
 import com.nadavariel.dietapp.ui.GeminiConfirmationDialog
 import com.nadavariel.dietapp.ui.HoveringNotificationCard
-import com.nadavariel.dietapp.viewmodel.*
+import com.nadavariel.dietapp.viewmodels.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

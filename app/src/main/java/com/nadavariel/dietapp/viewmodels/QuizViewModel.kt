@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.viewmodel
+package com.nadavariel.dietapp.viewmodels
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -9,8 +9,8 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.nadavariel.dietapp.data.QuizConstants
-import com.nadavariel.dietapp.model.*
+import com.nadavariel.dietapp.constants.QuizConstants
+import com.nadavariel.dietapp.models.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch

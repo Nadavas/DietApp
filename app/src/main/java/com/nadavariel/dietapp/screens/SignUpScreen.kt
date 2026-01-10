@@ -34,8 +34,8 @@ import com.nadavariel.dietapp.ui.GoogleSignInButton
 import com.nadavariel.dietapp.ui.LegalDisclaimer
 import com.nadavariel.dietapp.ui.UserAvatar
 import com.nadavariel.dietapp.ui.rememberGoogleSignInLauncher
-import com.nadavariel.dietapp.viewmodel.AuthResult
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.AuthResult
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 

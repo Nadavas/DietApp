@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.viewmodel
+package com.nadavariel.dietapp.viewmodels
 
 import android.app.Application
 import android.util.Log
@@ -12,7 +12,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.toObject
 import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.model.ReminderPreference
+import com.nadavariel.dietapp.models.ReminderPreference
 import com.nadavariel.dietapp.scheduling.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

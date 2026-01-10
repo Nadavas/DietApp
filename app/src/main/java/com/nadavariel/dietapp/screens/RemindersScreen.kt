@@ -46,10 +46,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.nadavariel.dietapp.model.ReminderPreference
+import com.nadavariel.dietapp.models.ReminderPreference
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.StyledAlertDialog
-import com.nadavariel.dietapp.viewmodel.ReminderViewModel
+import com.nadavariel.dietapp.viewmodels.ReminderViewModel
 import java.util.Calendar
 import androidx.core.net.toUri
 import com.nadavariel.dietapp.ui.AppTopBar

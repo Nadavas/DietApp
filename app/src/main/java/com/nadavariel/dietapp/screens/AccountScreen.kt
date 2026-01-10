@@ -31,8 +31,8 @@ import com.nadavariel.dietapp.ui.AppMainHeader
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.StyledAlertDialog
 import com.nadavariel.dietapp.ui.UserAvatar
-import com.nadavariel.dietapp.viewmodel.AuthResult
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.AuthResult
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

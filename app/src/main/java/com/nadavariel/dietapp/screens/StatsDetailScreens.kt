@@ -54,8 +54,8 @@ import com.github.mikephil.charting.utils.Utils
 import com.github.mikephil.charting.utils.ViewPortHandler
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
-import com.nadavariel.dietapp.viewmodel.FoodLogViewModel
-import com.nadavariel.dietapp.viewmodel.DietPlanViewModel
+import com.nadavariel.dietapp.viewmodels.FoodLogViewModel
+import com.nadavariel.dietapp.viewmodels.DietPlanViewModel
 import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.format.TextStyle

@@ -1,4 +1,4 @@
-package com.nadavariel.dietapp.model
+package com.nadavariel.dietapp.models
 
 import androidx.compose.ui.graphics.Color
 

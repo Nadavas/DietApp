@@ -5,7 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.nadavariel.dietapp.model.ReminderPreference
+import com.nadavariel.dietapp.models.ReminderPreference
 import java.util.ArrayList
 import java.util.Calendar
 

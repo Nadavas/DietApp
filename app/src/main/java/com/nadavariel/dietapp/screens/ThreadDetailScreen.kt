@@ -36,12 +36,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
 import com.nadavariel.dietapp.NavRoutes
-import com.nadavariel.dietapp.model.Comment
-import com.nadavariel.dietapp.model.Thread
-import com.nadavariel.dietapp.model.communityTopics
+import com.nadavariel.dietapp.models.Comment
+import com.nadavariel.dietapp.models.Thread
+import com.nadavariel.dietapp.models.communityTopics
 import com.nadavariel.dietapp.ui.AppTheme
-import com.nadavariel.dietapp.viewmodel.AuthViewModel
-import com.nadavariel.dietapp.viewmodel.ThreadViewModel
+import com.nadavariel.dietapp.viewmodels.AuthViewModel
+import com.nadavariel.dietapp.viewmodels.ThreadViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 

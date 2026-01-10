@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
-import com.nadavariel.dietapp.model.communityTopics
+import com.nadavariel.dietapp.models.communityTopics
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.AppTopBar
-import com.nadavariel.dietapp.viewmodel.ThreadViewModel
+import com.nadavariel.dietapp.viewmodels.ThreadViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
