@@ -55,6 +55,8 @@ import com.nadavariel.dietapp.models.FoodNutritionalInfo
 import com.nadavariel.dietapp.models.Meal
 import com.nadavariel.dietapp.repositories.AuthRepository
 import com.nadavariel.dietapp.repositories.DietRepository
+import com.nadavariel.dietapp.repositories.MealRepository
+import com.nadavariel.dietapp.repositories.WeightRepository
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
@@ -75,6 +77,8 @@ class MainActivity : ComponentActivity() {
             val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
             val authRepository = remember { AuthRepository() }
             val dietRepository = remember { DietRepository() }
+            val mealRepository = remember { MealRepository() }
+            val weightRepository = remember { WeightRepository() }
 
             @Suppress("UNCHECKED_CAST")
             val appViewModelFactory = remember {
@@ -86,7 +90,7 @@ class MainActivity : ComponentActivity() {
                                 AuthViewModel(authRepository, preferencesRepository) as T
                             }
                             modelClass.isAssignableFrom(FoodLogViewModel::class.java) -> {
-                                FoodLogViewModel() as T
+                                FoodLogViewModel(authRepository, mealRepository, weightRepository) as T
                             }
                             modelClass.isAssignableFrom(ThreadViewModel::class.java) -> {
                                 ThreadViewModel() as T
