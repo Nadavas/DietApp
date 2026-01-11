@@ -53,6 +53,7 @@ import androidx.navigation.navDeepLink
 import com.nadavariel.dietapp.repositories.UserPreferencesRepository
 import com.nadavariel.dietapp.models.FoodNutritionalInfo
 import com.nadavariel.dietapp.models.Meal
+import com.nadavariel.dietapp.repositories.AuthRepository
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
 
             val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
+            val authRepository = remember { AuthRepository() }
 
             @Suppress("UNCHECKED_CAST")
             val appViewModelFactory = remember {
@@ -79,7 +81,7 @@ class MainActivity : ComponentActivity() {
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
                         return when {
                             modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
-                                AuthViewModel(preferencesRepository) as T
+                                AuthViewModel(authRepository, preferencesRepository) as T
                             }
                             modelClass.isAssignableFrom(FoodLogViewModel::class.java) -> {
                                 FoodLogViewModel() as T
