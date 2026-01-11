@@ -3,18 +3,14 @@ package com.nadavariel.dietapp.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.SetOptions
-import com.google.firebase.functions.ktx.functions
-import com.google.firebase.ktx.Firebase
-import com.google.gson.Gson
+import com.google.firebase.Timestamp
 import com.nadavariel.dietapp.constants.QuizConstants
 import com.nadavariel.dietapp.models.*
+import com.nadavariel.dietapp.repositories.AuthRepository
+import com.nadavariel.dietapp.repositories.QuizRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -26,12 +22,10 @@ sealed class DietPlanResult {
     data class Error(val message: String) : DietPlanResult()
 }
 
-@Suppress("UNCHECKED_CAST")
-class QuizViewModel : ViewModel() {
-
-    private val auth = Firebase.auth
-    private val firestore = Firebase.firestore
-    private val functions = Firebase.functions("us-central1")
+class QuizViewModel(
+    private val authRepository: AuthRepository,
+    private val quizRepository: QuizRepository
+) : ViewModel() {
 
     private val _userAnswers = MutableStateFlow<List<UserAnswer>>(emptyList())
     val userAnswers = _userAnswers.asStateFlow()
@@ -48,19 +42,12 @@ class QuizViewModel : ViewModel() {
     }
 
     private fun fetchUserAnswers() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = authRepository.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                val snapshot = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("diet_habits").get().await()
-                if (snapshot.exists()) {
-                    val answersList = snapshot.get("answers") as? List<Map<String, Any>>
-                    _userAnswers.value = answersList?.map {
-                        UserAnswer(it["question"].toString(), it["answer"].toString())
-                    } ?: emptyList()
-                }
+                _userAnswers.value = quizRepository.fetchUserAnswers(userId)
             } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error fetching user answers", e)
+                Log.e("QuizViewModel", "Error fetching user answers", e)
             }
         }
     }
@@ -69,17 +56,19 @@ class QuizViewModel : ViewModel() {
         questions: List<Question>,
         answers: List<String?>
     ) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = authRepository.currentUser?.uid ?: return
 
+        // 1. Prepare Answers Data
         val userAnswersToSave = questions.mapIndexedNotNull { index, question ->
             answers.getOrNull(index)?.takeIf { it.isNotBlank() }?.let { answer ->
                 mapOf("question" to question.text, "answer" to answer)
             }
         }
 
+        // 2. Parse Profile Updates (Parsing Logic stays in VM, it's business logic)
         val profileUpdates = mutableMapOf<String, Any>()
         var targetWeightAnswer: String? = null
-        Log.d("QuestionsViewModel", "Preparing profile updates...")
+        Log.d("QuizViewModel", "Preparing profile updates...")
 
         userAnswersToSave.forEach { answerMap ->
             val questionText = answerMap["question"]
@@ -87,116 +76,57 @@ class QuizViewModel : ViewModel() {
 
             when (questionText) {
                 QuizConstants.WEIGHT_QUESTION -> {
-                    Log.d("QuestionsViewModel", "Received weight answer string: '$answerText'")
                     val numericWeight = answerText.filter { it.isDigit() || it == '.' }
                     numericWeight.toFloatOrNull()?.let {
                         profileUpdates["startingWeight"] = it
-                        Log.d("QuestionsViewModel", "Adding startingWeight update: $it")
-                    } ?: Log.w("QuestionsViewModel", "Could not parse weight: '$answerText'")
+                    }
                 }
                 QuizConstants.HEIGHT_QUESTION -> {
-                    Log.d("QuestionsViewModel", "Received height answer string: '$answerText'")
                     val numericHeight = answerText.filter { it.isDigit() || it == '.' }
                     numericHeight.toFloatOrNull()?.let {
                         profileUpdates["height"] = it
-                        Log.d("QuestionsViewModel", "Adding height update: $it")
-                    } ?: Log.w("QuestionsViewModel", "Could not parse height: '$answerText'")
+                    }
                 }
                 QuizConstants.DOB_QUESTION -> {
                     try {
                         dobFormat.parse(answerText)?.let {
-                            val timestamp = com.google.firebase.Timestamp(it)
+                            val timestamp = Timestamp(it)
                             profileUpdates["dateOfBirth"] = timestamp
-                            Log.d("QuestionsViewModel", "Adding dateOfBirth update: $timestamp")
                         }
                     } catch (e: Exception) {
-                        Log.w("QuestionsViewModel", "Could not parse DOB: '$answerText'. Expected format yyyy-MM-dd", e)
+                        Log.w("QuizViewModel", "Could not parse DOB", e)
                     }
                 }
                 QuizConstants.GENDER_QUESTION -> {
                     val genderEnum = Gender.fromString(answerText)
                     profileUpdates["gender"] = genderEnum.name
-                    Log.d("QuestionsViewModel", "Adding gender update: ${genderEnum.name}")
                 }
                 QuizConstants.TARGET_WEIGHT_QUESTION -> {
                     targetWeightAnswer = answerText
-                    Log.d("QuestionsViewModel", "Found target weight answer: $answerText")
                 }
             }
         }
 
         try {
-            firestore.collection("users").document(userId)
-                .collection("user_answers").document("diet_habits")
-                .set(mapOf("answers" to userAnswersToSave)).await()
-            _userAnswers.value = userAnswersToSave.map { UserAnswer(it["question"] as String, it["answer"] as String) }
-            Log.d("QuestionsViewModel", "Saved ${userAnswersToSave.size} questionnaire answers.")
+            // 3. Perform Saves via Repository
+            quizRepository.saveUserAnswers(userId, userAnswersToSave)
+
+            // Update local state
+            _userAnswers.value = userAnswersToSave.map {
+                UserAnswer(it["question"] ?: "", it["answer"] ?: "")
+            }
 
             if (profileUpdates.isNotEmpty()) {
-                Log.d("QuestionsViewModel", "Attempting to merge profile updates: $profileUpdates")
-                firestore.collection("users").document(userId)
-                    .set(profileUpdates, SetOptions.merge()).await()
-                Log.d("QuestionsViewModel", "Successfully merged user profile fields.")
-            } else {
-                Log.d("QuestionsViewModel", "No profile updates to merge.")
+                quizRepository.updateUserProfileFields(userId, profileUpdates)
+                Log.d("QuizViewModel", "Successfully merged user profile fields.")
             }
 
             targetWeightAnswer?.let { weight ->
-                updateTargetWeightGoal(userId, weight)
+                quizRepository.updateTargetWeightGoal(userId, weight)
             }
 
         } catch (e: Exception) {
-            Log.e("QuestionsViewModel", "Error saving user answers and profile", e)
-        }
-    }
-
-    private suspend fun updateTargetWeightGoal(userId: String, targetWeight: String) {
-        val goalsRef = firestore.collection("users").document(userId)
-            .collection("user_answers").document("goals")
-        try {
-            val snapshot = goalsRef.get().await()
-            val existingAnswers = if (snapshot.exists()) {
-                (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
-            } else { mutableListOf() }
-            val aiGenerated = snapshot.getBoolean("aiGenerated") == true
-
-            val targetWeightQuestionTextForGoal = QuizConstants.TARGET_WEIGHT_QUESTION
-
-            val targetWeightIndex = existingAnswers.indexOfFirst { it["question"] == targetWeightQuestionTextForGoal }
-
-            if (targetWeightIndex != -1) {
-                existingAnswers[targetWeightIndex] = mapOf("question" to targetWeightQuestionTextForGoal, "answer" to targetWeight)
-            } else {
-                existingAnswers.add(mapOf("question" to targetWeightQuestionTextForGoal, "answer" to targetWeight))
-            }
-            goalsRef.set(mapOf("answers" to existingAnswers, "aiGenerated" to aiGenerated)).await()
-            Log.d("QuestionsViewModel", "Updated target weight goal to $targetWeight.")
-        } catch (e: Exception) {
-            Log.e("QuestionsViewModel", "Error updating target weight goal", e)
-        }
-    }
-
-    private suspend fun saveDietPlanToFirestore(dietPlan: DietPlan) {
-        val userId = auth.currentUser?.uid ?: return
-        try {
-            val planData = mapOf(
-                "healthOverview" to dietPlan.healthOverview,
-                "goalStrategy" to dietPlan.goalStrategy,
-                "concretePlan" to mapOf(
-                    "targets" to dietPlan.concretePlan.targets,
-                    "mealGuidelines" to dietPlan.concretePlan.mealGuidelines,
-                    "trainingAdvice" to dietPlan.concretePlan.trainingAdvice
-                ),
-                "exampleMealPlan" to dietPlan.exampleMealPlan,
-                "disclaimer" to dietPlan.disclaimer,
-                "generatedAt" to com.google.firebase.Timestamp.now()
-            )
-            firestore.collection("users").document(userId)
-                .collection("diet_plans").document("current_plan")
-                .set(planData).await()
-            Log.d("QuestionsViewModel", "Successfully saved new diet plan structure.")
-        } catch (e: Exception) {
-            Log.e("QuestionsViewModel", "Error saving diet plan", e)
+            Log.e("QuizViewModel", "Error saving user answers and profile", e)
         }
     }
 
@@ -208,88 +138,41 @@ class QuizViewModel : ViewModel() {
         viewModelScope.launch {
             _dietPlanResult.value = DietPlanResult.Loading
             try {
-                if (auth.currentUser == null) {
-                    Log.d("QuestionsViewModel", "New Email user detected. Creating Email user...")
+                // 1. Ensure User Logic (Delegated to AuthViewModel)
+                if (authRepository.currentUser == null) {
+                    Log.d("QuizViewModel", "New Email user detected. Creating Email user...")
                     authViewModel.createEmailUserAndProfile()
                 } else if (authViewModel.isGoogleSignUp.value) {
-                    Log.d("QuestionsViewModel", "New Google user detected. Creating Google user...")
+                    Log.d("QuizViewModel", "New Google user detected. Creating Google user...")
                     authViewModel.createGoogleUserAndProfile()
-                } else {
-                    Log.d("QuestionsViewModel", "Existing user. Skipping user creation.")
                 }
 
+                // 2. Save Answers
                 saveUserAnswersAndUpdateProfile(questions, answers)
 
+                // 3. Generate Plan
                 val updatedAnswersString = _userAnswers.value.joinToString("\n") { "Q: ${it.question}\nA: ${it.answer}" }
-                val data = hashMapOf("userProfile" to updatedAnswersString)
-                val result = functions.getHttpsCallable("generateDietPlan").call(data).await()
 
-                // If user signed out/deleted account during await(), abort UI update
-                if (auth.currentUser == null) return@launch
+                // If user auth dropped, stop
+                if (authRepository.currentUser == null) return@launch
 
-                val responseData = result.data as? Map<String, Any> ?: throw Exception("Function response is invalid")
+                // Call Repository for Cloud Function
+                val dietPlan = quizRepository.generateDietPlan(updatedAnswersString)
 
-                if (responseData["success"] == true) {
-                    val gson = Gson()
-                    val dietPlan = gson.fromJson(gson.toJson(responseData["data"]), DietPlan::class.java)
-
-                    saveDietPlanToFirestore(dietPlan)
-                    applyDietPlanToGoals(dietPlan)
+                // 4. Save Plan & Apply Goals
+                val userId = authRepository.currentUser?.uid
+                if (userId != null) {
+                    quizRepository.saveDietPlan(userId, dietPlan)
+                    quizRepository.applyDietPlanToGoals(userId, dietPlan)
                     _dietPlanResult.value = DietPlanResult.Success(dietPlan)
-
-                } else {
-                    throw Exception(responseData["error"]?.toString() ?: "Unknown error from function")
                 }
+
             } catch (e: Exception) {
-                Log.e("QuestionsViewModel", "Error generating diet plan or creating user", e)
-                // Ensure we don't show error if user is gone
-                if (auth.currentUser != null) {
+                Log.e("QuizViewModel", "Error generating diet plan", e)
+                if (authRepository.currentUser != null) {
                     _dietPlanResult.value = DietPlanResult.Error(e.message ?: "An unexpected error occurred.")
                 }
             }
-        }
-    }
-
-    private suspend fun applyDietPlanToGoals(plan: DietPlan) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("QuestionsViewModel", "Cannot apply goals: User not logged in.")
-            return
-        }
-
-        try {
-            val goalsRef = firestore.collection("users").document(userId)
-                .collection("user_answers").document("goals")
-            val snapshot = goalsRef.get().await()
-            val existingAnswers = if (snapshot.exists()) {
-                (snapshot.get("answers") as? List<Map<String, String>>)?.toMutableList() ?: mutableListOf()
-            } else { mutableListOf() }
-
-            val aiGoalsMap = mapOf(
-                "How many calories a day is your target?" to plan.concretePlan.targets.dailyCalories.toString(),
-                "How many grams of protein a day is your target?" to plan.concretePlan.targets.proteinGrams.toString()
-            )
-            val finalGoalsList = mutableListOf<Map<String, String>>()
-            val addedOrUpdatedQuestions = mutableSetOf<String>()
-
-            aiGoalsMap.forEach { (question, answer) ->
-                finalGoalsList.add(mapOf("question" to question, "answer" to answer))
-                addedOrUpdatedQuestions.add(question)
-            }
-            existingAnswers.forEach { existingGoal ->
-                val question = existingGoal["question"]
-                if (question != null && question !in addedOrUpdatedQuestions) {
-                    finalGoalsList.add(existingGoal)
-                }
-            }
-            val dataToSet = mapOf(
-                "answers" to finalGoalsList,
-                "aiGenerated" to true
-            )
-            goalsRef.set(dataToSet).await()
-            Log.d("QuestionsViewModel", "Successfully applied and merged AI diet plan to goals.")
-        } catch (e: Exception) {
-            Log.e("QuestionsViewModel", "Error applying/merging diet plan to goals", e)
         }
     }
 
@@ -300,6 +183,6 @@ class QuizViewModel : ViewModel() {
     fun clearData() {
         _userAnswers.value = emptyList()
         _dietPlanResult.value = DietPlanResult.Idle
-        Log.d("QuestionsViewModel", "Local data cleared.")
+        Log.d("QuizViewModel", "Local data cleared.")
     }
 }
