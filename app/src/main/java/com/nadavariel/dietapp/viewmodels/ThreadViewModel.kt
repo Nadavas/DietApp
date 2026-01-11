@@ -5,31 +5,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import com.nadavariel.dietapp.models.*
+import com.nadavariel.dietapp.repositories.AuthRepository
 import com.nadavariel.dietapp.repositories.NewsRepository
+import com.nadavariel.dietapp.repositories.ThreadRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
-class ThreadViewModel : ViewModel() {
-    private val firestore = Firebase.firestore
-    private val auth: FirebaseAuth = Firebase.auth
-    private val newsRepository = NewsRepository()
 
-    private var threadsListener: ListenerRegistration? = null
-    private var commentsListener: ListenerRegistration? = null
-    private var likesListener: ListenerRegistration? = null
-    private var userThreadsListener: ListenerRegistration? = null
+class ThreadViewModel(
+    private val authRepository: AuthRepository,
+    private val threadRepository: ThreadRepository,
+    private val newsRepository: NewsRepository
+) : ViewModel() {
 
+    // --- State ---
     private val _threads = MutableStateFlow<List<Thread>>(emptyList())
     val threads: StateFlow<List<Thread>> = _threads.asStateFlow()
 
@@ -60,11 +55,19 @@ class ThreadViewModel : ViewModel() {
     private val _newsError = MutableStateFlow<String?>(null)
     val newsError: StateFlow<String?> = _newsError.asStateFlow()
 
+    // --- Jobs & Listeners ---
+    private var allThreadsJob: Job? = null
+    private var userThreadsJob: Job? = null
+    private var commentsJob: Job? = null
+    private var likesJob: Job? = null
+    private var authStateListener: FirebaseAuth.AuthStateListener? = null
+
     init {
         loadNewsArticles()
 
-        auth.addAuthStateListener { firebaseAuth ->
-            if (firebaseAuth.currentUser != null) {
+        authStateListener = authRepository.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
                 fetchAllThreads()
             } else {
                 clearAllListenersAndData()
@@ -72,12 +75,13 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
+    // --- News Logic ---
+
     fun loadNewsArticles() {
         viewModelScope.launch {
             try {
                 _isNewsLoading.value = true
                 _newsError.value = null
-                // Fetch latest 5 articles
                 val articles = newsRepository.fetchLatestArticles(5)
                 _newsArticles.value = articles
             } catch (e: Exception) {
@@ -93,269 +97,30 @@ class ThreadViewModel : ViewModel() {
         loadNewsArticles()
     }
 
-    private fun fetchAllThreads() {
-        threadsListener?.remove()
-        viewModelScope.launch {
-            try {
-                threadsListener = firestore.collection("threads")
-                    .orderBy("timestamp", Query.Direction.DESCENDING)
-                    .addSnapshotListener { snapshots, e ->
-                        if (e != null) {
-                            Log.w("ThreadViewModel", "Listen failed for all threads.", e)
-                            _threads.value = emptyList()
-                            return@addSnapshotListener
-                        }
-                        val threadList = snapshots?.mapNotNull { document ->
-                            document.toObject(Thread::class.java).copy(id = document.id)
-                        } ?: emptyList()
+    // --- Threads Logic ---
 
-                        _threads.value = threadList
-                        if (threadList.isNotEmpty()) {
-                            calculateHottestThreads(threadList)
-                        }
-                    }
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error fetching all threads", e)
-                _threads.value = emptyList()
+    private fun fetchAllThreads() {
+        allThreadsJob?.cancel()
+        allThreadsJob = viewModelScope.launch {
+            threadRepository.getAllThreadsFlow().collect { list ->
+                _threads.value = list
+                if (list.isNotEmpty()) {
+                    calculateHottestThreads(list)
+                }
             }
         }
     }
 
     fun fetchUserThreads(userId: String) {
-        userThreadsListener?.remove()
-
-        userThreadsListener = firestore.collection("threads")
-            .whereEqualTo("authorId", userId)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.e("ThreadViewModel", "Error fetching user threads", e)
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val threadsList = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Thread::class.java)?.copy(id = doc.id)
-                    }
-                    _userThreads.value = threadsList.sortedByDescending { it.timestamp }
-                }
-            }
-    }
-
-    fun deleteThread(threadId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        firestore.collection("threads").document(threadId)
-            .delete()
-            .addOnSuccessListener {
-                Log.d("ThreadViewModel", "Thread deleted successfully: $threadId")
-                onSuccess()
-            }
-            .addOnFailureListener { e ->
-                Log.e("ThreadViewModel", "Error deleting thread", e)
-                onError(e.message ?: "Error deleting thread")
-            }
-    }
-
-    fun updateThread(threadId: String, newHeader: String, newContent: String, onSuccess: () -> Unit) {
-        val updates = mapOf(
-            "header" to newHeader,
-            "paragraph" to newContent,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        firestore.collection("threads").document(threadId)
-            .update(updates)
-            .addOnSuccessListener {
-                Log.d("ThreadViewModel", "Thread updated successfully: $threadId")
-                if (_selectedThread.value?.id == threadId) {
-                    fetchThreadById(threadId)
-                }
-                onSuccess()
-            }
-            .addOnFailureListener { e ->
-                Log.e("ThreadViewModel", "Error updating thread", e)
-            }
-    }
-
-    private fun calculateHottestThreads(threads: List<Thread>) {
-        viewModelScope.launch {
-            try {
-                val threadsWithStats = threads.map { thread ->
-                    async {
-                        val likeCount = fetchLikeCount(thread.id)
-                        val commentCount = fetchCommentCount(thread.id)
-                        ThreadWithStats(thread, likeCount + commentCount)
-                    }
-                }.awaitAll()
-
-                _hottestThreads.value = threadsWithStats
-                    .sortedByDescending { it.score }
-                    .take(3)
-                    .map { it.thread }
-                Log.d("ThreadViewModel", "Hottest threads updated.")
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error calculating hottest threads", e)
-                _hottestThreads.value = emptyList()
+        userThreadsJob?.cancel()
+        userThreadsJob = viewModelScope.launch {
+            threadRepository.getUserThreadsFlow(userId).collect { list ->
+                _userThreads.value = list
             }
         }
     }
 
-    private suspend fun fetchLikeCount(threadId: String): Int {
-        return try {
-            val snapshot = firestore.collection("threads")
-                .document(threadId)
-                .collection("likes")
-                .get()
-                .await()
-            snapshot.size()
-        } catch (e: Exception) {
-            Log.e("ThreadViewModel", "Error suspend fetching like count for thread $threadId", e)
-            0
-        }
-    }
-
-    private suspend fun fetchCommentCount(threadId: String): Int {
-        return try {
-            val snapshot = firestore.collection("threads")
-                .document(threadId)
-                .collection("comments")
-                .get()
-                .await()
-            snapshot.size()
-        } catch (e: Exception) {
-            Log.e("ThreadViewModel", "Error suspend fetching comment count for thread $threadId", e)
-            0
-        }
-    }
-
-    fun fetchThreadById(threadId: String) {
-        commentsListener?.remove()
-        likesListener?.remove()
-
-        viewModelScope.launch {
-            _selectedThread.value = null
-            _comments.value = emptyList()
-            try {
-                val docSnapshot = firestore.collection("threads").document(threadId).get().await()
-                _selectedThread.value = docSnapshot.toObject(Thread::class.java)?.copy(id = docSnapshot.id)
-
-                if (_selectedThread.value != null) {
-                    fetchCommentsForThread(threadId)
-                    listenForLikes(threadId)
-                } else {
-                    Log.w("ThreadViewModel", "Thread with ID $threadId not found.")
-                }
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error fetching thread by ID: $threadId", e)
-            }
-        }
-    }
-
-    private fun fetchCommentsForThread(threadId: String) {
-        commentsListener?.remove()
-        viewModelScope.launch {
-            try {
-                commentsListener = firestore.collection("threads")
-                    .document(threadId)
-                    .collection("comments")
-                    .orderBy("createdAt", Query.Direction.ASCENDING)
-                    .addSnapshotListener { snapshots, e ->
-                        if (e != null) {
-                            Log.w("ThreadViewModel", "Listen failed for comments on thread $threadId.", e)
-                            _comments.value = emptyList()
-                            return@addSnapshotListener
-                        }
-                        val commentList = snapshots?.mapNotNull { document ->
-                            document.toObject(Comment::class.java).copy(id = document.id)
-                        } ?: emptyList()
-                        _comments.value = commentList
-                    }
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error fetching comments for thread: $threadId", e)
-                _comments.value = emptyList()
-            }
-        }
-    }
-
-    fun addComment(threadId: String, commentText: String, authorName: String) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("ThreadViewModel", "User not logged in. Cannot add comment.")
-            return
-        }
-        if (commentText.isBlank()) {
-            Log.e("ThreadViewModel", "Comment text cannot be empty.")
-            return
-        }
-
-        val newCommentRef = firestore.collection("threads")
-            .document(threadId)
-            .collection("comments")
-            .document()
-
-        val comment = Comment(
-            id = newCommentRef.id,
-            threadId = threadId,
-            authorId = userId,
-            authorName = authorName,
-            text = commentText,
-            createdAt = Timestamp.now()
-        )
-
-        viewModelScope.launch {
-            try {
-                newCommentRef.set(comment).await()
-                Log.d("ThreadViewModel", "Comment added successfully to thread $threadId")
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error adding comment to thread $threadId", e)
-            }
-        }
-    }
-
-    fun listenForLikes(threadId: String) {
-        likesListener?.remove()
-        val currentUserId = auth.currentUser?.uid
-
-        likesListener = firestore.collection("threads")
-            .document(threadId)
-            .collection("likes")
-            .addSnapshotListener { snapshots, e ->
-                if (e != null) {
-                    Log.w("ThreadViewModel", "Listen failed for likes on thread $threadId.", e)
-                    _likeCount.value = 0
-                    _hasUserLiked.value = false
-                    return@addSnapshotListener
-                }
-
-                val likes = snapshots?.mapNotNull { it.toObject(Like::class.java) } ?: emptyList()
-                _likeCount.value = likes.size
-                _hasUserLiked.value = likes.any { it.userId == currentUserId }
-            }
-    }
-
-    fun toggleLike(threadId: String, userId: String, authorName: String) {
-        val likeDocRef = firestore.collection("threads")
-            .document(threadId)
-            .collection("likes")
-            .document(userId)
-
-        viewModelScope.launch {
-            try {
-                val snapshot = likeDocRef.get().await()
-                if (snapshot.exists()) {
-                    likeDocRef.delete().await()
-                    Log.d("ThreadViewModel", "Removed like from user $userId on thread $threadId")
-                } else {
-                    val like = Like(
-                        userId = userId,
-                        authorName = authorName,
-                        timestamp = Timestamp.now()
-                    )
-                    likeDocRef.set(like).await()
-                    Log.d("ThreadViewModel", "Added like from user $userId on thread $threadId")
-                }
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error toggling like on thread $threadId", e)
-            }
-        }
-    }
+    // --- CRUD ---
 
     fun createThread(
         header: String,
@@ -364,15 +129,14 @@ class ThreadViewModel : ViewModel() {
         type: String,
         authorName: String
     ) {
-        val userId = auth.currentUser?.uid
+        val userId = authRepository.currentUser?.uid
         if (userId == null) {
             Log.e("ThreadViewModel", "User not logged in. Cannot create thread.")
             return
         }
 
-        val newThreadRef = firestore.collection("threads").document()
         val thread = Thread(
-            id = newThreadRef.id,
+            id = "", // Will be set by Repo
             authorId = userId,
             authorName = authorName,
             header = header,
@@ -384,67 +148,165 @@ class ThreadViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                newThreadRef.set(thread).await()
-                Log.d("ThreadViewModel", "Thread created successfully with ID: ${newThreadRef.id}")
+                threadRepository.createThread(thread)
+                Log.d("ThreadViewModel", "Thread created successfully")
             } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error creating thread", e)
             }
         }
     }
 
-    fun clearSelectedThreadAndListeners() {
-        commentsListener?.remove()
-        commentsListener = null
-        likesListener?.remove()
-        likesListener = null
-
-        _selectedThread.value = null
-        _comments.value = emptyList()
-        _likeCount.value = 0
-        _hasUserLiked.value = false
+    fun deleteThread(threadId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                threadRepository.deleteThread(threadId)
+                Log.d("ThreadViewModel", "Thread deleted successfully")
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error deleting thread", e)
+                onError(e.message ?: "Error deleting thread")
+            }
+        }
     }
 
-    private fun clearAllListenersAndData() {
-        threadsListener?.remove()
-        threadsListener = null
-        commentsListener?.remove()
-        commentsListener = null
-        likesListener?.remove()
-        likesListener = null
-        userThreadsListener?.remove()
-        userThreadsListener = null
+    fun updateThread(threadId: String, newHeader: String, newContent: String, onSuccess: () -> Unit) {
+        val updates = mapOf(
+            "header" to newHeader,
+            "paragraph" to newContent,
+            "timestamp" to System.currentTimeMillis()
+        )
 
-        _threads.value = emptyList()
-        _hottestThreads.value = emptyList()
-        _userThreads.value = emptyList()
-        _selectedThread.value = null
-        _comments.value = emptyList()
-        _likeCount.value = 0
-        _hasUserLiked.value = false
-
-        _newsArticles.value = emptyList()
-
-        Log.d("ThreadViewModel", "Cleared all listeners and data.")
+        viewModelScope.launch {
+            try {
+                threadRepository.updateThread(threadId, updates)
+                if (_selectedThread.value?.id == threadId) {
+                    // Refresh selected thread if needed
+                    fetchThreadById(threadId)
+                }
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error updating thread", e)
+            }
+        }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        clearAllListenersAndData()
+    // --- Details & Stats ---
+
+    private fun calculateHottestThreads(threads: List<Thread>) {
+        viewModelScope.launch {
+            try {
+                val threadsWithStats = threads.map { thread ->
+                    async {
+                        val likeCount = threadRepository.getLikeCount(thread.id)
+                        val commentCount = threadRepository.getCommentCount(thread.id)
+                        ThreadWithStats(thread, likeCount + commentCount)
+                    }
+                }.awaitAll()
+
+                _hottestThreads.value = threadsWithStats
+                    .sortedByDescending { it.score }
+                    .take(3)
+                    .map { it.thread }
+                Log.d("ThreadViewModel", "Hottest threads updated.")
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error calculating hottest threads", e)
+            }
+        }
+    }
+
+    fun fetchThreadById(threadId: String) {
+        commentsJob?.cancel()
+        likesJob?.cancel()
+
+        viewModelScope.launch {
+            _selectedThread.value = null
+            _comments.value = emptyList()
+            try {
+                val thread = threadRepository.getThreadById(threadId)
+                _selectedThread.value = thread
+
+                if (thread != null) {
+                    fetchCommentsForThread(threadId)
+                    listenForLikes(threadId)
+                }
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error fetching thread by ID", e)
+            }
+        }
+    }
+
+    // --- Comments ---
+
+    private fun fetchCommentsForThread(threadId: String) {
+        commentsJob?.cancel()
+        commentsJob = viewModelScope.launch {
+            threadRepository.getCommentsFlow(threadId).collect { list ->
+                _comments.value = list
+            }
+        }
+    }
+
+    fun addComment(threadId: String, commentText: String, authorName: String) {
+        val userId = authRepository.currentUser?.uid ?: return
+        if (commentText.isBlank()) return
+
+        val comment = Comment(
+            id = "", // Set by Repo/Firestore
+            threadId = threadId,
+            authorId = userId,
+            authorName = authorName,
+            text = commentText,
+            createdAt = Timestamp.now()
+        )
+
+        viewModelScope.launch {
+            try {
+                threadRepository.addComment(threadId, comment)
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error adding comment", e)
+            }
+        }
+    }
+
+    fun getCommentCountForThread(threadId: String, onResult: (Int) -> Unit) {
+        viewModelScope.launch {
+            try {
+                onResult(threadRepository.getCommentCount(threadId))
+            } catch (_: Exception) {
+                onResult(0)
+            }
+        }
+    }
+
+    // --- Likes ---
+
+    fun listenForLikes(threadId: String) {
+        likesJob?.cancel()
+        val currentUserId = authRepository.currentUser?.uid
+
+        likesJob = viewModelScope.launch {
+            threadRepository.getLikesFlow(threadId).collect { likes ->
+                _likeCount.value = likes.size
+                _hasUserLiked.value = likes.any { it.userId == currentUserId }
+            }
+        }
+    }
+
+    fun toggleLike(threadId: String, userId: String, authorName: String) {
+        viewModelScope.launch {
+            try {
+                threadRepository.toggleLike(threadId, userId, authorName)
+            } catch (e: Exception) {
+                Log.e("ThreadViewModel", "Error toggling like", e)
+            }
+        }
     }
 
     fun getLikesForThread(threadId: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {
             try {
-                val snapshot = firestore.collection("threads")
-                    .document(threadId)
-                    .collection("likes")
-                    .get()
-                    .await()
-
-                val usernames = snapshot.documents.mapNotNull { it.getString("authorName") }
-                onResult(usernames)
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error fetching likes for thread $threadId", e)
+                onResult(threadRepository.getLikeUsernames(threadId))
+            } catch (_: Exception) {
                 onResult(emptyList())
             }
         }
@@ -453,34 +315,46 @@ class ThreadViewModel : ViewModel() {
     fun getLikeCountForThread(threadId: String, onResult: (Int) -> Unit) {
         viewModelScope.launch {
             try {
-                val snapshot = firestore.collection("threads")
-                    .document(threadId)
-                    .collection("likes")
-                    .get()
-                    .await()
-
-                onResult(snapshot.documents.size)
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error fetching like count for thread $threadId", e)
+                onResult(threadRepository.getLikeCount(threadId))
+            } catch (_: Exception) {
                 onResult(0)
             }
         }
     }
 
-    fun getCommentCountForThread(threadId: String, onResult: (Int) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val snapshot = firestore.collection("threads")
-                    .document(threadId)
-                    .collection("comments")
-                    .get()
-                    .await()
+    // --- Cleanup ---
 
-                onResult(snapshot.documents.size)
-            } catch (e: Exception) {
-                Log.e("ThreadViewModel", "Error fetching comment count for thread $threadId", e)
-                onResult(0)
-            }
-        }
+    fun clearSelectedThreadAndListeners() {
+        commentsJob?.cancel()
+        likesJob?.cancel()
+
+        _selectedThread.value = null
+        _comments.value = emptyList()
+        _likeCount.value = 0
+        _hasUserLiked.value = false
+    }
+
+    private fun clearAllListenersAndData() {
+        allThreadsJob?.cancel()
+        userThreadsJob?.cancel()
+        commentsJob?.cancel()
+        likesJob?.cancel()
+
+        _threads.value = emptyList()
+        _hottestThreads.value = emptyList()
+        _userThreads.value = emptyList()
+        _selectedThread.value = null
+        _comments.value = emptyList()
+        _likeCount.value = 0
+        _hasUserLiked.value = false
+        _newsArticles.value = emptyList()
+
+        Log.d("ThreadViewModel", "Cleared all listeners and data.")
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        authStateListener?.let { authRepository.removeAuthStateListener(it) }
+        clearAllListenersAndData()
     }
 }
