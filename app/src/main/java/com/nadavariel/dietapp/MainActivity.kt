@@ -54,6 +54,7 @@ import com.nadavariel.dietapp.repositories.UserPreferencesRepository
 import com.nadavariel.dietapp.models.FoodNutritionalInfo
 import com.nadavariel.dietapp.models.Meal
 import com.nadavariel.dietapp.repositories.AuthRepository
+import com.nadavariel.dietapp.repositories.DietRepository
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.AppTheme
 import com.nadavariel.dietapp.ui.DietAppTheme
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
 
             val preferencesRepository = remember { UserPreferencesRepository(applicationContext) }
             val authRepository = remember { AuthRepository() }
+            val dietRepository = remember { DietRepository() }
 
             @Suppress("UNCHECKED_CAST")
             val appViewModelFactory = remember {
@@ -96,7 +98,7 @@ class MainActivity : ComponentActivity() {
                                 QuizViewModel() as T
                             }
                             modelClass.isAssignableFrom(DietPlanViewModel::class.java) -> {
-                                DietPlanViewModel() as T
+                                DietPlanViewModel(authRepository, dietRepository) as T
                             }
                             else ->
                                 throw IllegalArgumentException(

@@ -4,27 +4,19 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import com.nadavariel.dietapp.constants.QuizConstants
-import com.nadavariel.dietapp.models.*
+import com.nadavariel.dietapp.models.DietPlan
+import com.nadavariel.dietapp.models.Goal
+import com.nadavariel.dietapp.repositories.AuthRepository
+import com.nadavariel.dietapp.repositories.DietRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import com.nadavariel.dietapp.models.DietPlan
 
-class DietPlanViewModel : ViewModel() {
-
-    private val auth: FirebaseAuth = Firebase.auth
-    private val firestore: FirebaseFirestore = Firebase.firestore
-
-    private var dietPlanListener: ListenerRegistration? = null
-    private var goalsListener: ListenerRegistration? = null
-    private var profileListener: ListenerRegistration? = null
+class DietPlanViewModel(
+    private val authRepository: AuthRepository,
+    private val dietRepository: DietRepository
+) : ViewModel() {
 
     private val _currentDietPlan = MutableStateFlow<DietPlan?>(null)
     val currentDietPlan = _currentDietPlan.asStateFlow()
@@ -41,222 +33,84 @@ class DietPlanViewModel : ViewModel() {
     private val _isLoadingPlan = MutableStateFlow(true)
     val isLoadingPlan = _isLoadingPlan.asStateFlow()
 
+    // Jobs to track active collectors so we can cancel them on logout
+    private var dietPlanJob: Job? = null
+    private var goalsJob: Job? = null
+    private var weightJob: Job? = null
+
+    // Listener for AuthRepository
+    private var authStateListener: FirebaseAuth.AuthStateListener? = null
+
     init {
-        auth.addAuthStateListener { firebaseAuth ->
-            if (firebaseAuth.currentUser != null) {
-                fetchDietPlan()
-                fetchUserGoals()
-                fetchUserProfile()
+        // FIXED: Use addAuthStateListener (Pragmatic style) instead of authState.collect (Flow style)
+        authStateListener = authRepository.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
+                _isLoadingPlan.value = true
+                startObservingData(user.uid)
             } else {
-                clearAllListenersAndData()
+                stopObservingData()
             }
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun fetchDietPlan() {
-        dietPlanListener?.remove()
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("GoalsViewModel", "Cannot fetch diet plan: User not logged in.")
-            _isLoadingPlan.value = false
-            return
-        }
-
-        _isLoadingPlan.value = true
-
-        dietPlanListener = firestore.collection("users").document(userId)
-            .collection("diet_plans").document("current_plan")
-            .addSnapshotListener { snapshot, e ->
+    private fun startObservingData(userId: String) {
+        // 1. Fetch Diet Plan
+        dietPlanJob?.cancel()
+        dietPlanJob = viewModelScope.launch {
+            dietRepository.getDietPlanFlow(userId).collect { plan ->
+                _currentDietPlan.value = plan
                 _isLoadingPlan.value = false
-
-                if (e != null) {
-                    Log.e("GoalsViewModel", "Error listening to diet plan", e)
-                    _currentDietPlan.value = null
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null && snapshot.exists()) {
-                    try {
-                        // Helper to safely get List<String> from String OR List
-                        fun getListField(fieldName: String): List<String> {
-                            val rawValue = snapshot.get(fieldName)
-                            return when (rawValue) {
-                                is List<*> -> rawValue.mapNotNull { it?.toString() }
-                                is String -> listOf(rawValue)
-                                else -> emptyList()
-                            }
-                        }
-
-                        val healthOverview = getListField("healthOverview")
-                        val goalStrategy = getListField("goalStrategy")
-                        val disclaimer = snapshot.getString("disclaimer") ?: ""
-                        val concretePlanMap = snapshot.get("concretePlan") as? Map<String, Any> ?: emptyMap()
-                        val targetsMap = concretePlanMap["targets"] as? Map<String, Any> ?: emptyMap()
-                        val guidelinesMap = concretePlanMap["mealGuidelines"] as? Map<String, Any> ?: emptyMap()
-
-                        val concretePlan = ConcretePlan(
-                            targets = Targets(
-                                dailyCalories = (targetsMap["dailyCalories"] as? Long)?.toInt() ?: 0,
-                                proteinGrams = (targetsMap["proteinGrams"] as? Long)?.toInt() ?: 0,
-                                carbsGrams = (targetsMap["carbsGrams"] as? Long)?.toInt() ?: 0,
-                                fatGrams = (targetsMap["fatGrams"] as? Long)?.toInt() ?: 0
-                            ),
-                            mealGuidelines = MealGuidelines(
-                                mealFrequency = guidelinesMap["mealFrequency"] as? String ?: "",
-                                foodsToEmphasize = (guidelinesMap["foodsToEmphasize"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
-                                foodsToLimit = (guidelinesMap["foodsToLimit"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-                            ),
-                            trainingAdvice = when (val advice = concretePlanMap["trainingAdvice"]) {
-                                is List<*> -> advice.mapNotNull { it?.toString() }
-                                is String -> listOf(advice)
-                                else -> emptyList()
-                            }
-                        )
-
-                        val mealPlanMap = snapshot.get("exampleMealPlan") as? Map<String, Any> ?: emptyMap()
-
-                        fun mapMeal(key: String): ExampleMeal {
-                            val m = mealPlanMap[key] as? Map<String, Any> ?: return ExampleMeal()
-                            return ExampleMeal(
-                                description = m["description"] as? String ?: "",
-                                estimatedCalories = (m["estimatedCalories"] as? Long)?.toInt() ?: 0
-                            )
-                        }
-
-                        val exampleMealPlan = ExampleMealPlan(
-                            breakfast = mapMeal("breakfast"),
-                            lunch = mapMeal("lunch"),
-                            dinner = mapMeal("dinner"),
-                            snacks = mapMeal("snacks")
-                        )
-
-                        val safePlan = DietPlan(
-                            healthOverview = healthOverview,
-                            goalStrategy = goalStrategy,
-                            concretePlan = concretePlan,
-                            exampleMealPlan = exampleMealPlan,
-                            disclaimer = disclaimer
-                        )
-
-                        _currentDietPlan.value = safePlan
-                        Log.d("GoalsViewModel", "Live diet plan updated (Safe Mapping).")
-
-                    } catch (e: Exception) {
-                        Log.e("GoalsViewModel", "Error parsing diet plan manually", e)
-                        _currentDietPlan.value = null
-                    }
-                } else {
-                    Log.d("GoalsViewModel", "No diet plan document found.")
-                    _currentDietPlan.value = null
-                }
+                Log.d("DietPlanViewModel", "Diet plan updated from repo.")
             }
-    }
-
-    private fun fetchUserGoals() {
-        goalsListener?.remove()
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("GoalsViewModel", "Cannot fetch goals: User not logged in.")
-            return
         }
 
-        val allGoals = listOf(
-            Goal(id = "calories", text = QuizConstants.CALORIES_GOAL_QUESTION),
-            Goal(id = "protein", text = QuizConstants.PROTEIN_GOAL_QUESTION),
-            Goal(id = "target_weight", text = QuizConstants.TARGET_WEIGHT_QUESTION)
-        )
-
-        goalsListener = firestore.collection("users").document(userId)
-            .collection("user_answers").document("goals")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.e("GoalsViewModel", "Error listening to user answers", e)
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null && snapshot.exists()) {
-                    @Suppress("UNCHECKED_CAST")
-                    val answersMap = snapshot.get("answers") as? List<Map<String, String>>
-                    val aiGenerated = snapshot.getBoolean("aiGenerated") == true
-
-                    val userAnswers = answersMap?.associate {
-                        it["question"] to it["answer"]
-                    } ?: emptyMap()
-
-                    val mergedGoals = allGoals.map { goal ->
-                        val answer = userAnswers[goal.text]
-
-                        if (goal.id == "target_weight" && answer != null) {
-                            val parsedValue = answer.split(" ").firstOrNull() ?: ""
-                            goal.copy(value = parsedValue)
-                        } else {
-                            goal.copy(value = answer)
-                        }
-                    }
-
-                    _goals.value = mergedGoals
-                    _hasAiGeneratedGoals.value = aiGenerated
-                    Log.d("GoalsViewModel", "Live goals updated: ${mergedGoals.size} items, AI-generated: $aiGenerated")
-                } else {
-                    _goals.value = allGoals
-                    _hasAiGeneratedGoals.value = false
-                    Log.d("GoalsViewModel", "No saved answers yet, using base goals.")
-                }
+        // 2. Fetch Goals
+        goalsJob?.cancel()
+        goalsJob = viewModelScope.launch {
+            dietRepository.getUserGoalsFlow(userId).collect { pair ->
+                _goals.value = pair.first
+                _hasAiGeneratedGoals.value = pair.second
+                Log.d("DietPlanViewModel", "Goals updated from repo.")
             }
-    }
-
-    private fun fetchUserProfile() {
-        profileListener?.remove()
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            Log.e("GoalsViewModel", "Cannot fetch profile: User not logged in.")
-            return
         }
 
-        profileListener = firestore.collection("users").document(userId)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.e("GoalsViewModel", "Error listening to user profile", e)
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null && snapshot.exists()) {
-                    val profile = snapshot.toObject(UserProfile::class.java)
-                    _userWeight.value = profile?.startingWeight ?: 0f
-                } else {
-                    Log.d("GoalsViewModel", "User profile does not exist.")
-                }
+        // 3. Fetch Weight
+        weightJob?.cancel()
+        weightJob = viewModelScope.launch {
+            dietRepository.getUserWeightFlow(userId).collect { weight ->
+                _userWeight.value = weight
             }
+        }
+    }
+
+    private fun stopObservingData() {
+        dietPlanJob?.cancel()
+        goalsJob?.cancel()
+        weightJob?.cancel()
+
+        _currentDietPlan.value = null
+        _goals.value = emptyList()
+        _userWeight.value = 0f
+        _hasAiGeneratedGoals.value = false
+        _isLoadingPlan.value = false
+        Log.d("DietPlanViewModel", "Stopped observing data (User logged out).")
     }
 
     fun saveUserAnswers() {
-        val userId = auth.currentUser?.uid
+        // FIXED: Use property access 'currentUser' instead of method 'getCurrentUser()'
+        val userId = authRepository.currentUser?.uid
         if (userId == null) {
-            Log.e("GoalsViewModel", "Cannot save answers: User not logged in.")
+            Log.e("DietPlanViewModel", "Cannot save answers: User not logged in.")
             return
         }
 
         viewModelScope.launch {
             try {
-                val userAnswersToSave = _goals.value.map { goal ->
-                    mapOf("question" to goal.text, "answer" to (goal.value ?: ""))
-                }
-
-                val userAnswersRef = firestore.collection("users").document(userId)
-                    .collection("user_answers").document("goals")
-
-                val currentData = userAnswersRef.get().await()
-                val aiGenerated = currentData.getBoolean("aiGenerated") == true
-
-                userAnswersRef.set(mapOf(
-                    "answers" to userAnswersToSave,
-                    "aiGenerated" to aiGenerated
-                )).await()
-
-                Log.d("GoalsViewModel", "Successfully saved user answers.")
+                dietRepository.saveUserGoals(userId, _goals.value)
+                Log.d("DietPlanViewModel", "Successfully saved user answers via repo.")
             } catch (e: Exception) {
-                Log.e("GoalsViewModel", "Error saving user answers", e)
+                Log.e("DietPlanViewModel", "Error saving user answers", e)
             }
         }
     }
@@ -267,24 +121,9 @@ class DietPlanViewModel : ViewModel() {
         }
     }
 
-    private fun clearAllListenersAndData() {
-        dietPlanListener?.remove()
-        dietPlanListener = null
-        goalsListener?.remove()
-        goalsListener = null
-        profileListener?.remove()
-        profileListener = null
-
-        _currentDietPlan.value = null
-        _goals.value = emptyList()
-        _userWeight.value = 0f
-        _hasAiGeneratedGoals.value = false
-        _isLoadingPlan.value = false
-        Log.d("GoalsViewModel", "Cleared all listeners and data.")
-    }
-
     override fun onCleared() {
         super.onCleared()
-        clearAllListenersAndData()
+        // FIXED: Clean up the listener using the repo method
+        authStateListener?.let { authRepository.removeAuthStateListener(it) }
     }
 }
