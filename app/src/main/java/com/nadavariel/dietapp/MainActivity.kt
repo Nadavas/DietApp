@@ -57,6 +57,7 @@ import com.nadavariel.dietapp.repositories.AuthRepository
 import com.nadavariel.dietapp.repositories.DietRepository
 import com.nadavariel.dietapp.repositories.MealRepository
 import com.nadavariel.dietapp.repositories.QuizRepository
+import com.nadavariel.dietapp.repositories.ReminderRepository
 import com.nadavariel.dietapp.repositories.WeightRepository
 import com.nadavariel.dietapp.screens.*
 import com.nadavariel.dietapp.ui.AppTheme
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
             val mealRepository = remember { MealRepository() }
             val weightRepository = remember { WeightRepository() }
             val quizRepository = remember { QuizRepository() }
+            val reminderRepository = remember { ReminderRepository(applicationContext) }
 
             @Suppress("UNCHECKED_CAST")
             val appViewModelFactory = remember {
@@ -98,7 +100,7 @@ class MainActivity : ComponentActivity() {
                                 ThreadViewModel() as T
                             }
                             modelClass.isAssignableFrom(ReminderViewModel::class.java) -> {
-                                ReminderViewModel(application) as T
+                                ReminderViewModel(authRepository, reminderRepository) as T
                             }
                             modelClass.isAssignableFrom(QuizViewModel::class.java) -> {
                                 QuizViewModel(authRepository, quizRepository) as T
