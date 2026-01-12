@@ -98,7 +98,6 @@ class DietPlanViewModel(
     }
 
     fun saveUserAnswers() {
-        // FIXED: Use property access 'currentUser' instead of method 'getCurrentUser()'
         val userId = authRepository.currentUser?.uid
         if (userId == null) {
             Log.e("DietPlanViewModel", "Cannot save answers: User not logged in.")

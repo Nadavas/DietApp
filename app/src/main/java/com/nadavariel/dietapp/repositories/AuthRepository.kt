@@ -183,7 +183,8 @@ class AuthRepository {
 
         for (collectionName in collections) {
             try {
-                val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
+                val collectionRef = firestore.collection("users")
+                    .document(userId).collection(collectionName)
                 val querySnapshot = collectionRef.get().await()
                 val batch = firestore.batch()
                 for (document in querySnapshot.documents) {
