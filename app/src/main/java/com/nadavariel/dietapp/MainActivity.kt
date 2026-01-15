@@ -502,6 +502,7 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.STATS_ENERGY) {
                                 EnergyDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
+                                    goalViewModel = dietPlanViewModel,
                                     navController = navController
                                 )
                             }
@@ -514,18 +515,21 @@ class MainActivity : ComponentActivity() {
                             composable(NavRoutes.STATS_CARBS) {
                                 CarbsDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
+                                    goalViewModel = dietPlanViewModel,
                                     navController = navController
                                 )
                             }
                             composable(NavRoutes.STATS_MINERALS) {
                                 MineralsDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
+                                    goalViewModel = dietPlanViewModel,
                                     navController = navController
                                 )
                             }
                             composable(NavRoutes.STATS_VITAMINS) {
                                 VitaminsDetailScreen(
                                     foodLogViewModel = foodLogViewModel,
+                                    goalViewModel = dietPlanViewModel,
                                     navController = navController
                                 )
                             }
