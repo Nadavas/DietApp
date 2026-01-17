@@ -44,7 +44,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
-import com.nadavariel.dietapp.NavRoutes
 import com.nadavariel.dietapp.models.Meal
 import com.nadavariel.dietapp.models.NutrientData
 import com.nadavariel.dietapp.ui.AppTheme
@@ -764,7 +763,7 @@ fun AddEditMealScreen(
                                             vitaminA = vitaminAText.toDoubleOrNull(),
                                             vitaminB12 = vitaminB12Text.toDoubleOrNull()
                                         )
-                                        navController.popBackStack(NavRoutes.HOME, inclusive = false)
+                                        navController.popBackStack()
                                     },
                                     modifier = Modifier
                                         .fillMaxWidth()
