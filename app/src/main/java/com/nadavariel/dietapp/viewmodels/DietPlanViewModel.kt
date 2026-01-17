@@ -33,16 +33,13 @@ class DietPlanViewModel(
     private val _isLoadingPlan = MutableStateFlow(true)
     val isLoadingPlan = _isLoadingPlan.asStateFlow()
 
-    // Jobs to track active collectors so we can cancel them on logout
+    // --- Jobs and Listeners ---
     private var dietPlanJob: Job? = null
     private var goalsJob: Job? = null
     private var weightJob: Job? = null
-
-    // Listener for AuthRepository
     private var authStateListener: FirebaseAuth.AuthStateListener? = null
 
     init {
-        // FIXED: Use addAuthStateListener (Pragmatic style) instead of authState.collect (Flow style)
         authStateListener = authRepository.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             if (user != null) {
@@ -122,7 +119,6 @@ class DietPlanViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        // FIXED: Clean up the listener using the repo method
         authStateListener?.let { authRepository.removeAuthStateListener(it) }
     }
 }

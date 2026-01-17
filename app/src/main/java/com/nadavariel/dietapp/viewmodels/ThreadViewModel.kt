@@ -136,7 +136,7 @@ class ThreadViewModel(
         }
 
         val thread = Thread(
-            id = "", // Will be set by Repo
+            id = "", // Set by Repository
             authorId = userId,
             authorName = authorName,
             header = header,
@@ -251,7 +251,7 @@ class ThreadViewModel(
         if (commentText.isBlank()) return
 
         val comment = Comment(
-            id = "", // Set by Repo/Firestore
+            id = "", // Set by Repository
             threadId = threadId,
             authorId = userId,
             authorName = authorName,

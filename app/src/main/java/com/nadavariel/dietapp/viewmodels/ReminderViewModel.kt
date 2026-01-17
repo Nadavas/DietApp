@@ -24,7 +24,6 @@ class ReminderViewModel(
     private var authStateListener: FirebaseAuth.AuthStateListener? = null
 
     init {
-        // Listen for Auth Changes
         authStateListener = authRepository.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             if (user != null) {

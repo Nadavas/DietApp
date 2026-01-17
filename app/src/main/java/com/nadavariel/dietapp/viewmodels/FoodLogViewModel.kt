@@ -113,18 +113,15 @@ class FoodLogViewModel(
         _currentWeekStartDateState.value = calculateWeekStartDate(today)
         _selectedDateState.value = today
 
-        // Use AuthRepository to listen for login state
         authStateListener = authRepository.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             if (user != null) {
                 _isLoadingLogs.value = true
 
-                // Start listening to data
                 listenForMealsForDate(selectedDateState.value)
                 listenForWeightHistory(user.uid)
                 listenForTargetWeight(user.uid)
 
-                // One-time fetch for stats
                 viewModelScope.launch {
                     try {
                         fetchMealsForLastSevenDays(user.uid)
