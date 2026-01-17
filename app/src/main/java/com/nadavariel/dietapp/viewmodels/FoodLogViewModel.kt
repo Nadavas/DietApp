@@ -540,7 +540,7 @@ class FoodLogViewModel(
 
     // --- Gemini Logic ---
 
-    fun analyzeMealWithGemini(foodName: String, imageB64: String? = null, mealTime: Timestamp) {
+    fun analyzeMeal(foodName: String, imageB64: String? = null, mealTime: Timestamp) {
         _geminiResult.value = GeminiResult.Loading
         tempMealTimestamp = mealTime
 
@@ -551,7 +551,7 @@ class FoodLogViewModel(
                     return@launch
                 }
 
-                val resultList = mealRepository.analyzeFoodWithGemini(foodName, imageB64)
+                val resultList = mealRepository.getNutritionalInfo(foodName, imageB64)
 
                 // Check if user is still logged in before updating UI
                 if (authRepository.currentUser == null) return@launch

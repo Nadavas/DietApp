@@ -544,7 +544,7 @@ fun AddEditMealScreen(
                                         Button(
                                             onClick = {
                                                 val mealTimestamp = Timestamp(selectedDateTimeState.time)
-                                                foodLogViewModel.analyzeMealWithGemini(
+                                                foodLogViewModel.analyzeMeal(
                                                     foodName = "",
                                                     imageB64 = imageB64,
                                                     mealTime = mealTimestamp
@@ -624,7 +624,7 @@ fun AddEditMealScreen(
                                         Button(
                                             onClick = {
                                                 val mealTimestamp = Timestamp(selectedDateTimeState.time)
-                                                foodLogViewModel.analyzeMealWithGemini(
+                                                foodLogViewModel.analyzeMeal(
                                                     foodName = foodName,
                                                     imageB64 = null,
                                                     mealTime = mealTimestamp

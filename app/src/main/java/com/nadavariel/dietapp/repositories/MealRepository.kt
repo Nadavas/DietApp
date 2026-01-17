@@ -80,7 +80,7 @@ class MealRepository {
 
     // --- Gemini / Cloud Functions ---
 
-    suspend fun analyzeFoodWithGemini(foodName: String, imageB64: String?): List<FoodNutritionalInfo> {
+    suspend fun getNutritionalInfo(foodName: String, imageB64: String?): List<FoodNutritionalInfo> {
         val data = hashMapOf<String, Any>(
             "foodName" to foodName
         )
