@@ -29,7 +29,6 @@ class DietRepository {
 
             if (snapshot != null && snapshot.exists()) {
                 try {
-                    // --- Parsing Logic Moved Here ---
                     fun getListField(fieldName: String): List<String> {
                         val rawValue = snapshot.get(fieldName)
                         return when (rawValue) {

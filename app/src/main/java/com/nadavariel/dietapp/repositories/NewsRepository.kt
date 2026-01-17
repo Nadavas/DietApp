@@ -194,10 +194,10 @@ class NewsRepository {
 
     private fun extractSourceName(url: String): String = when {
         url.contains("nutritionfacts", true) -> "NutritionFacts.org"
-        url.contains("skinnytaste", true) -> "Skinnytaste" // ✅ Added this
+        url.contains("skinnytaste", true) -> "Skinnytaste"
         url.contains("precisionnutrition", true) -> "Precision Nutrition"
         url.contains("sharonpalmer", true) -> "Sharon Palmer"
-        url.contains("eatingwell", true) -> "EatingWell"   // ✅ Added this
+        url.contains("eatingwell", true) -> "EatingWell"
         else -> "Nutrition News"
     }
 

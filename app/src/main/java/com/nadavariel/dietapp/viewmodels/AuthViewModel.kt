@@ -77,7 +77,6 @@ class AuthViewModel(
     private var userProfileListener: ListenerRegistration? = null
     private var authStateListener: FirebaseAuth.AuthStateListener? = null
 
-    // New State for the Tip Card
     private val _hasDismissedPlanTip = MutableStateFlow(true)
     val hasDismissedPlanTip: StateFlow<Boolean> = _hasDismissedPlanTip.asStateFlow()
 
@@ -85,7 +84,6 @@ class AuthViewModel(
     val isPreferencesLoaded: StateFlow<Boolean> = _isPreferencesLoaded.asStateFlow()
 
     init {
-        // Setup Auth State Listener via Repository
         authStateListener = authRepository.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
             userProfileListener?.remove()
@@ -473,56 +471,6 @@ class AuthViewModel(
         )
     }
 
-    fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val user = authRepository.currentUser
-        if (user != null) {
-            val userId = user.uid
-            _authResult.value = AuthResult.Loading
-
-            viewModelScope.launch {
-                try {
-                    Log.d("AuthViewModel", "Starting Firestore data deletion for user: $userId")
-
-                    // Call repo to delete subcollections
-                    authRepository.deleteUserSubCollections(userId)
-
-                    // Call repo to delete documents
-                    authRepository.deleteUserDocuments(userId)
-
-                    Log.d("AuthViewModel", "Successfully deleted user documents.")
-
-                    // Call repo to delete auth
-                    authRepository.deleteAuthUser()
-                    Log.d("AuthViewModel", "Successfully deleted user from Firebase Auth.")
-
-                    preferencesRepository.clearUserPreferences()
-                    _authResult.value = AuthResult.Success
-                    onSuccess()
-
-                } catch (e: Exception) {
-                    val rawErrorMessage = e.message ?: "Failed to delete account."
-                    Log.e("AuthViewModel", "Error deleting account: $rawErrorMessage", e)
-
-                    if (e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
-                        _authResult.value = AuthResult.Error("re-authenticate-required")
-                        onError("re-authenticate-required")
-                    } else if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                        _authResult.value = AuthResult.Error("Permission denied.")
-                        onError("Permission denied. Could not delete user data.")
-                    } else {
-                        // For other errors, show the raw message
-                        _authResult.value = AuthResult.Error(rawErrorMessage)
-                        onError(rawErrorMessage)
-                    }
-                }
-            }
-        } else {
-            val noUserError = "No user is currently signed in to delete."
-            _authResult.value = AuthResult.Error(noUserError)
-            onError(noUserError)
-        }
-    }
-
     fun resetUserData(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val user = authRepository.currentUser
         val userId = user?.uid
@@ -534,65 +482,13 @@ class AuthViewModel(
         _authResult.value = AuthResult.Loading
         viewModelScope.launch {
             try {
-                // Same repo method as delete account, but without deleting the auth user
+                // 1. Delete Subcollections (Meals, Weight, Notifications)
                 authRepository.deleteUserSubCollections(userId)
 
-                // Note: The original code reset specific documents but kept the user.
-                // We reuse the logic but only delete what was requested in the original code.
-                // Since original code for resetUserData deleted essentially the same things except the user doc itself:
+                // 2. Delete Plan Data (Habits, Current Plan)
+                authRepository.deleteUserPlanData(userId)
 
-                // We can reuse deleteUserSubCollections
-                authRepository.deleteUserSubCollections(userId)
-
-                // And manually handle the specific docs we want to delete for reset
-                // (Reuse the repository logic or create a specific reset method in repo?
-                // To keep it simple, I'll assume the deleteUserDocuments logic in Repo is specifically for Account Deletion.
-                // For Reset, I will call the repo methods directly.)
-
-                // Actually, let's just make sure the repo handles this cleanly.
-                // Since I moved the logic to `deleteUserDocuments`, I will add a `resetUserDocuments` to repo or just duplicate the calls here?
-                // Better: I'll rely on the repo having granular delete methods if needed, but for now
-                // the Repo has `deleteUserDocuments` which deletes the main user doc too.
-                // So for `resetUserData`, I will strictly call the specific repo deletions.
-
-                // *Self-correction*: I implemented `deleteUserSubCollections` in Repo.
-                // I will use that. For the individual docs, I will create a method in Repo called `resetSpecificUserDocs` to match the VM logic perfectly.
-
-                // Since I cannot edit the Repo file I just gave you above, I will assume you can add this small helper or
-                // I will use `deleteUserDocuments` but catch the fact that I don't want to delete the main user.
-
-                // WAIT: The Repo file I generated above creates `deleteUserDocuments` which deletes everything.
-                // I should have split it.
-                // However, `resetUserData` in your original code deleted:
-                // meals, weight_history, notifications, diet_plans/current_plan, user_answers/diet_habits.
-                // It DID NOT delete the main user doc.
-
-                // Since I cannot change the Repo file I already outputted (it's in the block above),
-                // I will add the specific deletion logic for reset here using the existing `deleteUserSubCollections`.
-                // But for the specific docs (diet_plans, etc), I will trust that `deleteUserDocuments` in the repo
-                // deletes them. The only issue is `deleteUserDocuments` ALSO deletes the main user doc.
-
-                // SOLUTION: Use `deleteUserSubCollections` (safe).
-                // Then for the specific docs, the VM asks the Repo to do it.
-                // Since I missed adding a specific "Delete ONLY Plan Data" to the repo,
-                // I will assume for this specific Reset function, we might have a slight overlap.
-
-                // ACTUALLY: I will just call `authRepository.deleteUserSubCollections(userId)`.
-                // That covers 80% of it.
-                // For the `diet_plans` and `user_answers`, I will assume `deleteUserDocuments` is too aggressive.
-                // Ideally, I would ask you to add `fun deleteUserPlanData(userId: String)` to the repo.
-                // Assuming you can't edit it easily, I will leave `resetUserData` to only call `deleteUserSubCollections`.
-                // This is a safe subset.
-
-                // REVISION: I will stick to what the code does. The repository I provided above has `deleteUserDocuments`.
-                // I will assume for now that for `resetUserData`, deleting the subcollections is sufficient
-                // OR I will simply accept that I should have added `resetUserPlan()` to the Repo.
-
-                authRepository.deleteUserSubCollections(userId)
-
-                // Manually trigger the other deletes via a new Repo method?
-                // No, I will just call `deleteUserSubCollections`.
-                // (In a real scenario I'd edit the Repo file again, but I'll stick to the generated context).
+                // NOTE: We do NOT delete Goals or the Main Document here.
 
                 Log.d("AuthViewModel", "Successfully reset user data and plan.")
                 _authResult.value = AuthResult.Success
@@ -603,6 +499,56 @@ class AuthViewModel(
                 _authResult.value = AuthResult.Error(e.message ?: "Reset failed.")
                 onError(e.message ?: "Reset failed.")
             }
+        }
+    }
+
+    fun deleteCurrentUser(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = authRepository.currentUser
+        if (user != null) {
+            val userId = user.uid
+            _authResult.value = AuthResult.Loading
+
+            viewModelScope.launch {
+                try {
+                    Log.d("AuthViewModel", "Starting account deletion for: $userId")
+
+                    // 1. Shared Logic (Same as Reset)
+                    authRepository.deleteUserSubCollections(userId)
+                    authRepository.deleteUserPlanData(userId)
+
+                    // 2. Account Specific Logic
+                    authRepository.deleteUserGoals(userId)      // Delete goals
+                    authRepository.deleteUserMainDocument(userId) // Delete profile
+
+                    // 3. Delete Auth
+                    authRepository.deleteAuthUser()
+
+                    Log.d("AuthViewModel", "Successfully deleted user account completely.")
+
+                    preferencesRepository.clearUserPreferences()
+                    _authResult.value = AuthResult.Success
+                    onSuccess()
+
+                } catch (e: Exception) {
+                    val rawErrorMessage = e.message ?: "Failed to delete account."
+                    Log.e("AuthViewModel", "Error deleting account", e)
+
+                    if (e is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                        _authResult.value = AuthResult.Error("re-authenticate-required")
+                        onError("re-authenticate-required")
+                    } else if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                        _authResult.value = AuthResult.Error("Permission denied.")
+                        onError("Permission denied. Could not delete user data.")
+                    } else {
+                        _authResult.value = AuthResult.Error(rawErrorMessage)
+                        onError(rawErrorMessage)
+                    }
+                }
+            }
+        } else {
+            val noUserError = "No user is currently signed in to delete."
+            _authResult.value = AuthResult.Error(noUserError)
+            onError(noUserError)
         }
     }
 }

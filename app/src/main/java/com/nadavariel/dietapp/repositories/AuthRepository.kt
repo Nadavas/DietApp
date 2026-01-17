@@ -177,10 +177,9 @@ class AuthRepository {
 
     // --- Account Deletion Logic ---
 
+    // Collections (Used by Reset & Delete)
     suspend fun deleteUserSubCollections(userId: String) {
-        // Helper to delete specific collections
         val collections = listOf("meals", "weight_history", "notifications")
-
         for (collectionName in collections) {
             try {
                 val collectionRef = firestore.collection("users")
@@ -198,24 +197,30 @@ class AuthRepository {
         }
     }
 
-    suspend fun deleteUserDocuments(userId: String) {
-        // Delete individual documents in sub-collections
-        firestore.collection("users").document(userId)
-            .collection("user_answers").document("diet_habits")
+    // Diet Plan Data (Used by Reset & Delete)
+    suspend fun deleteUserPlanData(userId: String) {
+        val userRef = firestore.collection("users").document(userId)
+
+        userRef.collection("user_answers").document("diet_habits")
             .delete().await()
 
+        userRef.collection("diet_plans").document("current_plan")
+            .delete().await()
+    }
+
+    // Goals (Used by Delete Account ONLY)
+    suspend fun deleteUserGoals(userId: String) {
         firestore.collection("users").document(userId)
             .collection("user_answers").document("goals")
             .delete().await()
+    }
 
-        firestore.collection("users").document(userId)
-            .collection("diet_plans").document("current_plan")
-            .delete().await()
-
-        // Delete main user document
+    // Main Profile (Used by Delete Account ONLY)
+    suspend fun deleteUserMainDocument(userId: String) {
         firestore.collection("users").document(userId).delete().await()
     }
 
+    // Auth User (Used by Delete Account ONLY)
     suspend fun deleteAuthUser() {
         auth.currentUser?.delete()?.await()
     }
