@@ -219,7 +219,7 @@ fun CarbsDetailScreen(
             DetailStatCard(
                 title = "Fiber",
                 weeklyData = weeklyFiber,
-                target = goals.getOrNull(2)?.value?.toIntOrNull(),
+                target = null,
                 label = "g",
                 color = AppTheme.colors.accentTeal
             )
@@ -228,7 +228,7 @@ fun CarbsDetailScreen(
             DetailStatCard(
                 title = "Sugar",
                 weeklyData = weeklySugar,
-                target = goals.getOrNull(3)?.value?.toIntOrNull(),
+                target = null,
                 label = "g",
                 color = AppTheme.colors.sunsetPink
             )
@@ -276,7 +276,7 @@ fun MineralsDetailScreen(
             DetailStatCard(
                 title = "Sodium",
                 weeklyData = weeklySodium,
-                target = goals.getOrNull(4)?.value?.toIntOrNull(),
+                target = null,
                 label = "mg",
                 color = AppTheme.colors.softBlue
             )
@@ -285,7 +285,7 @@ fun MineralsDetailScreen(
             DetailStatCard(
                 title = "Potassium",
                 weeklyData = weeklyPotassium,
-                target = goals.getOrNull(5)?.value?.toIntOrNull(),
+                target = null,
                 label = "mg",
                 color = AppTheme.colors.purple
             )
@@ -294,7 +294,7 @@ fun MineralsDetailScreen(
             DetailStatCard(
                 title = "Calcium",
                 weeklyData = weeklyCalcium,
-                target = goals.getOrNull(6)?.value?.toIntOrNull(),
+                target = null,
                 label = "mg",
                 color = AppTheme.colors.accentTeal
             )
@@ -303,7 +303,7 @@ fun MineralsDetailScreen(
             DetailStatCard(
                 title = "Iron",
                 weeklyData = weeklyIron,
-                target = goals.getOrNull(7)?.value?.toIntOrNull(),
+                target = null,
                 label = "mg",
                 color = AppTheme.colors.warmOrange
             )
@@ -352,7 +352,7 @@ fun VitaminsDetailScreen(
             DetailStatCard(
                 title = "Vitamin C",
                 weeklyData = weeklyVitaminC,
-                target = goals.getOrNull(8)?.value?.toIntOrNull(),
+                target = null,
                 label = "mg",
                 color = AppTheme.colors.sunsetPink
             )
@@ -361,7 +361,7 @@ fun VitaminsDetailScreen(
             DetailStatCard(
                 title = "Vitamin A",
                 weeklyData = weeklyVitaminA,
-                target = goals.getOrNull(9)?.value?.toIntOrNull(), // Next goal index
+                target = null, // Next goal index
                 label = "mcg", // Common unit for Vit A
                 color = AppTheme.colors.warmOrange
             )
@@ -370,7 +370,7 @@ fun VitaminsDetailScreen(
             DetailStatCard(
                 title = "Vitamin B12",
                 weeklyData = weeklyVitaminB12,
-                target = goals.getOrNull(10)?.value?.toIntOrNull(), // Next goal index
+                target = null, // Next goal index
                 label = "mcg", // Common unit for Vit B12
                 color = AppTheme.colors.softBlue
             )
