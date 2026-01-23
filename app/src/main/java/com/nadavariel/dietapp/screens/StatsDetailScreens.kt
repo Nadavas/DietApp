@@ -311,9 +311,9 @@ fun MineralsDetailScreen(
         item {
             InsightCard(
                 recommendedValues = mapOf(
-                    "Calcium" to "> 1,000 mg",
                     "Sodium" to "< 2,300 mg",
                     "Potassium" to "M: > 3,400 mg | F: > 2,600 mg",
+                    "Calcium" to "> 1,000 mg",
                     "Iron" to "M: > 8 mg | F: > 18 mg"
                 ),
                 insights = listOf(

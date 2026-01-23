@@ -49,21 +49,20 @@ function extractJsonFromMarkdown(text) {
 }
 
 // =================================================================
-// EXISTING FUNCTION FOR FOOD ANALYSIS
+// FUNCTION FOR FOOD ANALYSIS
 // =================================================================
 exports.analyzeFoodWithGemini = onCall(
   {
     region: "us-central1",
     secrets: [geminiApiKeySecret],
   },
-  async (request) => { // <-- Corrected parameter name from 'data' to 'request'
+  async (request) => {
     const MAX_RETRIES = 3;
     let retries = 0;
     let lastError = null;
 
     while (retries < MAX_RETRIES) {
       try {
-        // Corrected to use request.data for v2 onCall functions
         let foodName = request.data.foodName;
         const imageB64 = request.data.imageB64;
 
@@ -73,7 +72,7 @@ exports.analyzeFoodWithGemini = onCall(
 
         const geminiApiKey = geminiApiKeySecret.value();
         const genAI = new GoogleGenerativeAI(geminiApiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" }); // Updated to a newer model for consistency
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         // --- STEP 1: Image Analysis (if image is present) ---
         if (imageB64) {
@@ -154,7 +153,7 @@ exports.analyzeFoodWithGemini = onCall(
           await new Promise(resolve => setTimeout(resolve, delay));
           retries++;
         } else {
-          if (error.code) { // Re-throw HttpsError directly
+          if (error.code) {
             throw error;
           }
           throw new HttpsError("internal", "An unknown error occurred during Gemini analysis.");
@@ -173,7 +172,7 @@ exports.analyzeFoodWithGemini = onCall(
 
 
 // =================================================================
-// NEW FUNCTION FOR DIET PLAN GENERATION (SOPHISTICATED V2)
+// FUNCTION FOR DIET PLAN GENERATION
 // =================================================================
 exports.generateDietPlan = onCall(
   {
@@ -199,10 +198,9 @@ exports.generateDietPlan = onCall(
     try {
         const geminiApiKey = geminiApiKeySecret.value();
         const genAI = new GoogleGenerativeAI(geminiApiKey);
-        // Using a more powerful model for complex JSON
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-        // --- THIS IS THE MODIFIED PROMPT (V2) ---
+        // --- PROMPT ---
         const prompt = `
           You are an expert nutritionist and head fitness coach.
           Analyze the following user's diet and health profile.
@@ -267,7 +265,6 @@ exports.generateDietPlan = onCall(
           ${userProfile}
           ---
         `;
-        // --- END OF MODIFIED PROMPT ---
 
         const result = await model.generateContent(prompt);
         const response = result.response;
@@ -278,7 +275,6 @@ exports.generateDietPlan = onCall(
 
         const planData = JSON.parse(cleanedText);
 
-        // Return in the format the client expects
         return { success: true, data: planData };
 
     } catch (error) {
